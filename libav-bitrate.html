@@ -1,0 +1,20 @@
+<h3>Bitrate graph producer</h3>
+<p>Produces an ASCII file suitable for plotting in gnuplot of the
+bitrate per frame.  Also includes a rolling average algorithm that
+helps smooth out differences between I frame, P frame and B frames.
+Constant bitrate is not so constant.  Requires about 50 frames
+rolling average window to get an idea of the average bitrate.</p>
+
+<p> using a post processing tool such as octave to average the graph 
+may be useful</p>
+
+<h4>RESULTS</h4>
+<p>
+VBR example
+<img src="7hd_mov.png">
+</p>
+<p>
+CBR example
+<img src="7hd_mpg.png">
+</p>
+

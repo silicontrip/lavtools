@@ -1,0 +1,162 @@
+<HTML> <HEAD> <TITLE> Mark's video filters </TITLE>
+
+<link rel="stylesheet" href="/trip.css" type="text/css" media="screen" />
+
+</HEAD> <BODY>
+
+<div id=head>
+
+
+<h1>YUV Video filters</h1> 
+
+</div> <div id=text>
+
+<p> Code for YUV video stream processing. This code extends code
+from the MJPEG tools and requires the mjpeg libraries.  If you have
+difficulty compiling these contact me, mjpeg0 at silicontrip dot org.
+</p> 
+
+<h3><a href=yuvdeinterlace.c>YUV DeInterlace</a></h3> <p>A non destructive
+deinterlacer.  Converts to a double frame rate, half height,
+progressive yuv stream for further processing by temporal based
+filters.  Then re-interlaced before encoding.</P>
+<p>
+This program is not very useful as there are better double frame rate deinterlacers out there this one does not take the spacial nature of interlace into consideration.</p>
+<p>
+I have been experimenting with training a neural net to *learn* what the missing
+pixel may be from the surrounding pixels.  My first attempts have not worked,
+if it is trained from images with many uphill lines, then uphill interpolation
+looks fantastic but downhill is very jaggered.</p>
+<p>
+I am thinking about increasing the number of hidden layers in the neural net to see
+if it improves interpolation.  The code is in java, I'll just need some encouragement to look at it again.</p>
+<UL>
+<li> 26th April 2005.  Fixed a bug which incorrectly detected the end
+of file, creating more frames in the output.</li>
+
+<li>9th April 2005 New features which now produces a full height frame,
+by line duplication.  Also contains code from yuvdeprogress, to
+re-interlace the stream.</li>
+</ul>
+
+<p>
+Example this command swaps the field order: <tt> | yuvdeinterlace
+-t | yuvdeinterlace -b -i |</tt> (but will corrupt the spacial representation)
+</p>
+
+
+<h3><a href=yuvafps.c>YUV AFPS</a></h3><p> A linear frame averaging, frame
+rate converter.  Does a better job than the frame dropping/duplicating
+converters.</P>
+<p>
+I did think that this no longer needed maintaining since yuvfps now has
+a weighted average conversion. However I find this programs conversion 
+much nicer than yuvfps.  This will work with converting very slow or
+very fast frame rates and averages all frames that overlap.</p>
+<UL>
+<li> 13 September 2007. Discovered that I had broken progressive support with my
+previous change.  Reworked the algorithm and functionised some of the code.
+Much cleaner now.  It is horribly slow however because it uses doubles to
+perform the frame averaging. I am thinking about changing to fixed point 
+processing.</li>
+
+<li>6th September 2006. Added support for interlaced video.</li>
+</ul>
+</li>
+
+<h3><a href=yuvfade.c>YUV fade</a></h3><p> Will fade the video to black
+after X number of frames. Uses a trial and error method of fading
+to black, could be better.</p>
+
+<h3><a href=yuvwater.c>YUV Water</a></h3><p>Attempts to detect and remove
+semi-transperant watermarks from the source.  Produces a PGM file
+of the detected watermark which is used to remove or reduce the
+effect.  This is a two pass process, the documentation is a little
+sparse.  </p>
+
+<ul>
+<li>26th April 2005. Fixed a bug which incorrectly detected the end
+of file, creating more frames in the output.</li>
+<li>17th May 2005.  Fixed a bug which incorrectly compared the pgm size
+and the video size.</li>
+</ul>
+
+<p>
+Example pass 1:  <tt> | yuvwater -d > watermark.pgm </tt></p>
+<p>
+May also use a black frame with the watermark showing, extracted by other means.</P>
+<p>
+pass 2 <tt>| yuvwater  yuvwater -m 145 -l 72  -u 384  -i watermark.pgm
+| </tt> -m specifies the amount to remove, the lower the number
+the darker the resulting watermark, good starting values are 140.
+-l specifies the black level for normalisation, good starting values
+between 32-80. If the black is too light, increase this value.  -u
+specifies the white level, good starting value 384, if the white
+is too dark, decrease this value.  </p>
+
+<h3><a href=yuvaddetect.c>YUV Ad Detect</a></h3><p> INCOMPLETE. Currently
+only produces a text file (which can be graphed by gnuplot) of the
+average lightness of the sourceframes.  The idea is that there is
+a black fade before and after advertisements. To produce chapter markers
+for DVDs from TV.</p>
+
+<h3><a href="yuvdiff.c"> YUV difference</a></h3><p> Started life similar to yuvaddetect,
+may even contain disused code from ad detect.  This program produces an ASCII
+file suitable for plotting in gnuplot of the difference between consecutive frames or 
+fields.  Suitable for detecting 3-2 pulldown, or any other pulldown (frame
+duplication) frame rate conversion.  If the output is ran through an FFT it
+can even detect other frequency rate changes such as 2.39 (25 to 59.94) </p>
+<p>
+I have used this extensively to detect pulldown material.
+</p>
+
+
+<h3><a href="yuvrfps.c">YUV redundant frame rate conversion</a></h3><p>Performs
+a frame rate reduction by simple fractional amounts, by dropping 1 out of every
+X frames or fields.  Can be used to convert 29.97 to 23.976 similar to yuvkineco. Or even 30 to 25 fps.  It analyses X frames and finds the least different frame
+and drops it, in theory removing any duplicated frames.</p>
+
+<h3><a href="yuvilace.c">YUV interlace analysis</a></h3><p>Experimental. Attempts to
+perform interlace detection, by FFT the vertical lines in the screen, and 
+averaging the resulting frequency spectra.  Also tried experimenting with 
+filtering to intelligently remove interlace. I have no idea what state this code
+is in at the moment.</p>
+
+<h3><a href="yuvadjust.c">YUV basic arithmentic adjustments</a></h3><p>Allows changes
+such as brightness, contrast, saturation, hue shift and hue rotation. Does 
+support negative values for inversion. </p>
+
+<h3><a href="yuvconvolve.c">YUV convolution filter</a></h3><p>Performs a generic
+convolution filter on the video.  Quite slow. Support any odd dimension matrix
+(3x3, 5x5, 7x7...) uses the command line argument -m 1,2,3,4,5,6,7,8,9. I am
+thinking about adding support for predefined matricies, such as blurr, sharpen, edge detection, emboss.</P>
+<p>  I now know that it's not wise to run sharpening on low
+bitrate mpeg files, it highlights the macroblock.</p>
+
+<p>
+Any Questions contact me mjpeg0 at silicontrip dot org<br>
+and if that address no longer works change the 0 to a 1 or a 2 or 3...
+</p>
+</P> </div>
+
+<div id=text>
+<h2>libav tools</h2> 
+<p>
+</p>
+<h3><a href="libav2yuv.c">LIBAV to YUV converter</a></h3><p>This is a very simple
+generic anything to yuv tool, using the libav library from ffmpeg. It supports
+any video file that libav supports (which includes WMV3s now!!!) it can be
+used to replace the -vo yuv4mpeg option of mplayer or the -f yuv4mpegpipe option
+of ffmpeg.  The tool can also override yuv header values, in the case of incorrect aspect ratio or interlacing etc.  And will perform simple chroma subsampling
+conversion, if the source file is not in the desired chroma subsampling mode.
+</p>
+<p>
+I use this all the time for file conversions... <tt> libav2yuv strangefile.avi | y4m-yuvfilter | ffmpeg -f yuv4mpegpipe -i - -vcodec whatever wantedfile.avi</tt>
+</p>
+<h3><a href="libav-bitrate.c">LIBAV bitrate analyser</a></h3><p>Produces an ASCII
+file suitable for plotting in gnuplot of the bitrate per frame.  Also includes
+a rolling average algorithm that helps smooth out differences between I frame,
+P frame and B frames.  Constant bitrate is not so constant.  Requires about 50
+frames rolling average window to get an idea of the average bitrate.</p>
+</div>
+ </BODY> </HTML>

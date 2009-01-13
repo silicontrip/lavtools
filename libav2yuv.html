@@ -1,0 +1,25 @@
+<h3>Anything to YUV</h3>
+<p>This is a very simple generic anything to yuv tool, using the
+libav library from ffmpeg. It supports any video file that libav
+supports (which includes WMV3s now!!!) it can be used to replace
+the -vo yuv4mpeg option of mplayer or the -f yuv4mpegpipe option
+of ffmpeg.  The tool can also override yuv header values, in the
+case of incorrect aspect ratio or interlacing etc.  And will perform
+simple chroma subsampling conversion, if the source file is not in
+the desired chroma subsampling mode.  </p>
+
+<p> I use this regularily for file conversions, so I hope the code
+is quite mature, with a thorough set of options and help.  Any bugs
+should be picked up quickly.  </p>
+
+<h4>EXAMPLE</h4> <p> <tt> libav2yuv strangefile.avi | y4m-yuvfilter
+| ffmpeg -f yuv4mpegpipe -i - -vcodec whatever wantedfile.avi</tt>
+</p>
+
+<h4>HISTORY</h4> <p> <ul> <li>23 Feb 2008.  Found a bug that would
+cause frames to be dropped.  Determined that the AV decode function
+is decoding data but not saying the frame is finished.  I have not
+been able to find why it is exhibiting this behaviour.  I have
+worked around this behaviour by outputting the previous frame when
+the frame is not finished.  I am not sure if this causes issues
+with non frame based, packet based files (such as mpeg) </li> </ul>

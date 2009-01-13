@@ -1,0 +1,43 @@
+<h3>Averaging Frame rate Converter</h3>
+
+<p> A linear frame averaging, frame rate converter.  Does a better
+job than the frame dropping/duplicating converters.</P>
+
+<p> I did think that this no longer needed maintaining since yuvfps
+now has a weighted average conversion. However I find this programs
+conversion much nicer than yuvfps.  This will work with converting
+very slow or very fast frame rates and averages all frames that
+overlap.  </p>
+
+<p> It supports  interlaced and progressive streams, and can force a conversion
+from progressive to interlace (although I'm not sure if it properly handles 
+progressive to interlaced chroma)
+</p>
+
+<p><a href="yuvaifps.c">yuvaifps.c</a>
+<h3>Averaging Integer based Frame Rate Converter</h3>
+<p>
+I have re-written this to use integers rather than floats, 
+appears to increase speed by about 3 times.  
+<h4>BUGS</h4>
+<p>
+It may
+overflow with long files (greater than about 80 minutes) and large prime number frame rate values.  However these values are not very common.
+I've tried to detect this occurance,
+but it simply reports an error on stderr and continues with a corrupted stream.
+</p>
+
+<UL> 
+<li> 24 April 2008.  Just when I think I fixed the interlaced bug,  I introduce a progressive bug.  Both bugs have now been fixed.
+<li> 23 April 2008. Fixed interlaced version.
+<li> 23 April 2008. Discovered bug in calc_per which affects both the integer and floating point versions.  The issue should be very rare, when there is no overlap of frames it will return a negative (or very large) value corrupting usually
+the very first frame.
+<li> 22 April 2008.  Found a way to wrap the frame counters to remove the 80 minute limit.  However interlaced streams are broken.
+<li> 21 April 2008.  Implemented Integer version.
+<li> 13 September 2007. Discovered that I had broken progressive
+support with my previous change.  Reworked the algorithm and
+functionised some of the code.  Much cleaner now.  It is horribly
+slow however because it uses doubles to perform the frame averaging.
+I am thinking about changing to fixed point processing.</li> <li>6th
+September 2006. Added support for interlaced video.</li> </ul>
+

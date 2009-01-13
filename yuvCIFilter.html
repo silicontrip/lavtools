@@ -1,0 +1,171 @@
+<h3>YUV Core Image Filter</h3>
+<p>
+This allows Core Image filters to operate on yuv streams.
+</p>
+
+<p>
+Obviously this program only works under OSX.
+</p>
+
+<h4>Example</h4>
+<p>
+To choose a Core Image filter use the -f option:
+<tt> | yuvCIFilter -f CILineScreen | </tt>
+</p>
+
+<p>
+Default filter settings are shown:
+<pre>
+{CILineScreen {
+    inputAngle = 0;
+    inputCenter = [150 150];
+    inputImage = <null>;
+    inputSharpness = 0.7;
+    inputWidth = 6;
+}}
+</pre>
+<p>
+Any of the filter settings can be changed using the -i option:
+<tt>yuvCIFilter -f CILineScreen -i inputAngle=45.0</tt>
+</p>
+<p>
+Multiple settings are separated by a comma:
+<tt>yuvCIFilter -f CILineScreen -i inputAngle=45.0,inputWidth=12.0</tt>
+</p>
+<p>
+Some settings require a space and will need to be quoted on the command line.
+</P>
+
+<p>
+A list of filters is obtained by giving an invalid filtername to the -f
+option (such as help)
+</p>
+<p>
+<pre>
+CIAdditionCompositing
+CIAffineClamp
+CIAffineTile
+CIAffineTransform
+CIAreaAverage
+CIAreaHistogram
+CIAreaMaximum
+CIAreaMaximumAlpha
+CIAreaMinimum
+CIAreaMinimumAlpha
+CIBarsSwipeTransition
+CIBlendWithMask
+CIBloom
+CIBoxBlur
+CIBumpDistortion
+CIBumpDistortionLinear
+CICheckerboardGenerator
+CICircleSplashDistortion
+CICircularScreen
+CICircularWrap
+CICMYKHalftone
+CIColorBlendMode
+CIColorBurnBlendMode
+CIColorControls
+CIColorCube
+CIColorDodgeBlendMode
+CIColorInvert
+CIColorMap
+CIColorMatrix
+CIColorMonochrome
+CIColorPosterize
+CIColumnAverage
+CIComicEffect
+CIConstantColorGenerator
+CICopyMachineTransition
+CICrop
+CICrystallize
+CIDarkenBlendMode
+CIDifferenceBlendMode
+CIDiscBlur
+CIDisintegrateWithMaskTransition
+CIDisplacementDistortion
+CIDissolveTransition
+CIDotScreen
+CIEdges
+CIEdgeWork
+CIEightfoldReflectedTile
+CIExclusionBlendMode
+CIExposureAdjust
+CIFalseColor
+CIFlashTransition
+CIFourfoldReflectedTile
+CIFourfoldRotatedTile
+CIFourfoldTranslatedTile
+CIGammaAdjust
+CIGaussianBlur
+CIGaussianGradient
+CIGlassDistortion
+CIGlassLozenge
+CIGlideReflectedTile
+CIGloom
+CIHardLightBlendMode
+CIHatchedScreen
+CIHeightFieldFromMask
+CIHexagonalPixellate
+CIHoleDistortion
+CIHueAdjust
+CIHueBlendMode
+CIKaleidoscope
+CILanczosScaleTransform
+CILenticularHaloGenerator
+CILightenBlendMode
+CILinearGradient
+CILineOverlay
+CILineScreen
+CILuminosityBlendMode
+CIMaskToAlpha
+CIMaximumComponent
+CIMaximumCompositing
+CIMedianFilter
+CIMinimumComponent
+CIMinimumCompositing
+CIModTransition
+CIMotionBlur
+CIMultiplyBlendMode
+CIMultiplyCompositing
+CINoiseReduction
+CIOpTile
+CIOverlayBlendMode
+CIPageCurlTransition
+CIParallelogramTile
+CIPerspectiveTile
+CIPerspectiveTransform
+CIPinchDistortion
+CIPixellate
+CIPointillize
+CIRadialGradient
+CIRandomGenerator
+CIRippleTransition
+CIRowAverage
+CISaturationBlendMode
+CIScreenBlendMode
+CISepiaTone
+CIShadedMaterial
+CISharpenLuminance
+CISixfoldReflectedTile
+CISixfoldRotatedTile
+CISoftLightBlendMode
+CISourceAtopCompositing
+CISourceInCompositing
+CISourceOutCompositing
+CISourceOverCompositing
+CISpotColor
+CISpotLight
+CIStarShineGenerator
+CIStripesGenerator
+CISunbeamsGenerator
+CISwipeTransition
+CITorusLensDistortion
+CITriangleTile
+CITwelvefoldReflectedTile
+CITwirlDistortion
+CIUnsharpMask
+CIVortexDistortion
+CIWhitePointAdjust
+CIZoomBlur
+</pre>
