@@ -17,10 +17,33 @@
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
 // 24th Feb 2008 - Found an unexpected behaviour where frames were being dropped. libav said that no frame was decoded. Have output the previous frame in this instance.
 //
+/* Possible inclusion for EDL
+Comments
+
+Comments can appear at the beginning of the EDL file (header) or between the edit lines in the EDL. The first block of comments in the file is defined to be the header comments and they are associated with the EDL as a whole. Subsequent comments in the EDL file are associated with the first edit line that appears after them.
+Edit Entries
+
+<filename|tag>  <EditMode>  <TransitionType>[num]  [duration]  [srcIn]  [srcOut]  [recIn]  [recOut]
+<filename|tag>: Filename or tag value. Filename can be for an MPEG file, Image file, or Image file template. Image file templates use the same pattern matching as for command line glob, and can be used to specify images to encode into MPEG. i.e. /usr/data/images/image*.jpg
+<EditMode>: 'V' | 'A' | 'VA' | 'B' | 'v' | 'a' | 'va' | 'b' which equals Video, Audio, Video_Audio edits (note B or b can be used in place of VA or va).
+<TransitonType>: 'C' | 'D' | 'E' | 'FI' | 'FO' | 'W' | 'c' | 'd' | 'e' | 'fi' | 'fo' | 'w'. which equals Cut, Dissolve, Effect, FadeIn, FadeOut, Wipe.
+[num]: if TransitionType = Wipe, then a wipe number must be given. At the moment only wipe 'W0' and 'W1' are supported.
+[duration]: if the TransitionType is not equal to Cut, then an effect duration must be given. Duration is in frames.
+[srcIn]: Src in. If no srcIn is given, then it defaults to the first frame of the video or the first frame in the image pattern. If srcIn isn't specified, then srcOut, recIn, recOut can't be specified.
+[srcOut]: Src out. If no srcOut is given, then it defaults to the last frame of the video - or last image in the image pattern. if srcOut isn't given, then recIn and recOut can't be specified.
+[recIn]: Rec in. If no recIn is given, then it is calculated based on its position in the EDL and the length of its input.
+
+[recOut]: Rec out. If no recOut is given, then it is calculated based on its position in the EDL and the length of its input. first frame of the video.
+For srcIn, srcOut, recIn, recOut, the values can be specified as either timecode, frame number, seconds, or mps seconds. i.e. 
+[tcode | fnum | sec | mps], where:
+tcode : SMPTE timecode in hh:mm:ss:ff
+fnum : frame number (the first decodable frame in the video is taken to be frame 0).
+sec : seconds with 's' suffix (e.g. 5.2s)
+mps : seconds with 'mps' suffix (e.g. 5.2mps). This corresponds to the 'seconds' value displayed by Windows MediaPlayer.
+*/
 
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
-
 
 #include <ffmpeg/avcodec.h>
 #include <ffmpeg/avformat.h>
