@@ -439,7 +439,7 @@ int main(int argc, char *argv[])
 					packet.data, packet.size);
 					
 					write (1, aBuffer, numBytes);
-						
+					numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 					
 			}
 		}
