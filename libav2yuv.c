@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
     int             numBytes;
 	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
     uint8_t         *buffer;
-	uint16_t		*aBuffer;
+	int16_t		*aBuffer;
 	
 	int fdOut = 1 ;
 	int yuv_interlacing = Y4M_UNKNOWN;
@@ -355,7 +355,8 @@ int main(int argc, char *argv[])
 		y4m_si_set_framerate(&streaminfo, yuv_frame_rate);
 		y4m_si_set_chroma(&streaminfo, yuv_ss_mode);
 	} else {
-		aBuffer = (int16_t *) malloc (pFormatCtx->channels * pFormatCtx->frame_size * sizeof(int16_t));
+		numBytes = pCodecCtx->channels * pCodecCtx->frame_size * sizeof(int16_t);
+		aBuffer = (int16_t *) malloc (numBytes);
 		// allocate for audio
 		
 	}
@@ -434,10 +435,10 @@ int main(int argc, char *argv[])
 											 is->audio_pkt_data, is->audio_pkt_size);
 				*/
 				avcodec_decode_audio2(pCodecCtx, 
-					aBuffer, pFormatCtx->channels * pFormatCtx->frame_size * sizeof(int16_t),
+					aBuffer, &numBytes,
 					packet.data, packet.size);
 					
-					write (1, aBuffer, pFormatCtx->channels * pFormatCtx->frame_size * sizeof(int16_t));
+					write (1, aBuffer, numBytes);
 						
 					
 			}
@@ -459,6 +460,7 @@ int main(int argc, char *argv[])
     av_free(pFrame);
 		} else {
 			free (aBuffer);
+			}
     // Close the codec
     avcodec_close(pCodecCtx);
 	
