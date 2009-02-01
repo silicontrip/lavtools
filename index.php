@@ -17,6 +17,14 @@
 from the MJPEG tools and requires the mjpeg libraries.  If you have
 difficulty compiling these contact me, mjpeg0 at silicontrip dot org.
 </p> 
+<p> 
+You will need the mjpeg libraries to compile the yuv tools.
+<a href="http://mjpeg.sourceforge.net">information on the mjpeg libraries and download.</a>
+</P>
+<p>
+The Libav tools require the libavcodec library which is part of the 
+<a href="http://ffmpeg.org">ffmpeg tools</a>
+<p> 
 
 <?php
 
