@@ -355,7 +355,7 @@ int main(int argc, char *argv[])
 		y4m_si_set_framerate(&streaminfo, yuv_frame_rate);
 		y4m_si_set_chroma(&streaminfo, yuv_ss_mode);
 	} else {
-		numBytes = pCodecCtx->channels * pCodecCtx->frame_size * sizeof(int16_t);
+		numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
 		aBuffer = (int16_t *) malloc (numBytes);
 		// allocate for audio
 		
