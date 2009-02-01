@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 {
     AVFormatContext *pFormatCtx;
 	AVInputFormat *avif = NULL;
-    int             i, videoStream;
+    int             i, avStream;
     AVCodecContext  *pCodecCtx;
     AVCodec         *pCodec;
     AVFrame         *pFrame; 
@@ -130,6 +130,7 @@ int main(int argc, char *argv[])
     int             numBytes;
 	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
     uint8_t         *buffer;
+	uint16_t		*aBuffer;
 	
 	int fdOut = 1 ;
 	int yuv_interlacing = Y4M_UNKNOWN;
@@ -253,26 +254,26 @@ int main(int argc, char *argv[])
 	
     // Find the first video stream
 	// not necessarily a video stream but this is legacy code
-    videoStream=-1;
+    avStream=-1;
     for(i=0; i<pFormatCtx->nb_streams; i++)
         if(pFormatCtx->streams[i]->codec->codec_type==search_codec_type)
         {
 			// mark debug
 			//fprintf (stderr,"Video Codec ID: %d (%s)\n",pFormatCtx->streams[i]->codec->codec_id ,pFormatCtx->streams[i]->codec->codec_name);
-			if (videoStream == -1 && stream == 0) {
+			if (avStream == -1 && stream == 0) {
 				// May still be overridden by the -s option
-				videoStream=i;
+				avStream=i;
 			}
 			if (stream == i) {
-				videoStream=i;
+				avStream=i;
 				break;
 			}
         }
-    if(videoStream==-1)
+    if(avStream==-1)
         return -1; // Didn't find a video stream
 	
     // Get a pointer to the codec context for the video stream
-    pCodecCtx=pFormatCtx->streams[videoStream]->codec;
+    pCodecCtx=pFormatCtx->streams[avStream]->codec;
 	
     // Find the decoder for the video stream
     pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
@@ -289,8 +290,8 @@ int main(int argc, char *argv[])
 		
 		// Read framerate, aspect ratio and chroma subsampling from Codec
 		if (yuv_frame_rate.d == 0) {
-			yuv_frame_rate.n = pFormatCtx->streams[videoStream]->r_frame_rate.num;
-			yuv_frame_rate.d = pFormatCtx->streams[videoStream]->r_frame_rate.den;
+			yuv_frame_rate.n = pFormatCtx->streams[avStream]->r_frame_rate.num;
+			yuv_frame_rate.d = pFormatCtx->streams[avStream]->r_frame_rate.den;
 		}
 		if (yuv_aspect.d == 0) {
 			yuv_aspect.n = pCodecCtx-> sample_aspect_ratio.num;
@@ -354,7 +355,7 @@ int main(int argc, char *argv[])
 		y4m_si_set_framerate(&streaminfo, yuv_frame_rate);
 		y4m_si_set_chroma(&streaminfo, yuv_ss_mode);
 	} else {
-	
+		aBuffer = (int16_t *) malloc (pFormatCtx->channels * pFormatCtx->frame_size * sizeof(int16_t));
 		// allocate for audio
 		
 	}
@@ -362,7 +363,7 @@ int main(int argc, char *argv[])
     while(av_read_frame(pFormatCtx, &packet)>=0)
     {
         // Is this a packet from the desired stream?
-        if(packet.stream_index==videoStream)
+        if(packet.stream_index==avStream)
         {
             // Decode video frame
 			
@@ -432,6 +433,13 @@ int main(int argc, char *argv[])
 											 (int16_t *)audio_buf, &data_size,
 											 is->audio_pkt_data, is->audio_pkt_size);
 				*/
+				avcodec_decode_audio2(pCodecCtx, 
+					aBuffer, pFormatCtx->channels * pFormatCtx->frame_size * sizeof(int16_t),
+					packet.data, packet.size);
+					
+					write (1, aBuffer, pFormatCtx->channels * pFormatCtx->frame_size * sizeof(int16_t));
+						
+					
 			}
 		}
 		
@@ -439,6 +447,7 @@ int main(int argc, char *argv[])
         av_free_packet(&packet);
     }
 	
+			if (audioWrite==0) {
 	y4m_fini_stream_info(&streaminfo);
 	y4m_fini_frame_info(&frameinfo);
 	
@@ -448,7 +457,8 @@ int main(int argc, char *argv[])
 	
     // Free the YUV frame
     av_free(pFrame);
-	
+		} else {
+			free (aBuffer);
     // Close the codec
     avcodec_close(pCodecCtx);
 	
