@@ -16,7 +16,10 @@ should be picked up quickly.  </p>
 | ffmpeg -f yuv4mpegpipe -i - -vcodec whatever wantedfile.avi</tt>
 </p>
 
-<h4>HISTORY</h4> <p> <ul> <li>23 Feb 2008.  Found a bug that would
+<h4>HISTORY</h4> <p> <ul> 
+
+<li>2 Feb 2009. First release of the PCM writer version (use the -w flag)
+<li>23 Feb 2008.  Found a bug that would
 cause frames to be dropped.  Determined that the AV decode function
 is decoding data but not saying the frame is finished.  I have not
 been able to find why it is exhibiting this behaviour.  I have
