@@ -62,26 +62,30 @@
 
 
 int64_t parseTimecode (char *tc, int frn,int frd) {
-
-// My only concern here is that some people use approximations for NTSC frame rates.
-
+	
+	// My only concern here is that some people use approximations for NTSC frame rates.
+	
 	int h=0,m=0,s=0,f=0;
 	char *stc[4];
 	int i,cc=0;
 	float fps,frameNumber;
 	int fn;
-
-// I'm trying to remember if the ; represents 29.97 fps displayed as if running at 30 fps.
-// So therefore doesn't display the correct time.
-// or if it represents 29.97 rounded to the nearest frame. IE catches up a frame every 1001 frames.
-
-// determine ntsc drop timecode format
-
-	fprintf(stderr,"parser: passing '%s'\n",tc);
-
+	int64_t fn64;
+	
+	// I'm trying to remember if the ; represents 29.97 fps displayed as if running at 30 fps.
+	// So therefore doesn't display the correct time.
+	// or if it represents 29.97 rounded to the nearest frame. IE catches up a frame every 1001 frames.
+	
+	if (strlen(tc) == 0 ) 
+		return 0;
+	
+	// determine ntsc drop timecode format
+	
+	//	fprintf(stderr,"parser: passing '%s'\n",tc);
+	
 	if (strlen(tc) > 2) {
 		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
-	
+			
 			// or is this a : ?
 			if (tc[strlen(tc)-3] == ';') {
 				fprintf (stderr,"parser: NTSC Drop Code\n");
@@ -91,12 +95,12 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 			}
 		}
 	}
-
+	
 	fps = 1.0 * frn / frd;
-
+	
 	for (i=strlen(tc)-1; i>=0; i--) 
 	{
-	
+		
 		if ( tc[i] == ':') {
 			if (cc > 4) { 
 				// too many : 
@@ -108,7 +112,7 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 		} else if (tc[i]<'0' || tc[i]>'9') {
 			// illegal character
 			fprintf (stderr,"parse error: illegal character in timecode\n");
-				return -1;
+			return -1;
 		}
 	}
 	if (cc > 4) { 
@@ -117,15 +121,15 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 		return -1;
 	}
 	stc[cc++] = tc;
-
-// debug
-	fprintf (stderr,"parser: (%d): ",cc);
-
+	
+	// debug
+	//	fprintf (stderr,"parser: (%d): ",cc);
+	
 	for (i=0; i < cc; i++) 
 		fprintf (stderr,"%s, ",stc[i]);
-		
+	
 	fprintf (stderr,"\n");
-
+	
 	f = atoi(stc[0]);
 	if (cc>1) 
 		s = atoi(stc[1]);
@@ -133,8 +137,8 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 		m = atoi(stc[2]);
 	if (cc>3)
 		h = atoi(stc[3]);
-		
-	fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);
+	
+	//	fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);
 	
 	// validate time
 	
@@ -146,15 +150,17 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 	frameNumber =   1.0 * ( h * 3600 + m * 60 + s ) * fps + f;
 	fn = (frameNumber);
 	
-	fprintf (stderr,"parser: framenumber %lf == %ld\n",frameNumber,fn);
-
-	return fn;
-
+	fn64 = fn;
+	
+	//	fprintf (stderr,"parser: framenumber %d == %lld\n",fn,fn64);
+	
+	return fn64;
+	
 }
 
 int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
-
-
+	
+	
 	int dashcount = 0;
 	int dashplace = 0;
 	char *re;
@@ -167,29 +173,29 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 			dashplace = i;
 		}
 	}
-
-	if (dashcount == 1) {
 	
+	if (dashcount == 1) {
+		
 		re = rs + dashplace + 1;
 		rs[dashplace] = '\0';
 		
 		ls = parseTimecode(rs,frn,frd);
 		le = parseTimecode(re,frn,frd);
 		
-		fprintf (stderr,"parser: frame range: %d - %d\n",ls,le);
+		//		fprintf (stderr,"parser: frame range: %lld - %lld\n",ls,le);
 		
 		if (le==-1 || ls == -1)
 			return -1;
-			
-			*e = le;
-			*s = ls;
-	
+		
+		*e = le;
+		*s = ls;
+		
 	} else {
 		return -1;
 	}
-
+	
 	return 0;
-
+	
 }
 
 void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
@@ -275,9 +281,9 @@ int main(int argc, char *argv[])
 	int write_error_code;
 	int header_written = 0;
 	int convert = 0;
-	int stream = 0;
+	int stream = 0,subRange=0;
 	enum PixelFormat convert_mode;
-	int64_t frameCounter,startFrame=0,endFrame=1<<62;
+	int64_t frameCounter=0,startFrame=0,endFrame=1<<62;
 	char *rangeString;
 	
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:";
@@ -316,7 +322,7 @@ int main(int argc, char *argv[])
 					mjpeg_error_exit1 ("Syntax for frame rate should be Numerator:Denominator");
 				
                 break;
-			case 'A':
+				case 'A':
 				if( Y4M_OK != y4m_parse_ratio(&yuv_aspect, optarg) ) {
 					if (!strcmp(optarg,PAL)) {
 						y4m_parse_ratio(&yuv_aspect, "128:117");
@@ -331,7 +337,7 @@ int main(int argc, char *argv[])
 					}
 				}
 				break;
-			case 'S':
+				case 'S':
 				yuv_ss_mode = y4m_chroma_parse_keyword(optarg);
 				if (yuv_ss_mode == Y4M_UNKNOWN) {
 					mjpeg_error("Unknown subsampling mode option:  %s", optarg);
@@ -339,31 +345,32 @@ int main(int argc, char *argv[])
 					return -1;
 				}
 				break;
-			case 'o':
+				case 'o':
 				fdOut = open (optarg,O_CREAT|O_WRONLY,0644);
 				if (fdOut == -1) {
 					mjpeg_error_exit1 ("Cannot open file for writing");
 				}
 				break;	
-			case 'w':
+				case 'w':
 				audioWrite=1;
 				search_codec_type=CODEC_TYPE_AUDIO;
 				break;
-			case 'c':
+				case 'c':
 				convert = 1;
 				break;
-			case 's':
+				case 's':
 				stream = atoi(optarg);
 				break;
-			case 'f':
+				case 'f':
 				avif = av_find_input_format	(optarg);
 				break;
-			case 'r':
+				case 'r':
 				rangeString = (char *) malloc (strlen(optarg)+1);
 				strcpy(rangeString,optarg);
+				subRange=1;
 				break;
-			case 'h':
-			case '?':
+				case 'h':
+				case '?':
 				print_usage (argv);
 				return 0 ;
 				break;
@@ -439,8 +446,8 @@ int main(int argc, char *argv[])
 		}
 	}
 	if (audioWrite==0) {
-
-	// All video related decoding
+		
+		// All video related decoding
 		
 		// Read framerate, aspect ratio and chroma subsampling from Codec
 		if (yuv_frame_rate.d == 0) {
@@ -497,7 +504,7 @@ int main(int argc, char *argv[])
 		// convert cut range into frame numbers.
 		// now do I remember how NTSC drop frame works?
 		if (rangeString) {
-		
+			
 			if (parseTimecodeRange(&startFrame,&endFrame,rangeString,yuv_frame_rate.n,yuv_frame_rate.d)) {
 				fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 				return -1;
@@ -524,6 +531,8 @@ int main(int argc, char *argv[])
 		// allocate for audio
 		
 	}
+	
+	//fprintf (stderr,"loop until nothing left\n");
 	// Loop until nothing read
     while(av_read_frame(pFormatCtx, &packet)>=0)
     {
@@ -531,97 +540,102 @@ int main(int argc, char *argv[])
         if(packet.stream_index==avStream)
         {
             // Decode video frame
-			
-			if (audioWrite==0) {
-				avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, 
-									 packet.data, packet.size);  
-				// Did we get a video frame?
-				// frameFinished does not mean decoder finished, means that the packet can be freed.
-				//if(frameFinished)
-				//{
-                // Save the frame to disk
-				
-				// As we don't know interlacing until the first frame
-				// we wait until the first frame is read before setting the interlace flag
-				// and outputting the YUV header
-				// It also appears that some codecs don't set width or height until the first frame either
-				if (!header_written) {
-					if (yuv_interlacing == Y4M_UNKNOWN) {
-						if (pFrame->interlaced_frame) {
-							if (pFrame->top_field_first) {
-								yuv_interlacing = Y4M_ILACE_TOP_FIRST;
+		//	fprintf (stderr,"frame counter: %lld\n",frameCounter);
+			if (frameCounter >= startFrame && frameCounter<= endFrame) {
+				if (audioWrite==0) {
+					fprintf (stderr,"decode video");
+					avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, 
+										 packet.data, packet.size);  
+					// Did we get a video frame?
+					// frameFinished does not mean decoder finished, means that the packet can be freed.
+					//if(frameFinished)
+					//{
+					// Save the frame to disk
+					
+					// As we don't know interlacing until the first frame
+					// we wait until the first frame is read before setting the interlace flag
+					// and outputting the YUV header
+					// It also appears that some codecs don't set width or height until the first frame either
+					if (!header_written) {
+						if (yuv_interlacing == Y4M_UNKNOWN) {
+							if (pFrame->interlaced_frame) {
+								if (pFrame->top_field_first) {
+									yuv_interlacing = Y4M_ILACE_TOP_FIRST;
+								} else {
+									yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
+								}
 							} else {
-								yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
+								yuv_interlacing = Y4M_ILACE_NONE;
 							}
-						} else {
-							yuv_interlacing = Y4M_ILACE_NONE;
 						}
+						if (convert) {
+							// initialise conversion to different chroma subsampling
+							pFrame444=avcodec_alloc_frame();
+							numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
+							buffer=(uint8_t *)malloc(numBytes);
+							avpicture_fill((AVPicture *)pFrame444, buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
+						}
+						
+						y4m_si_set_interlace(&streaminfo, yuv_interlacing);
+						y4m_si_set_width(&streaminfo, pCodecCtx->width);
+						y4m_si_set_height(&streaminfo, pCodecCtx->height);
+						
+						chromalloc(yuv_data,&streaminfo);
+						
+						fprintf (stderr,"YUV interlace: %d\n",yuv_interlacing);
+						fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
+						
+						if ((write_error_code = y4m_write_stream_header(fdOut, &streaminfo)) != Y4M_OK)
+						{
+							mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
+						} 
+						header_written = 1;
 					}
+					
 					if (convert) {
-						// initialise conversion to different chroma subsampling
-						pFrame444=avcodec_alloc_frame();
-						numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
-						buffer=(uint8_t *)malloc(numBytes);
-						avpicture_fill((AVPicture *)pFrame444, buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
+						// convert to 444
+						img_convert((AVPicture *)pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
+						chromacpy(yuv_data,pFrame444,&streaminfo);
+					} else {
+						chromacpy(yuv_data,pFrame,&streaminfo);
 					}
+					write_error_code = y4m_write_frame( fdOut, &streaminfo, &frameinfo, yuv_data);
+					//  }
 					
-					y4m_si_set_interlace(&streaminfo, yuv_interlacing);
-					y4m_si_set_width(&streaminfo, pCodecCtx->width);
-					y4m_si_set_height(&streaminfo, pCodecCtx->height);
-					
-					chromalloc(yuv_data,&streaminfo);
-					
-					fprintf (stderr,"YUV interlace: %d\n",yuv_interlacing);
-					fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
-					
-					if ((write_error_code = y4m_write_stream_header(fdOut, &streaminfo)) != Y4M_OK)
-					{
-						mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
-					} 
-					header_written = 1;
-				}
-				
-				if (convert) {
-					// convert to 444
-					img_convert((AVPicture *)pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
-					chromacpy(yuv_data,pFrame444,&streaminfo);
 				} else {
-					chromacpy(yuv_data,pFrame,&streaminfo);
+					// decode Audio
+					avcodec_decode_audio2(pCodecCtx, 
+										  aBuffer, &numBytes,
+										  packet.data, packet.size);
+					
+					// TODO: write a wave or aiff file. 
+					
+					write (1, aBuffer, numBytes);
+					numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
+					
 				}
-				write_error_code = y4m_write_frame( fdOut, &streaminfo, &frameinfo, yuv_data);
-          //  }
-
-			} else {
-				// decode Audio
-				avcodec_decode_audio2(pCodecCtx, 
-									  aBuffer, &numBytes,
-									  packet.data, packet.size);
-				
-				// TODO: write a wave or aiff file. 
-				
-				write (1, aBuffer, numBytes);
-				numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
-				
 			}
+			frameCounter++;
+
 		}
 		
         // Free the packet that was allocated by av_read_frame
         av_free_packet(&packet);
     }
 	
-			if (audioWrite==0) {
-	y4m_fini_stream_info(&streaminfo);
-	y4m_fini_frame_info(&frameinfo);
-	
-	free(yuv_data[0]);
-	free(yuv_data[1]);
-	free(yuv_data[2]);
-	
-    // Free the YUV frame
-    av_free(pFrame);
-		} else {
-			free (aBuffer);
-			}
+	if (audioWrite==0) {
+		y4m_fini_stream_info(&streaminfo);
+		y4m_fini_frame_info(&frameinfo);
+		
+		free(yuv_data[0]);
+		free(yuv_data[1]);
+		free(yuv_data[2]);
+		
+		// Free the YUV frame
+		av_free(pFrame);
+	} else {
+		free (aBuffer);
+	}
     // Close the codec
     avcodec_close(pCodecCtx);
 	
