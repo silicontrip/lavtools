@@ -9,7 +9,9 @@
 // av_read_frame() API call, which simplifies the reading of video frames 
 // considerably. 
 //
-//gcc -O3 -I/usr/local/include -I/usr/local/include/mjpegtools -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
+// gcc -O3 -I/usr/local/include -I/usr/local/include/mjpegtools -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
+//
+// quadrant gcc -O3 -I/sw/include -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv 
 //
 // I really should put history here
 // 7th July 2008 - Added Force Format option 
@@ -57,6 +59,138 @@
 #define PAL_WIDE "PAL_WIDE"
 #define NTSC "NTSC"
 #define NTSC_WIDE "NTSC_WIDE"
+
+
+int64_t parseTimecode (char *tc, int frn,int frd) {
+
+// My only concern here is that some people use approximations for NTSC frame rates.
+
+	int h=0,m=0,s=0,f=0;
+	char *stc[4];
+	int i,cc=0;
+	float fps,frameNumber;
+	int fn;
+
+// I'm trying to remember if the ; represents 29.97 fps displayed as if running at 30 fps.
+// So therefore doesn't display the correct time.
+// or if it represents 29.97 rounded to the nearest frame. IE catches up a frame every 1001 frames.
+
+// determine ntsc drop timecode format
+
+	fprintf(stderr,"parser: passing '%s'\n",tc);
+
+	if (strlen(tc) > 2) {
+		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
+	
+			// or is this a : ?
+			if (tc[strlen(tc)-3] == ';') {
+				fprintf (stderr,"parser: NTSC Drop Code\n");
+				frn = 30;
+				frd = 1;
+				tc[strlen(tc)-3] == ':';
+			}
+		}
+	}
+
+	fps = 1.0 * frn / frd;
+
+	for (i=strlen(tc)-1; i>=0; i--) 
+	{
+	
+		if ( tc[i] == ':') {
+			if (cc > 4) { 
+				// too many : 
+				fprintf (stderr,"parse error: too many ':' in timecode\n");
+				return -1;
+			}
+			stc[cc++] = tc+i + 1;
+			tc[i]='\0';
+		} else if (tc[i]<'0' || tc[i]>'9') {
+			// illegal character
+			fprintf (stderr,"parse error: illegal character in timecode\n");
+				return -1;
+		}
+	}
+	if (cc > 4) { 
+		// too many : 
+		fprintf (stderr,"parse error: too many ':' in timecode\n");
+		return -1;
+	}
+	stc[cc++] = tc;
+
+// debug
+	fprintf (stderr,"parser: (%d): ",cc);
+
+	for (i=0; i < cc; i++) 
+		fprintf (stderr,"%s, ",stc[i]);
+		
+	fprintf (stderr,"\n");
+
+	f = atoi(stc[0]);
+	if (cc>1) 
+		s = atoi(stc[1]);
+	if (cc>2) 
+		m = atoi(stc[2]);
+	if (cc>3)
+		h = atoi(stc[3]);
+		
+	fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);
+	
+	// validate time
+	
+	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f > fps))  {
+		fprintf (stderr,"parser error: timecode digit too large\n");
+		return -1;
+	}
+	
+	frameNumber =   1.0 * ( h * 3600 + m * 60 + s ) * fps + f;
+	fn = (frameNumber);
+	
+	fprintf (stderr,"parser: framenumber %lf == %ld\n",frameNumber,fn);
+
+	return fn;
+
+}
+
+int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
+
+
+	int dashcount = 0;
+	int dashplace = 0;
+	char *re;
+	int i;
+	int64_t ls,le;
+	
+	for (i=0; i<strlen(rs); i++) {
+		if (rs[i] == '-') {
+			dashcount ++;
+			dashplace = i;
+		}
+	}
+
+	if (dashcount == 1) {
+	
+		re = rs + dashplace + 1;
+		rs[dashplace] = '\0';
+		
+		ls = parseTimecode(rs,frn,frd);
+		le = parseTimecode(re,frn,frd);
+		
+		fprintf (stderr,"parser: frame range: %d - %d\n",ls,le);
+		
+		if (le==-1 || ls == -1)
+			return -1;
+			
+			*e = le;
+			*s = ls;
+	
+	} else {
+		return -1;
+	}
+
+	return 0;
+
+}
 
 void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
@@ -143,8 +277,10 @@ int main(int argc, char *argv[])
 	int convert = 0;
 	int stream = 0;
 	enum PixelFormat convert_mode;
+	int64_t frameCounter,startFrame=0,endFrame=1<<62;
+	char *rangeString;
 	
-	const static char *legal_flags = "wchI:F:A:S:o:s:f:";
+	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:";
 	
 	int y;
 	int                frame_data_size ;
@@ -174,7 +310,6 @@ int main(int argc, char *argv[])
 						return -1;
 						break;
 				}
-				
 				break;
 			case 'F':
 				if( Y4M_OK != y4m_parse_ratio(&yuv_frame_rate, optarg) )
@@ -223,6 +358,10 @@ int main(int argc, char *argv[])
 			case 'f':
 				avif = av_find_input_format	(optarg);
 				break;
+			case 'r':
+				rangeString = (char *) malloc (strlen(optarg)+1);
+				strcpy(rangeString,optarg);
+				break;
 			case 'h':
 			case '?':
 				print_usage (argv);
@@ -269,8 +408,11 @@ int main(int argc, char *argv[])
 				break;
 			}
         }
-    if(avStream==-1)
+    if(avStream==-1) {
+		fprintf (stderr,"Couldn't find Audio or Video stream\n");
         return -1; // Didn't find a video stream
+	}
+	
 	
     // Get a pointer to the codec context for the video stream
     pCodecCtx=pFormatCtx->streams[avStream]->codec;
@@ -284,9 +426,21 @@ int main(int argc, char *argv[])
     if(avcodec_open(pCodecCtx, pCodec)<0)
         return -1; // Could not open codec
 	
-	
+	// get the frame rate of the first video stream, if cutting.
+	if (audioWrite && rangeString) {
+	    for(i=0; i<pFormatCtx->nb_streams; i++) {
+			if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
+			{
+				if (yuv_frame_rate.d == 0) {
+					yuv_frame_rate.n = pFormatCtx->streams[i]->r_frame_rate.num;
+					yuv_frame_rate.d = pFormatCtx->streams[i]->r_frame_rate.den;
+				}
+			}
+		}
+	}
 	if (audioWrite==0) {
-		// All video related decoding
+
+	// All video related decoding
 		
 		// Read framerate, aspect ratio and chroma subsampling from Codec
 		if (yuv_frame_rate.d == 0) {
@@ -337,6 +491,16 @@ int main(int argc, char *argv[])
 					y4m_accept_extensions(1);
 					convert = 1;
 					break;
+			}
+		}
+		
+		// convert cut range into frame numbers.
+		// now do I remember how NTSC drop frame works?
+		if (rangeString) {
+		
+			if (parseTimecodeRange(&startFrame,&endFrame,rangeString,yuv_frame_rate.n,yuv_frame_rate.d)) {
+				fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+				return -1;
 			}
 		}
 		
@@ -428,19 +592,16 @@ int main(int argc, char *argv[])
           //  }
 
 			} else {
-					// decode Audio
-				/*
-				len1 = avcodec_decode_audio2(is->audio_st->codec,
-											 (int16_t *)audio_buf, &data_size,
-											 is->audio_pkt_data, is->audio_pkt_size);
-				*/
+				// decode Audio
 				avcodec_decode_audio2(pCodecCtx, 
-					aBuffer, &numBytes,
-					packet.data, packet.size);
-					
-					write (1, aBuffer, numBytes);
-					numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
-					
+									  aBuffer, &numBytes,
+									  packet.data, packet.size);
+				
+				// TODO: write a wave or aiff file. 
+				
+				write (1, aBuffer, numBytes);
+				numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
+				
 			}
 		}
 		
