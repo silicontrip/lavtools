@@ -204,7 +204,6 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 	int y,h,w;
 	int cw,ch;
 	
-	
 	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 	cw = y4m_si_get_plane_width(sinfo,1);
@@ -284,7 +283,7 @@ int main(int argc, char *argv[])
 	int stream = 0,subRange=0;
 	enum PixelFormat convert_mode;
 	int64_t frameCounter=0,startFrame=0,endFrame=1<<62;
-	char *rangeString;
+	char *rangeString = NULL;
 	
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:";
 	
@@ -501,15 +500,6 @@ int main(int argc, char *argv[])
 			}
 		}
 		
-		// convert cut range into frame numbers.
-		// now do I remember how NTSC drop frame works?
-		if (rangeString) {
-			
-			if (parseTimecodeRange(&startFrame,&endFrame,rangeString,yuv_frame_rate.n,yuv_frame_rate.d)) {
-				fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
-				return -1;
-			}
-		}
 		
 		// Allocate video frame
 		pFrame=avcodec_alloc_frame();
@@ -531,6 +521,17 @@ int main(int argc, char *argv[])
 		// allocate for audio
 		
 	}
+	
+			// convert cut range into frame numbers.
+		// now do I remember how NTSC drop frame works?
+		if (rangeString) {
+			
+			if (parseTimecodeRange(&startFrame,&endFrame,rangeString,yuv_frame_rate.n,yuv_frame_rate.d)) {
+				fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+				return -1;
+			}
+		}
+
 	
 	//fprintf (stderr,"loop until nothing left\n");
 	// Loop until nothing read
@@ -597,6 +598,9 @@ int main(int argc, char *argv[])
 						img_convert((AVPicture *)pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
 						chromacpy(yuv_data,pFrame444,&streaminfo);
 					} else {
+					
+						fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+					
 						chromacpy(yuv_data,pFrame,&streaminfo);
 					}
 					write_error_code = y4m_write_frame( fdOut, &streaminfo, &frameinfo, yuv_data);
