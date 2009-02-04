@@ -123,13 +123,15 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 	stc[cc++] = tc;
 	
 	// debug
-	//	fprintf (stderr,"parser: (%d): ",cc);
+#ifdef DEBUG
+	fprintf (stderr,"parser: (%d): ",cc);
 	
 	for (i=0; i < cc; i++) 
 		fprintf (stderr,"%s, ",stc[i]);
 	
 	fprintf (stderr,"\n");
-	
+#endif	
+
 	f = atoi(stc[0]);
 	if (cc>1) 
 		s = atoi(stc[1]);
@@ -142,7 +144,7 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 	
 	// validate time
 	
-	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f > fps))  {
+	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f >= fps))  {
 		fprintf (stderr,"parser error: timecode digit too large\n");
 		return -1;
 	}
@@ -184,6 +186,11 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 		
 		//		fprintf (stderr,"parser: frame range: %lld - %lld\n",ls,le);
 		
+		if (le < ls) {
+			fprintf (stderr,"End before start\n");
+			return -1;
+		}
+		
 		if (le==-1 || ls == -1)
 			return -1;
 		
@@ -210,9 +217,16 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 	ch = y4m_si_get_plane_height(sinfo,1);
 	
 	for (y=0; y<h; y++) {
+#ifdef DEBUG
+	fprintf (stderr,"copy %d bytes to: %x from: %x\n",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
+#endif
 		
 		memcpy(dst[0]+y*w,(src->data[0])+y*src->linesize[0],w);
 		if (y<ch) {
+#ifdef DEBUG
+	fprintf (stderr,"copy %d bytes to: %x from: %x\n",cw,dst[1]+y*cw,(src->data[1])+y*src->linesize[1]);
+#endif
+
 			memcpy(dst[1]+y*cw,(src->data[1])+y*src->linesize[1],cw);
 			memcpy(dst[2]+y*cw,(src->data[2])+y*src->linesize[2],cw);
 		}
@@ -227,6 +241,10 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 	
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
+	
+#ifdef DEBUG
+	fprintf (stderr,"Allocatting: %d and %d bytes\n",fs,cfs);
+#endif
 	
 	m[0] = (uint8_t *)malloc( fs );
 	m[1] = (uint8_t *)malloc( cfs);
@@ -282,7 +300,7 @@ int main(int argc, char *argv[])
 	int convert = 0;
 	int stream = 0,subRange=0;
 	enum PixelFormat convert_mode;
-	int64_t frameCounter=0,startFrame=0,endFrame=1<<62;
+	int64_t frameCounter=0,startFrame=0,endFrame=1<<30;
 	char *rangeString = NULL;
 	
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:";
@@ -535,22 +553,29 @@ int main(int argc, char *argv[])
 	
 	//fprintf (stderr,"loop until nothing left\n");
 	// Loop until nothing read
-    while(av_read_frame(pFormatCtx, &packet)>=0)
+    while(av_read_frame(pFormatCtx, &packet)>=0 && frameCounter<= endFrame)
     {
         // Is this a packet from the desired stream?
         if(packet.stream_index==avStream)
         {
             // Decode video frame
-		//	fprintf (stderr,"frame counter: %lld\n",frameCounter);
+	#ifdef DEBUG
+		fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
+	#endif
 			if (frameCounter >= startFrame && frameCounter<= endFrame) {
 				if (audioWrite==0) {
-					fprintf (stderr,"decode video");
+			#ifdef DEBUG
+					fprintf (stderr,"decode video\n");
+			#endif
 					avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, 
 										 packet.data, packet.size);  
 					// Did we get a video frame?
 					// frameFinished does not mean decoder finished, means that the packet can be freed.
-					//if(frameFinished)
-					//{
+					#ifdef DEBUG
+					fprintf (stderr,"frameFinished: %d\n",frameFinished);
+					#endif
+					if(frameFinished)
+					{
 					// Save the frame to disk
 					
 					// As we don't know interlacing until the first frame
@@ -581,7 +606,13 @@ int main(int argc, char *argv[])
 						y4m_si_set_width(&streaminfo, pCodecCtx->width);
 						y4m_si_set_height(&streaminfo, pCodecCtx->height);
 						
+#ifdef DEBUG
+						fprintf (stderr,"yuv_data: %x pFrame: %x\nchromalloc\n",yuv_data,pFrame);
+#endif					
 						chromalloc(yuv_data,&streaminfo);
+#ifdef DEBUG
+						fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+#endif					
 						
 						fprintf (stderr,"YUV interlace: %d\n",yuv_interlacing);
 						fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
@@ -598,13 +629,13 @@ int main(int argc, char *argv[])
 						img_convert((AVPicture *)pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
 						chromacpy(yuv_data,pFrame444,&streaminfo);
 					} else {
-					
+#ifdef DEBUG
 						fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
-					
+#endif					
 						chromacpy(yuv_data,pFrame,&streaminfo);
 					}
 					write_error_code = y4m_write_frame( fdOut, &streaminfo, &frameinfo, yuv_data);
-					//  }
+					  } /* frame finished */
 					
 				} else {
 					// decode Audio
@@ -624,7 +655,8 @@ int main(int argc, char *argv[])
 		}
 		
         // Free the packet that was allocated by av_read_frame
-        av_free_packet(&packet);
+		if (frameFinished)
+			av_free_packet(&packet);
     }
 	
 	if (audioWrite==0) {
