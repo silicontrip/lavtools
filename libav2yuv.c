@@ -15,6 +15,9 @@
 // gcc -O3 -I/opt/local/include/ -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
+// 17th Mar 2009 - Multifile version.
+// 4th Feb 2009 - Range version. Audio range not working
+// 2nd Feb 2009 - Audio writing version.
 // 7th July 2008 - Added Force Format option 
 // 4th July 2008 - Added Aspect Ratio Constants
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
@@ -285,7 +288,7 @@ int main(int argc, char *argv[])
     AVFrame         *pFrame444 = NULL; 
     AVPacket        packet;
     int             frameFinished;
-    int             numBytes;
+    int             numBytes,numSamples;
 	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
     uint8_t         *buffer;
 	int16_t		*aBuffer = NULL;
@@ -301,7 +304,7 @@ int main(int argc, char *argv[])
 	int convert = 0;
 	int stream = 0,subRange=0;
 	enum PixelFormat convert_mode;
-	int64_t frameCounter=0,startFrame=0,endFrame=1<<30;
+	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
 	char *rangeString = NULL;
 	
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:";
@@ -544,6 +547,7 @@ int main(int argc, char *argv[])
 			}
 		} else {
 			numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
+			// pCodecCtx->sample_rate;
 			if (aBuffer == NULL) {
 				aBuffer = (int16_t *) malloc (numBytes);
 				// allocate for audio
@@ -572,8 +576,8 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
 				fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
 #endif
-				if (frameCounter >= startFrame && frameCounter<= endFrame) {
-					if (audioWrite==0) {
+				if (audioWrite==0) {
+					if (frameCounter >= startFrame && frameCounter<= endFrame) {
 #ifdef DEBUG
 						fprintf (stderr,"decode video\n");
 #endif
@@ -647,18 +651,42 @@ int main(int argc, char *argv[])
 							write_error_code = y4m_write_frame( fdOut, &streaminfo, &frameinfo, yuv_data);
 						} /* frame finished */
 						
-					} else {
+					}
+				} else {
 						// decode Audio
 						avcodec_decode_audio2(pCodecCtx, 
 											  aBuffer, &numBytes,
 											  packet.data, packet.size);
 						
 						// TODO: write a wave or aiff file. 
-						
-						write (1, aBuffer, numBytes);
+							
+					// need to also take boundaries into consideration 
+					// PANIC: how to determine bytes per sample?
+
+					numSamples = numBytes / 4;
+					// whole decoded frame within range.
+						if (sampleCounter >= startFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d &&
+							sampleCounter+numSamples <= endFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d ) {
+							write (1, aBuffer, numBytes);
+					// start of buffer outside range, end of buffer in range
+						} else if (sampleCounter+numSamples >= startFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d &&
+							sampleCounter+numSamples <= endFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d ) {
+						// write a subset
+							write(1,aBuffer+(startFrame-sampleCounter)*4,numBytes-(startFrame-sampleCounter)*4);
+					// start of buffer in range, end of buffer outside range.
+						} else if (sampleCounter >= startFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d &&
+								   sampleCounter <= endFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d ) {
+							// write a subset
+							write(1,aBuffer,(endFrame-sampleCounter)*4);
+					// entire range contained within buffer
+						} else if (sampleCounter < startFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d &&
+							sampleCounter+numSamples > endFrame * pCodecCtx->sample_rate * yuv_frame_rate.n / yuv_frame_rate.d ) {
+							// write a subset
+							write(1,aBuffer+(startFrame-sampleCounter)*4,(endFrame-startFrame)*4);
+						}
+						sampleCounter += numSamples;
 						numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 						
-					}
 				}
 				frameCounter++;
 				
