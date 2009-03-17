@@ -409,7 +409,7 @@ int main(int argc, char *argv[])
 		return 0 ;
 	}
 	
-	for (;(argc--i)>1;argv++) {
+	for (;(argc--)>1;argv++) {
 		
 		// Open video file
 		if(av_open_input_file(&pFormatCtx, argv[1], avif, 0, NULL)!=0)
