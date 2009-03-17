@@ -687,6 +687,8 @@ int main(int argc, char *argv[])
 	
     // Close the video file
     av_close_input_file(pFormatCtx);
+
+	fprintf (stderr,"%d Frames decoded\n",frameCounter);
 	
     return 0;
 }
