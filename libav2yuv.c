@@ -64,6 +64,13 @@
 #define NTSC "NTSC"
 #define NTSC_WIDE "NTSC_WIDE"
 
+struct edlentry {
+	char *filename;
+	char audio;
+	char video;
+	int64_t in;
+	int64_t out;
+};
 
 int64_t parseTimecode (char *tc, int frn,int frd) {
 	
@@ -204,11 +211,35 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 	} else {
 		return -1;
 	}
-	
-	return 0;
-	
+	return 0;	
 }
 
+/*
+parseEDL ()
+ 
+{
+ 
+ openfile
+ while read {
+ count active lines
+ count active characters
+ }
+ 
+ malloc edlentry array 
+ malloc read buffer
+ 
+ seek 0
+ while read {
+	parse line
+ 
+	malloc filename
+	check file readable.
+ 
+	parse timecode;
+	check in < out
+ }
+ 
+ */
 void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
 	
