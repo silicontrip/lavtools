@@ -15,6 +15,9 @@
 // gcc -O3 -I/opt/local/include/ -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
+// 17th Mar 2009 - Multifile version.
+// 4th Feb 2009 - Range version. Audio range not working
+// 2nd Feb 2009 - Audio writing version.
 // 7th July 2008 - Added Force Format option 
 // 4th July 2008 - Added Aspect Ratio Constants
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
@@ -61,6 +64,13 @@
 #define NTSC "NTSC"
 #define NTSC_WIDE "NTSC_WIDE"
 
+struct edlentry {
+	char *filename;
+	char audio;
+	char video;
+	int64_t in;
+	int64_t out;
+};
 
 int64_t parseTimecode (char *tc, int frn,int frd) {
 	
@@ -201,11 +211,35 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 	} else {
 		return -1;
 	}
-	
-	return 0;
-	
+	return 0;	
 }
 
+/*
+parseEDL ()
+ 
+{
+ 
+ openfile
+ while read {
+ count active lines
+ count active characters
+ }
+ 
+ malloc edlentry array 
+ malloc read buffer
+ 
+ seek 0
+ while read {
+	parse line
+ 
+	malloc filename
+	check file readable.
+ 
+	parse timecode;
+	check in < out
+ }
+ 
+ */
 void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
 	
@@ -285,7 +319,7 @@ int main(int argc, char *argv[])
     AVFrame         *pFrame444 = NULL; 
     AVPacket        packet;
     int             frameFinished;
-    int             numBytes;
+    int             numBytes,numSamples;
 	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
     uint8_t         *buffer;
 	int16_t		*aBuffer = NULL;
@@ -301,7 +335,8 @@ int main(int argc, char *argv[])
 	int convert = 0;
 	int stream = 0,subRange=0;
 	enum PixelFormat convert_mode;
-	int64_t frameCounter=0,startFrame=0,endFrame=1<<30;
+	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
+	int samplesFrame;
 	char *rangeString = NULL;
 	
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:";
@@ -458,6 +493,7 @@ int main(int argc, char *argv[])
 			return -1; // Could not open codec
 		
 		// get the frame rate of the first video stream, if cutting.
+//		if (audioWrite && rangeString) {
 		if (audioWrite && rangeString) {
 			for(i=0; i<pFormatCtx->nb_streams; i++) {
 				if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
@@ -544,6 +580,10 @@ int main(int argc, char *argv[])
 			}
 		} else {
 			numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
+			if (rangeString) {
+				// does this need more precision?
+				samplesFrame  = pCodecCtx->sample_rate * yuv_frame_rate.d / yuv_frame_rate.n ;
+			}
 			if (aBuffer == NULL) {
 				aBuffer = (int16_t *) malloc (numBytes);
 				// allocate for audio
@@ -563,17 +603,17 @@ int main(int argc, char *argv[])
 		
 		//fprintf (stderr,"loop until nothing left\n");
 		// Loop until nothing read
-		while(av_read_frame(pFormatCtx, &packet)>=0 && frameCounter<= endFrame)
+		while(av_read_frame(pFormatCtx, &packet)>=0 )
 		{
 			// Is this a packet from the desired stream?
 			if(packet.stream_index==avStream)
 			{
 				// Decode video frame
+				if (audioWrite==0) {
 #ifdef DEBUG
-				fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
+					fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
 #endif
-				if (frameCounter >= startFrame && frameCounter<= endFrame) {
-					if (audioWrite==0) {
+					if (frameCounter >= startFrame && frameCounter<= endFrame) {
 #ifdef DEBUG
 						fprintf (stderr,"decode video\n");
 #endif
@@ -647,18 +687,70 @@ int main(int argc, char *argv[])
 							write_error_code = y4m_write_frame( fdOut, &streaminfo, &frameinfo, yuv_data);
 						} /* frame finished */
 						
-					} else {
+					}
+				} else {
 						// decode Audio
 						avcodec_decode_audio2(pCodecCtx, 
 											  aBuffer, &numBytes,
 											  packet.data, packet.size);
 						
 						// TODO: write a wave or aiff file. 
-						
+							
+					// need to also take boundaries into consideration 
+					// PANIC: how to determine bytes per sample?
+
+#ifdef DEBUG
+					fprintf (stderr,"sample counter: %lld  (%lld - %lld) spf %d\n",sampleCounter,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
+#endif
+					
+					
+					numSamples = numBytes / 4;
+					
+					if (!rangeString) {
 						write (1, aBuffer, numBytes);
+						// whole decoded frame within range.
+
+					} else if (sampleCounter >= startFrame * samplesFrame &&
+							sampleCounter+numSamples <= endFrame * samplesFrame ) {
+#ifdef DEBUG
+				//			fprintf(stderr,"FULL WRITE\n");
+#endif
+							write (1, aBuffer, numBytes);
+					// start of buffer outside range, end of buffer in range
+						} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
+							sampleCounter+numSamples <= endFrame * samplesFrame ) {
+						// write a subset
+#ifdef DEBUG
+							fprintf(stderr,"START PARTIAL WRITE\n");
+#endif
+							
+							write(1,aBuffer+(startFrame-sampleCounter)*4,numBytes-(startFrame*samplesFrame-sampleCounter)*4);
+					// start of buffer in range, end of buffer outside range.
+						} else if (sampleCounter >= startFrame * samplesFrame &&
+								   sampleCounter <= endFrame * samplesFrame ) {
+							// write a subset
+#ifdef DEBUG
+							fprintf(stderr,"END PARTIAL WRITE\n");
+#endif
+							
+							write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*4);
+					// entire range contained within buffer
+						} else if (sampleCounter < startFrame * samplesFrame &&
+							sampleCounter+numSamples > endFrame * samplesFrame ) {
+							// write a subset
+#ifdef DEBUG
+							fprintf(stderr,"PARTIAL WRITE\n");
+#endif
+							
+							write(1,aBuffer+(startFrame-sampleCounter)*4,(endFrame-startFrame)*samplesFrame*4);
+						} else {
+#ifdef DEBUG
+						//	fprintf(stderr,"NO WRITE\n");
+#endif
+						}
+						sampleCounter += numSamples;
 						numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 						
-					}
 				}
 				frameCounter++;
 				
@@ -687,6 +779,11 @@ int main(int argc, char *argv[])
 	
     // Close the video file
     av_close_input_file(pFormatCtx);
-	
+
+	if (audioWrite == 0) {
+		fprintf (stderr,"%d Frames decoded\n",frameCounter);
+	} else {
+		fprintf(stderr,"%d Samples decoded\n",sampleCounter);
+	}
     return 0;
 }
