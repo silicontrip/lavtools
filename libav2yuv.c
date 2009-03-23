@@ -697,26 +697,27 @@ int main(int argc, char *argv[])
 						
 						// TODO: write a wave or aiff file. 
 							
-					// need to also take boundaries into consideration 
-					// PANIC: how to determine bytes per sample?
+						// PANIC: how to determine bytes per sample?
 
+#define BYTES_PER_SAMPLE 4
+					
 #ifdef DEBUG
 					fprintf (stderr,"sample counter: %lld  (%lld - %lld) spf %d\n",sampleCounter,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
 #endif
 					
-					
-					numSamples = numBytes / 4;
+					numSamples = numBytes / BYTES_PER_SAMPLE;
 					
 					if (!rangeString) {
 						write (1, aBuffer, numBytes);
+						
 						// whole decoded frame within range.
-
 					} else if (sampleCounter >= startFrame * samplesFrame &&
 							sampleCounter+numSamples <= endFrame * samplesFrame ) {
 #ifdef DEBUG
 				//			fprintf(stderr,"FULL WRITE\n");
 #endif
 							write (1, aBuffer, numBytes);
+						
 					// start of buffer outside range, end of buffer in range
 						} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
 							sampleCounter+numSamples <= endFrame * samplesFrame ) {
@@ -725,8 +726,9 @@ int main(int argc, char *argv[])
 							fprintf(stderr,"START PARTIAL WRITE\n");
 #endif
 							
-							write(1,aBuffer+(startFrame-sampleCounter)*4,numBytes-(startFrame*samplesFrame-sampleCounter)*4);
-					// start of buffer in range, end of buffer outside range.
+							write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+
+							// start of buffer in range, end of buffer outside range.
 						} else if (sampleCounter >= startFrame * samplesFrame &&
 								   sampleCounter <= endFrame * samplesFrame ) {
 							// write a subset
@@ -734,8 +736,9 @@ int main(int argc, char *argv[])
 							fprintf(stderr,"END PARTIAL WRITE\n");
 #endif
 							
-							write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*4);
-					// entire range contained within buffer
+							write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+
+							// entire range contained within buffer
 						} else if (sampleCounter < startFrame * samplesFrame &&
 							sampleCounter+numSamples > endFrame * samplesFrame ) {
 							// write a subset
@@ -743,7 +746,7 @@ int main(int argc, char *argv[])
 							fprintf(stderr,"PARTIAL WRITE\n");
 #endif
 							
-							write(1,aBuffer+(startFrame-sampleCounter)*4,(endFrame-startFrame)*samplesFrame*4);
+							write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
 						} else {
 #ifdef DEBUG
 						//	fprintf(stderr,"NO WRITE\n");
