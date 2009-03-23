@@ -61,6 +61,7 @@
 #define NTSC_WIDE "NTSC_WIDE"
 
 
+// 00:00:00;00
 int64_t parseTimecode (char *tc, int frn,int frd) {
 	
 	// My only concern here is that some people use approximations for NTSC frame rates.
