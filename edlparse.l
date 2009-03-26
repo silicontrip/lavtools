@@ -7,13 +7,14 @@ TRANSITION C
 
 TIMECODE [0-9]+[;:][0-9]+[;:][0-9]+[;:][0-9]+
 
-LINE {FILENAME} {EDITMODE} {TRANSITION} {TIMECODE} {TIMECODE}
-
 %%
 
-"#".*"\n" /* remove comments */
+"#".*"\n" { printf ("comment: %s",yytext); }
 
-{LINE} "\n"  { printf ("a line is read %s\n",yytext); }
+{FILENAME}" "{EDITMODE}" "{TRANSITION}" "{TIMECODE}" "{TIMECODE}"\n"  { printf ("a line is read %s",yytext); }
+
+^.*$ { printf ("Unknown line: %s"); }
+
 
 %%
 main( argc, argv )
