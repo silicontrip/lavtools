@@ -73,7 +73,12 @@ struct edlentry {
 	int64_t out;
 };
 
+// ^([^ /]+) ([AVBavb]|VA|va) C ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) () 
+
+// going to use the regex library
+
 // 00:00:00;00
+// ([0-9]*)([:;]?)([0-9]+)
 int64_t parseTimecode (char *tc, int frn,int frd) {
 	
 	// My only concern here is that some people use approximations for NTSC frame rates.
