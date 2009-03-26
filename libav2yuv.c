@@ -10,11 +10,11 @@
 // considerably. 
 //
 // gcc -O3 -I/usr/local/include -I/usr/local/include/mjpegtools -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
-//
 // quadrant gcc -O3 -I/sw/include -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv 
-// gcc -O3 -I/opt/local/include/ -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
+// gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
+// 18th Mar 2009 - Audio range fixed, sample accurate.
 // 17th Mar 2009 - Multifile version.
 // 4th Feb 2009 - Range version. Audio range not working
 // 2nd Feb 2009 - Audio writing version.
@@ -23,6 +23,7 @@
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
 // 24th Feb 2008 - Found an unexpected behaviour where frames were being dropped. libav said that no frame was decoded. Have output the previous frame in this instance.
 //
+
 /* Possible inclusion for EDL
  Comments
  
@@ -46,7 +47,7 @@
  fnum : frame number (the first decodable frame in the video is taken to be frame 0).
  sec : seconds with 's' suffix (e.g. 5.2s)
  mps : seconds with 'mps' suffix (e.g. 5.2mps). This corresponds to the 'seconds' value displayed by Windows MediaPlayer.
- */
+*/
 
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
@@ -152,8 +153,7 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 	if (cc>3)
 		h = atoi(stc[3]);
 	
-	//	fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);
-	
+	// fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);	
 	// validate time
 	
 	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f >= fps))  {
@@ -217,7 +217,6 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 
 /*
 parseEDL ()
- 
 {
  
  openfile
@@ -238,9 +237,9 @@ parseEDL ()
  
 	parse timecode;
 	check in < out
- }
- 
- */
+}
+*/
+
 void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
 	
@@ -271,8 +270,7 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 }
 
 void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
+{	
 	int fs,cfs;
 	
 	fs = y4m_si_get_plane_length(sinfo,0);
@@ -307,7 +305,6 @@ static void print_usage()
 			 "\t -h print this help\n"
 			 );
 }
-
 
 int main(int argc, char *argv[])
 {
@@ -358,14 +355,16 @@ int main(int argc, char *argv[])
     // Register all formats and codecs
     av_register_all();
 	
-	
 	// Parse commandline arguments
 	while ((i = getopt (argc, argv, legal_flags)) != -1) {
 		switch (i) {
 			case 'I':
 				switch (optarg[0]) {
+					case 'P':
 					case 'p':  yuv_interlacing = Y4M_ILACE_NONE;  break;
+					case 'T':
 					case 't':  yuv_interlacing = Y4M_ILACE_TOP_FIRST;  break;
+					case 'B':
 					case 'b':  yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;  break;
 					default:
 						mjpeg_error("Unknown value for interlace: '%c'", optarg[0]);
