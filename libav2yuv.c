@@ -85,30 +85,42 @@ struct edlentry {
 
 int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
-	regex_t *tc_reg;
+//	char *pattern = "^([0-9][0-9]*)(:)([0-9][0-9]*)(:)([0-9][0-9]*)([:;])([0-9][0-9]*)$";
+	char *pattern = "^([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)$";
+//	char *pattern = "^\([0-9]*\)\(:?\)\([0-9]*\)\(:?\)\([0-9]*\)\([:;]?\)\([0-9]+\)$";
+//	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
+
+	regex_t tc_reg;
 	int h=0,m=0,s=0,f=0;
-	size_t num=7;
-	regmatch_t codes[7];
+	size_t num=8;
+	regmatch_t codes[8];
 	int nummatch;
-	
-	
-	if (regcomp(tc_reg, TIMECODE_REGEX, REG_EXTENDED) != 0) {
-		fprintf (STDERR, "REGEX compile failed\n");
-		exit (-1);
+	float fps,frameNumber;
+
+	fprintf (stderr, "REGCOMP %s\n",pattern);
+
+	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
+		fprintf (stderr, "REGEX compile failed\n");
+		return -1;
 	}
-	
-	nummatch = regexec(tc_reg, tc, num, codes, 0 );
-	if ( nummatch != 0 {
-		fprintf (STDERR, "REGEX match failed\n");
+	fprintf (stderr,"Found nsub %d\n",tc_reg.re_nsub);
+
+	fprintf (stderr, "REGEXEC %s\n",tc);
+
+	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
+	if ( nummatch != 0) {
+		fprintf (stderr, "REGEX match failed\n");
+		return -1;
 	} else {
 	
-		fprintf(STDERR,"Found %d\n",num);
-		fprintf (STDERR,"0: from %d %d\n",codes[0].rm_so,codes[0].eo);
+
+		for (f=0; f<num; f++) 
+			fprintf (stderr,"%d: from %lld %lld\n",f,codes[f].rm_so,codes[f].rm_eo);
 		
 		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
 		
 			// or is this a : ?
-			if (tc[codes[5].rm_so] == ';') {
+			if (tc[codes[6].rm_so] == ';') {
 				fprintf (stderr,"parser: NTSC Drop Code\n");
 				frn = 30;
 				frd = 1;
@@ -118,7 +130,8 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	}
 		
 	//	tc[codes[1].rm_so] = '\0';		
-	
+	regfree( &tc_reg );
+
 		return -1;
 		
 }
