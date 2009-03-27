@@ -81,15 +81,16 @@ struct edlentry {
 // 00:00:00;00
 // ([0-9]*):?([0-9]*):?([0-9]*)([:;]?)([0-9]+)
 
-#define TIMECODE_REGEX "([0-9]*):?([0-9]*):?([0-9]*)([:;]?)([0-9]+)"
+#define TIMECODE_REGEX "([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)"
 
 int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
 	regex_t *tc_reg;
 	int h=0,m=0,s=0,f=0;
-	size_t num;
-	regmatch_t *codes;
+	size_t num=7;
+	regmatch_t codes[7];
 	int nummatch;
+	
 	
 	if (regcomp(tc_reg, TIMECODE_REGEX, REG_EXTENDED) != 0) {
 		fprintf (STDERR, "REGEX compile failed\n");
@@ -99,11 +100,27 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	nummatch = regexec(tc_reg, tc, num, codes, 0 );
 	if ( nummatch != 0 {
 		fprintf (STDERR, "REGEX match failed\n");
-		exit (-1);
+	} else {
+	
+		fprintf(STDERR,"Found %d\n",num);
+		fprintf (STDERR,"0: from %d %d\n",codes[0].rm_so,codes[0].eo);
+		
+		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
+		
+			// or is this a : ?
+			if (tc[codes[5].rm_so] == ';') {
+				fprintf (stderr,"parser: NTSC Drop Code\n");
+				frn = 30;
+				frd = 1;
+			}
+		}
+		fps = 1.0 * frn / frd;		
 	}
 		
-		
+	//	tc[codes[1].rm_so] = '\0';		
 	
+		return -1;
+		
 }
 
 int64_t parseTimecode (char *tc, int frn,int frd) {
@@ -225,8 +242,8 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 		re = rs + dashplace + 1;
 		rs[dashplace] = '\0';
 		
-		ls = parseTimecode(rs,frn,frd);
-		le = parseTimecode(re,frn,frd);
+		ls = parseTimecodeRE(rs,frn,frd);
+		le = parseTimecodeRE(re,frn,frd);
 		
 		//		fprintf (stderr,"parser: frame range: %lld - %lld\n",ls,le);
 		
