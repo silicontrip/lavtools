@@ -58,6 +58,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <regex.h>
 
 
 #define PAL "PAL"
@@ -78,7 +79,33 @@ struct edlentry {
 // going to use the regex library
 
 // 00:00:00;00
-// ([0-9]*)([:;]?)([0-9]+)
+// ([0-9]*):?([0-9]*):?([0-9]*)([:;]?)([0-9]+)
+
+#define TIMECODE_REGEX "([0-9]*):?([0-9]*):?([0-9]*)([:;]?)([0-9]+)"
+
+int64_t parseTimecodeRE (char *tc, int frn, int frd) {
+	
+	regex_t *tc_reg;
+	int h=0,m=0,s=0,f=0;
+	size_t num;
+	regmatch_t *codes;
+	int nummatch;
+	
+	if (regcomp(tc_reg, TIMECODE_REGEX, REG_EXTENDED) != 0) {
+		fprintf (STDERR, "REGEX compile failed\n");
+		exit (-1);
+	}
+	
+	nummatch = regexec(tc_reg, tc, num, codes, 0 );
+	if ( nummatch != 0 {
+		fprintf (STDERR, "REGEX match failed\n");
+		exit (-1);
+	}
+		
+		
+	
+}
+
 int64_t parseTimecode (char *tc, int frn,int frd) {
 	
 	// My only concern here is that some people use approximations for NTSC frame rates.
