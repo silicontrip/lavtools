@@ -58,6 +58,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <regex.h>
 
 
 #define PAL "PAL"
@@ -73,7 +74,68 @@ struct edlentry {
 	int64_t out;
 };
 
+// ^([^ /]+) ([AVBavb]|VA|va) C ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) () 
+
+// going to use the regex library
+
 // 00:00:00;00
+// ([0-9]*):?([0-9]*):?([0-9]*)([:;]?)([0-9]+)
+
+#define TIMECODE_REGEX "([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)"
+
+int64_t parseTimecodeRE (char *tc, int frn, int frd) {
+	
+//	char *pattern = "^([0-9][0-9]*)(:)([0-9][0-9]*)(:)([0-9][0-9]*)([:;])([0-9][0-9]*)$";
+	char *pattern = "^([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)$";
+//	char *pattern = "^\([0-9]*\)\(:?\)\([0-9]*\)\(:?\)\([0-9]*\)\([:;]?\)\([0-9]+\)$";
+//	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
+
+	regex_t tc_reg;
+	int h=0,m=0,s=0,f=0;
+	size_t num=8;
+	regmatch_t codes[8];
+	int nummatch;
+	float fps,frameNumber;
+
+	fprintf (stderr, "REGCOMP %s\n",pattern);
+
+	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
+		fprintf (stderr, "REGEX compile failed\n");
+		return -1;
+	}
+	fprintf (stderr,"Found nsub %d\n",tc_reg.re_nsub);
+
+	fprintf (stderr, "REGEXEC %s\n",tc);
+
+	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
+	if ( nummatch != 0) {
+		fprintf (stderr, "REGEX match failed\n");
+		return -1;
+	} else {
+	
+
+		for (f=0; f<num; f++) 
+			fprintf (stderr,"%d: from %lld %lld\n",f,codes[f].rm_so,codes[f].rm_eo);
+		
+		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
+		
+			// or is this a : ?
+			if (tc[codes[6].rm_so] == ';') {
+				fprintf (stderr,"parser: NTSC Drop Code\n");
+				frn = 30;
+				frd = 1;
+			}
+		}
+		fps = 1.0 * frn / frd;		
+	}
+		
+	//	tc[codes[1].rm_so] = '\0';		
+	regfree( &tc_reg );
+
+		return -1;
+		
+}
+
 int64_t parseTimecode (char *tc, int frn,int frd) {
 	
 	// My only concern here is that some people use approximations for NTSC frame rates.
@@ -193,8 +255,8 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 		re = rs + dashplace + 1;
 		rs[dashplace] = '\0';
 		
-		ls = parseTimecode(rs,frn,frd);
-		le = parseTimecode(re,frn,frd);
+		ls = parseTimecodeRE(rs,frn,frd);
+		le = parseTimecodeRE(re,frn,frd);
 		
 		//		fprintf (stderr,"parser: frame range: %lld - %lld\n",ls,le);
 		

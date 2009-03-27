@@ -10,6 +10,8 @@
 }
 
 %token <filename> STRING
+%token NUM
+%token FRAMES
 
 %%
 
@@ -17,14 +19,14 @@ valid: filename editmode transitiontype srcin srcout '\n'
 
 filename: STRING
 
-editmode: 'V'
-	| 'A'
-	| 'VA'
-	| 'B'
-	| 'v'
-	| 'a'
-	| 'va'
-	| 'b'
+editmode: "V"
+	| "A"
+	| "VA"
+	| "B"
+	| "v"
+	| "a"
+	| "va"
+	| "b"
 
 transitiontype: 'C'
 
@@ -32,4 +34,10 @@ srcin: timecode
 
 srcout: timecode
 
-timecode: 
+timecode: NUM
+	| NUM':'NUM 
+	| NUM';'NUM 
+	| NUM':'NUM':'NUM
+	| NUM':'NUM';'NUM
+	| NUM':'NUM':'NUM':'NUM
+	| NUM':'NUM':'NUM';'NUM
