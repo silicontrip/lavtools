@@ -74,14 +74,14 @@ struct edlentry {
 	int64_t out;
 };
 
-// ^([^ /]+) ([AVBavb]|VA|va) C ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) () 
+// ^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) 
 
 // going to use the regex library
 
 // 00:00:00;00
 
 // I'm not sure if this code is smaller than my non regex code
-// but lessons learnt here will be useful for my EDL parser
+// but lessons learnt here will be useful for the EDL parser
 
 int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
@@ -102,7 +102,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 //	fprintf (stderr, "REGCOMP %s\n",pattern);
 
 	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
-		fprintf (stderr, "REGEX compile failed\n");
+		fprintf (stderr, "REGEX compile failed\n"); // since I know that the REGEX is correct, what else would cause this.
 		return -1;
 	}
 	
@@ -110,7 +110,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 
 	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
 	if ( nummatch != 0) {
-		fprintf (stderr, "REGEX match failed\n");
+		fprintf (stderr, "parser: error REGEX match failed\n");
 		return -1;
 	}
 	/*
@@ -317,6 +317,9 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 /*
 parseEDL ()
 {
+ 
+char *pattern = "^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+
  
  openfile
  while read {
