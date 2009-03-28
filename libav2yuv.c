@@ -314,33 +314,137 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 	return 0;	
 }
 
-/*
-parseEDL ()
+int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char *out)
 {
- 
-char *pattern = "^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+
+	regex_t tc_reg;
+	size_t num=6;
+	regmatch_t codes[6];
+		
+	char *pattern = "^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+
+	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
+		fprintf (stderr, "REGEX compile failed\n");
+		return -1;
+	}
+	
+	*audio = 0;
+	*video = 0
+	*in = 0;
+	*out = 0;
+	fn[0] = '\0';
+	
+	//	fprintf (stderr, "REGEXEC %s\n",tc);
+	
+	nummatch = regexec(&tc_reg, line, num, codes, 0 );
+	if ( nummatch != 0) {
+		fprintf (stderr, "parser: EDL error REGEX match failed\n");
+		return -1;
+	}
+	
+	for (f=0; f<num; f++)  {
+		le =codes[f].rm_eo-codes[f].rm_so;
+		off = codes[f].rm_so;
+		fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,tc+off);
+	}
+	
+	return -1;
+	
+}
+
+int edlcount (FILE *file, int *maxline, int *lines)
+{
+
+	int c;
+	int max=0;
+	int count=0;
+	
+	*maxline=0;
+	*lines=0;
+	
+	
+	flockfile(file); // for optimising the single character reads
+	while (!foef(file)){
+		c = getc_unlocked(file);
+		count++;
+		if (c='\n') {
+			lines++;
+			if (count > maxline) {
+				maxline = count;
+				count=0;
+			}
+		}
+	}
+	funlockfile(file);
+	rewind(file);
+	
+}
+
+int parseEDL (char *file, struct edlentry *list)
+{
+
+	FILE fh;
+	char *line;
+	int maxline,lines;
+	char *fn,*in,*out;
+	char ema,emv;
+	
+	fh = fopen(file,"r");
+	if (fh == NULL) {
+		perror ("Opening EDL file");
+		return -1;
+	}
+
+//	count active lines
+//	count active characters
+
+	edlcount(fh,maxline,lines);
+	
+	// should sanity check maxline and lines
+
+	// malloc edlentry array 
+	//	malloc read buffer
+
+	line = (char *)malloc(maxline);
+	if (line == NULL) {
+		fprintf (stderr,"Error allocating line memory\n");
+		fclose (fh);
+		return -1;
+	}
+	
+	list = (struct edlentry *)malloc(lines*sizeof(struct edlentry));
+	if (line == NULL) {
+		fprintf (stderr,"Error allocating edl memory\n");
+		free(line);
+		fclose (fh);
+		return -1;
+	}
+	
+	while (fgets(line,maxline,fh) != NULL) {
+
+//		parse line
+
+		parseEDLline (line, fn, &ema, &emv,in,out);
 
  
- openfile
- while read {
- count active lines
- count active characters
- }
- 
- malloc edlentry array 
- malloc read buffer
- 
- seek 0
- while read {
-	parse line
- 
-	malloc filename
-	check file readable.
- 
-	parse timecode;
-	check in < out
+		//	malloc filename
+		
+		list.filename = (char *)malloc(strlen(fn)+1);
+		if (list.filename == NULL) {
+			fprintf (stderr,"Error allocating edl filename memory\n");
+			free(line);
+			free(list);
+			fclose(fh);
+			return -1;
+		}
+		
+		//	check file readable.
+		
+		//	parse timecode;
+		//	check in < out
+	}
 }
-*/
+
 
 void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
