@@ -79,9 +79,9 @@ struct edlentry {
 // going to use the regex library
 
 // 00:00:00;00
-// ([0-9]*):?([0-9]*):?([0-9]*)([:;]?)([0-9]+)
 
-#define TIMECODE_REGEX "([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)"
+// I'm not sure if this code is smaller than my non regex code
+// but lessons learnt here will be useful for my EDL parser
 
 int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
@@ -92,31 +92,34 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 //	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
 	
 	regex_t tc_reg;
-	int h=0,m=0,s=0,f=0;
+	int h=0,m=0,s=0,f=0,le,off,fn;
 	size_t num=8;
 	regmatch_t codes[8];
 	int nummatch;
 	float fps,frameNumber;
+	int64_t fn64;
 
-	fprintf (stderr, "REGCOMP %s\n",pattern);
+//	fprintf (stderr, "REGCOMP %s\n",pattern);
 
 	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
 		fprintf (stderr, "REGEX compile failed\n");
 		return -1;
 	}
-	fprintf (stderr,"Found nsub %d\n",tc_reg.re_nsub);
-
-	fprintf (stderr, "REGEXEC %s\n",tc);
+	
+//	fprintf (stderr, "REGEXEC %s\n",tc);
 
 	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
 	if ( nummatch != 0) {
 		fprintf (stderr, "REGEX match failed\n");
 		return -1;
-	} else {
-	
-
-		for (f=0; f<num; f++) 
-			fprintf (stderr,"%d: from %lld %lld\n",f,codes[f].rm_so,codes[f].rm_eo);
+	}
+	/*
+		for (f=0; f<num; f++)  {
+			le =codes[f].rm_eo-codes[f].rm_so;
+			off = codes[f].rm_so;
+			fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,tc+off);
+		}
+	 */
 		
 		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
 		
@@ -128,13 +131,46 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 			}
 		}
 		fps = 1.0 * frn / frd;		
-	}
+	
 		
-	//	tc[codes[1].rm_so] = '\0';		
+	// split the string by converting the : into nulls
+		
+	for (f=2; f < 7; f+=2) 
+		if (codes[f].rm_eo != 0) {
+			tc[codes[f].rm_so] = '\0';
+		}
+	
+	// convert into integers
+	if (codes[7].rm_eo != 0) 
+		f = atoi(tc+codes[7].rm_so);
+	
+	if (codes[5].rm_eo != 0) 
+		s = atoi(tc+codes[5].rm_so);
+	
+	if (codes[3].rm_eo != 0) 
+		m = atoi(tc+codes[3].rm_so);
+	
+	if (codes[1].rm_eo != 0) 
+		h = atoi(tc+codes[1].rm_so);
+
+//	fprintf (stderr," %d - %d - %d - %d \n",h,m,s,f);
+	
 	regfree( &tc_reg );
 
+	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f >= fps))  {
+		fprintf (stderr,"parser error: timecode digit too large\n");
 		return -1;
-		
+	}
+	
+	frameNumber =   1.0 * ( h * 3600 + m * 60 + s ) * fps + f;
+	fn = (frameNumber);
+	
+	fn64 = fn;
+	
+	//	fprintf (stderr,"parser: framenumber %d == %lld\n",fn,fn64);
+	
+	return fn64;
+	
 }
 
 int64_t parseTimecode (char *tc, int frn,int frd) {
