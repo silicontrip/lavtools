@@ -70,8 +70,8 @@ struct edlentry {
 	char *filename;
 	char audio;
 	char video;
-	int64_t in;
-	int64_t out;
+	char *in;
+	char *out;
 };
 
 // ^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) 
@@ -385,7 +385,7 @@ int parseEDL (char *file, struct edlentry *list)
 
 	FILE fh;
 	char *line;
-	int maxline,lines;
+	int maxline,lines,count=0;
 	char *fn,*in,*out;
 	char ema,emv;
 	
@@ -424,13 +424,14 @@ int parseEDL (char *file, struct edlentry *list)
 
 //		parse line
 
-		parseEDLline (line, fn, &ema, &emv,in,out);
-
+		if (parseEDLline (line, fn, &ema, &emv,in,out) == -1) {
+			fprintf (stderr,"Error in EDL file line: %d: %s\n",count+1,line);
+		} else {
  
 		//	malloc filename
 		
-		list.filename = (char *)malloc(strlen(fn)+1);
-		if (list.filename == NULL) {
+		list[count].filename = (char *)malloc(strlen(fn)+1);
+		if (list[count].filename == NULL) {
 			fprintf (stderr,"Error allocating edl filename memory\n");
 			free(line);
 			free(list);
@@ -439,9 +440,42 @@ int parseEDL (char *file, struct edlentry *list)
 		}
 		
 		//	check file readable.
-		
+
+		// cannot parse timecode at this point as we have no knowledge of the frame rate.
 		//	parse timecode;
 		//	check in < out
+		
+		list[count].in = (char *)malloc(strlen(in)+1);
+		if (list[count].in == NULL) {
+			fprintf (stderr,"Error allocating edl timecode memory\n");
+			free(line);
+			// grr memory leak
+			// free(list.filename);
+			free(list);
+			fclose(fh);
+			return -1;
+		}
+		list[count].out = (char *)malloc(strlen(out)+1);
+		if (list[count].out == NULL) {
+			fprintf (stderr,"Error allocating edl filename memory\n");
+			free(line);
+//			free(list.filename);
+//			free(list.in);
+			free(list);
+			fclose(fh);
+			return -1;
+		}
+			// copy values to struct.
+
+		strcpy(list[count].filename,fn);
+		strcpy(list[count].in,in);
+		strcpy(list[count].out,out);
+		
+		list[count].audio = ema;
+		list[count].video = emv;
+	
+			count++;
+		}
 	}
 }
 
