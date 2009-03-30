@@ -581,11 +581,74 @@ int *sr)
 
 }
 
+int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, int sct,AVCodecContext **pcc, AVCodec **pCodec)
+{
+
+		int i,avStream=-1;
+
+		AVFormatContext *pFormatCtx;
+		AVCodecContext *pCodecCtx;
+		
+		// Open video file
+		if(av_open_input_file(pfc, fn, avif, 0, NULL)!=0)
+			return -1; // Couldn't open file
+		
+		pFormatCtx = *pfc;
+		
+		fprintf (stderr,"av_find_stream_info\n");
+		
+		// Retrieve stream information
+		if(av_find_stream_info(pFormatCtx)<0)
+			return -1; // Couldn't find stream information
+		
+				fprintf (stderr,"dump_format\n");
+
+		// Dump information about file onto standard error
+		dump_format(pFormatCtx, 0, fn, 0);
+		
+		// Find the first video stream
+		// not necessarily a video stream but this is legacy code
+		for(i=0; i<pFormatCtx->nb_streams; i++)
+			if(pFormatCtx->streams[i]->codec->codec_type==sct)
+			{
+				// mark debug
+				fprintf (stderr,"Video Codec ID: %d (%s)\n",pFormatCtx->streams[i]->codec->codec_id ,pFormatCtx->streams[i]->codec->codec_name);
+				if (avStream == -1 && st == 0) {
+					// May still be overridden by the -s option
+					avStream=i;
+				}
+				if (st == i) {
+					avStream=i;
+					break;
+				}
+			}
+		if(avStream==-1) {
+			fprintf (stderr,"Couldn't find Audio or Video stream\n");
+			return -1; // Didn't find a video stream
+		}
+		
+		// Get a pointer to the codec context for the video stream
+		*pcc=pFormatCtx->streams[avStream]->codec;
+		
+		pCodecCtx = *pcc;
+		
+		fprintf (stderr,"avcodec_find_decoder\n");
+		// Find the decoder for the video stream
+		*pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
+		if(*pCodec==NULL)
+			return -1; // Codec not found
+		
+		// Open codec
+		if(avcodec_open(pCodecCtx, *pCodec)<0)
+			return -1; // Could not open codec
+			
+		return avStream;
+}
+
 int main(int argc, char *argv[])
 {
     AVFormatContext *pFormatCtx;
 	AVInputFormat *avif = NULL;
-    int             i, avStream;
     AVCodecContext  *pCodecCtx;
     AVCodec         *pCodec;
     AVFrame         *pFrame = NULL; 
@@ -597,7 +660,7 @@ int main(int argc, char *argv[])
     uint8_t         *buffer;
 	int16_t		*aBuffer = NULL;
 	
-	int fdOut = 1 ;
+	int i,fdOut = 1 ;
 	int yuv_interlacing = Y4M_UNKNOWN;
 	int yuv_ss_mode = Y4M_UNKNOWN;
 	y4m_ratio_t yuv_frame_rate;
@@ -613,9 +676,6 @@ int main(int argc, char *argv[])
 	char *rangeString = NULL;
 	char *openfile;
 	int edlfiles;
-	
-	
-	
 	int y;
 	int                frame_data_size ;
 	uint8_t            *yuv_data[3] ;      
@@ -664,51 +724,10 @@ int main(int argc, char *argv[])
 		// set in and out points
 		// skip if write mode (audio or video) != edit mode
 		
-		// Open video file
-		if(av_open_input_file(&pFormatCtx, openfile, avif, 0, NULL)!=0)
-			return -1; // Couldn't open file
-		
-		// Retrieve stream information
-		if(av_find_stream_info(pFormatCtx)<0)
-			return -1; // Couldn't find stream information
-		
-		// Dump information about file onto standard error
-		dump_format(pFormatCtx, 0, openfile, 0);
-		
-		// Find the first video stream
-		// not necessarily a video stream but this is legacy code
-		avStream=-1;
-		for(i=0; i<pFormatCtx->nb_streams; i++)
-			if(pFormatCtx->streams[i]->codec->codec_type==search_codec_type)
-			{
-				// mark debug
-				//fprintf (stderr,"Video Codec ID: %d (%s)\n",pFormatCtx->streams[i]->codec->codec_id ,pFormatCtx->streams[i]->codec->codec_name);
-				if (avStream == -1 && stream == 0) {
-					// May still be overridden by the -s option
-					avStream=i;
-				}
-				if (stream == i) {
-					avStream=i;
-					break;
-				}
-			}
-		if(avStream==-1) {
-			fprintf (stderr,"Couldn't find Audio or Video stream\n");
-			return -1; // Didn't find a video stream
+		stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
+		if (stream == -1) {
+			fprintf (stderr,"Error with video file: %s\n",openfile);
 		}
-		
-		
-		// Get a pointer to the codec context for the video stream
-		pCodecCtx=pFormatCtx->streams[avStream]->codec;
-		
-		// Find the decoder for the video stream
-		pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
-		if(pCodec==NULL)
-			return -1; // Codec not found
-		
-		// Open codec
-		if(avcodec_open(pCodecCtx, pCodec)<0)
-			return -1; // Could not open codec
 		
 		// get the frame rate of the first video stream, if cutting.
 //		if (audioWrite && rangeString) {
@@ -729,8 +748,8 @@ int main(int argc, char *argv[])
 			
 			// Read framerate, aspect ratio and chroma subsampling from Codec
 			if (yuv_frame_rate.d == 0) {
-				yuv_frame_rate.n = pFormatCtx->streams[avStream]->r_frame_rate.num;
-				yuv_frame_rate.d = pFormatCtx->streams[avStream]->r_frame_rate.den;
+				yuv_frame_rate.n = pFormatCtx->streams[stream]->r_frame_rate.num;
+				yuv_frame_rate.d = pFormatCtx->streams[stream]->r_frame_rate.den;
 			}
 			if (yuv_aspect.d == 0) {
 				yuv_aspect.n = pCodecCtx-> sample_aspect_ratio.num;
@@ -824,7 +843,7 @@ int main(int argc, char *argv[])
 		while(av_read_frame(pFormatCtx, &packet)>=0 )
 		{
 			// Is this a packet from the desired stream?
-			if(packet.stream_index==avStream)
+			if(packet.stream_index==stream)
 			{
 				// Decode video frame
 				if (audioWrite==0) {
