@@ -10,11 +10,11 @@
 // considerably. 
 //
 // gcc -O3 -I/usr/local/include -I/usr/local/include/mjpegtools -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
-//
 // quadrant gcc -O3 -I/sw/include -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv 
-// gcc -O3 -I/opt/local/include/ -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
+// gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
+// 18th Mar 2009 - Audio range fixed, sample accurate.
 // 17th Mar 2009 - Multifile version.
 // 4th Feb 2009 - Range version. Audio range not working
 // 2nd Feb 2009 - Audio writing version.
@@ -23,6 +23,7 @@
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
 // 24th Feb 2008 - Found an unexpected behaviour where frames were being dropped. libav said that no frame was decoded. Have output the previous frame in this instance.
 //
+
 /* Possible inclusion for EDL
  Comments
  
@@ -46,7 +47,7 @@
  fnum : frame number (the first decodable frame in the video is taken to be frame 0).
  sec : seconds with 's' suffix (e.g. 5.2s)
  mps : seconds with 'mps' suffix (e.g. 5.2mps). This corresponds to the 'seconds' value displayed by Windows MediaPlayer.
- */
+*/
 
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
@@ -57,6 +58,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
+#include <regex.h>
 
 
 #define PAL "PAL"
@@ -68,9 +70,108 @@ struct edlentry {
 	char *filename;
 	char audio;
 	char video;
-	int64_t in;
-	int64_t out;
+	char *in;
+	char *out;
 };
+
+// ^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) 
+
+// going to use the regex library
+
+// 00:00:00;00
+
+// I'm not sure if this code is smaller than my non regex code
+// but lessons learnt here will be useful for the EDL parser
+
+int64_t parseTimecodeRE (char *tc, int frn, int frd) {
+	
+//	char *pattern = "^([0-9][0-9]*)(:)([0-9][0-9]*)(:)([0-9][0-9]*)([:;])([0-9][0-9]*)$";
+//	char *pattern = "^([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)$";
+	char *pattern = "^([0-9]*)(^|:)([0-9]*)(^|:)([0-9]*)(^|[:;])([0-9]+)$";
+//	char *pattern = "^\([0-9]*\)\(:?\)\([0-9]*\)\(:?\)\([0-9]*\)\([:;]?\)\([0-9]+\)$";
+//	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
+	
+	regex_t tc_reg;
+	int h=0,m=0,s=0,f=0,le,off,fn;
+	size_t num=8;
+	regmatch_t codes[8];
+	int nummatch;
+	float fps,frameNumber;
+	int64_t fn64;
+
+//	fprintf (stderr, "REGCOMP %s\n",pattern);
+
+	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
+		fprintf (stderr, "REGEX compile failed\n"); // since I know that the REGEX is correct, what else would cause this.
+		return -1;
+	}
+	
+//	fprintf (stderr, "REGEXEC %s\n",tc);
+
+	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
+	if ( nummatch != 0) {
+		fprintf (stderr, "parser: error REGEX match failed\n");
+		return -1;
+	}
+	/*
+		for (f=0; f<num; f++)  {
+			le =codes[f].rm_eo-codes[f].rm_so;
+			off = codes[f].rm_so;
+			fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,tc+off);
+		}
+	 */
+		
+		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
+		
+			// or is this a : ?
+			if (tc[codes[6].rm_so] == ';') {
+				fprintf (stderr,"parser: NTSC Drop Code\n");
+				frn = 30;
+				frd = 1;
+			}
+		}
+		fps = 1.0 * frn / frd;		
+	
+		
+	// split the string by converting the : into nulls
+		
+	for (f=2; f < 7; f+=2) 
+		if (codes[f].rm_eo != 0) {
+			tc[codes[f].rm_so] = '\0';
+		}
+	
+	// convert into integers
+	if (codes[7].rm_eo != 0) 
+		f = atoi(tc+codes[7].rm_so);
+	
+	if (codes[5].rm_eo != 0) 
+		s = atoi(tc+codes[5].rm_so);
+	
+	if (codes[3].rm_eo != 0) 
+		m = atoi(tc+codes[3].rm_so);
+	
+	if (codes[1].rm_eo != 0) 
+		h = atoi(tc+codes[1].rm_so);
+
+//	fprintf (stderr," %d - %d - %d - %d \n",h,m,s,f);
+	
+	regfree( &tc_reg );
+
+	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f >= fps))  {
+		fprintf (stderr,"parser error: timecode digit too large\n");
+		return -1;
+	}
+	
+	frameNumber =   1.0 * ( h * 3600 + m * 60 + s ) * fps + f;
+	fn = (frameNumber);
+	
+	fn64 = fn;
+	
+	//	fprintf (stderr,"parser: framenumber %d == %lld\n",fn,fn64);
+	
+	return fn64;
+	
+}
 
 int64_t parseTimecode (char *tc, int frn,int frd) {
 	
@@ -151,8 +252,7 @@ int64_t parseTimecode (char *tc, int frn,int frd) {
 	if (cc>3)
 		h = atoi(stc[3]);
 	
-	//	fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);
-	
+	// fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);	
 	// validate time
 	
 	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f >= fps))  {
@@ -192,8 +292,8 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 		re = rs + dashplace + 1;
 		rs[dashplace] = '\0';
 		
-		ls = parseTimecode(rs,frn,frd);
-		le = parseTimecode(re,frn,frd);
+		ls = parseTimecodeRE(rs,frn,frd);
+		le = parseTimecodeRE(re,frn,frd);
 		
 		//		fprintf (stderr,"parser: frame range: %lld - %lld\n",ls,le);
 		
@@ -214,32 +314,195 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 	return 0;	
 }
 
-/*
-parseEDL ()
- 
+int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char *out)
 {
+
+	regex_t tc_reg;
+	size_t num=6;
+	regmatch_t codes[6];
+	int rc,f;
+	int le,off;
+	char *va;
+		
+	char *pattern = "^([^ /]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+
+	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
+		fprintf (stderr, "REGEX compile failed\n");
+		return -1;
+	}
+	
+	*audio = 0;
+	*video = 0;
+	*in = 0;
+	*out = 0;
+	fn[0] = '\0';
+	
+	//	fprintf (stderr, "REGEXEC %s\n",tc);
+	
+	rc = regexec(&tc_reg, line, num, codes, 0 );
+	if ( rc != 0) {
+		fprintf (stderr, "parser: EDL error REGEX match failed\n");
+		return -1;
+	}
+	
+	for (f=0; f<num; f++)  {
+		le =codes[f].rm_eo-codes[f].rm_so;
+		off = codes[f].rm_so;
+		fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,line+off);
+	}
+	
+	for (f=2; f <= 8; f+=2) 
+		if (codes[f].rm_eo != 0) {
+			line[codes[f].rm_so] = '\0';
+		}
+	
+	fn = line+codes[1].rm_so;
+	in = line+codes[7].rm_so;
+	out = line + codes[9].rm_so;
+	
+	va = line+codes[1].rm_so;
+	
+	if (!strcmp(va,"VA") || !strcmp(va,"va") || va[0]=='B' || va[0]=='b') {
+		*audio = 1;
+		*video = 1;
+	} else if (va[0]=='V' || va[0]=='v') {
+		*video = 1;
+	} else if (va[0]=='A' || va[0]=='a') {
+		*audio = 1;
+	}
+	
+	return -1;
+	
+}
+
+int edlcount (FILE *file, int *maxline, int *lines)
+{
+
+	int c;
+	int max=0;
+	int count=0;
+	
+	*maxline=0;
+	*lines=0;
+	
+	
+	flockfile(file); // for optimising the single character reads
+	while (!feof(file)){
+		c = getc_unlocked(file);
+		count++;
+		if (c==10) {
+			(*lines)++;
+			if (count > *maxline) {
+				*maxline = count;
+				count=0;
+			}
+		}
+	}
+	funlockfile(file);
+	rewind(file);
+	
+}
+
+int parseEDL (char *file, struct edlentry *list)
+{
+
+	FILE *fh;
+	char *line;
+	int maxline,lines,count=0;
+	char *fn,*in,*out;
+	char ema,emv;
+	
+	fh = fopen(file,"r");
+	if (fh == NULL) {
+		perror ("Opening EDL file");
+		return -1;
+	}
+
+//	count active lines
+//	count active characters
+
+	edlcount(fh,&maxline,&lines);
+	
+	// should sanity check maxline and lines
+
+	// malloc edlentry array 
+	//	malloc read buffer
+
+	line = (char *)malloc(maxline);
+	if (line == NULL) {
+		fprintf (stderr,"Error allocating line memory\n");
+		fclose (fh);
+		return -1;
+	}
+	
+	list = (struct edlentry *)malloc(lines*sizeof(struct edlentry));
+	if (line == NULL) {
+		fprintf (stderr,"Error allocating edl memory\n");
+		free(line);
+		fclose (fh);
+		return -1;
+	}
+	
+	while (fgets(line,maxline,fh) != NULL) {
+
+//		parse line
+
+		if (parseEDLline (line, fn, &ema, &emv,in,out) == -1) {
+			fprintf (stderr,"Error in EDL file line: %d: %s\n",count+1,line);
+		} else {
  
- openfile
- while read {
- count active lines
- count active characters
- }
- 
- malloc edlentry array 
- malloc read buffer
- 
- seek 0
- while read {
-	parse line
- 
-	malloc filename
-	check file readable.
- 
-	parse timecode;
-	check in < out
- }
- 
- */
+		//	malloc filename
+		
+		list[count].filename = (char *)malloc(strlen(fn)+1);
+		if (list[count].filename == NULL) {
+			fprintf (stderr,"Error allocating edl filename memory\n");
+			free(line);
+			free(list);
+			fclose(fh);
+			return -1;
+		}
+		
+		//	check file readable.
+
+		// cannot parse timecode at this point as we have no knowledge of the frame rate.
+		//	parse timecode;
+		//	check in < out
+		
+		list[count].in = (char *)malloc(strlen(in)+1);
+		if (list[count].in == NULL) {
+			fprintf (stderr,"Error allocating edl timecode memory\n");
+			free(line);
+			// grr memory leak
+			// free(list.filename);
+			free(list);
+			fclose(fh);
+			return -1;
+		}
+		list[count].out = (char *)malloc(strlen(out)+1);
+		if (list[count].out == NULL) {
+			fprintf (stderr,"Error allocating edl filename memory\n");
+			free(line);
+//			free(list.filename);
+//			free(list.in);
+			free(list);
+			fclose(fh);
+			return -1;
+		}
+			// copy values to struct.
+
+		strcpy(list[count].filename,fn);
+		strcpy(list[count].in,in);
+		strcpy(list[count].out,out);
+		
+		list[count].audio = ema;
+		list[count].video = emv;
+	
+			count++;
+		}
+	}
+}
+
+
 void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
 	
@@ -270,8 +533,7 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 }
 
 void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
+{	
 	int fs,cfs;
 	
 	fs = y4m_si_get_plane_length(sinfo,0);
@@ -307,7 +569,6 @@ static void print_usage()
 			 );
 }
 
-
 int main(int argc, char *argv[])
 {
     AVFormatContext *pFormatCtx;
@@ -338,6 +599,8 @@ int main(int argc, char *argv[])
 	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
 	int samplesFrame;
 	char *rangeString = NULL;
+	char *openfile;
+	int edlfiles;
 	
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:";
 	
@@ -357,14 +620,16 @@ int main(int argc, char *argv[])
     // Register all formats and codecs
     av_register_all();
 	
-	
 	// Parse commandline arguments
 	while ((i = getopt (argc, argv, legal_flags)) != -1) {
 		switch (i) {
 			case 'I':
 				switch (optarg[0]) {
+					case 'P':
 					case 'p':  yuv_interlacing = Y4M_ILACE_NONE;  break;
+					case 'T':
 					case 't':  yuv_interlacing = Y4M_ILACE_TOP_FIRST;  break;
+					case 'B':
 					case 'b':  yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;  break;
 					default:
 						mjpeg_error("Unknown value for interlace: '%c'", optarg[0]);
@@ -446,8 +711,22 @@ int main(int argc, char *argv[])
 	
 	for (;(argc--)>1;argv++) {
 		
+		openfile = argv[1];
+		
+		// check if filename is EDL
+		// parse edl file.
+		// set number of files for loop (1 otherwise)
+		// end if
+		
+		// for loop number of files (1 if not EDL)
+		
+		// if EDL
+		// set editmode (search_codec_type)
+		// set in and out points
+		// skip if write mode (audio or video) != edit mode
+		
 		// Open video file
-		if(av_open_input_file(&pFormatCtx, argv[1], avif, 0, NULL)!=0)
+		if(av_open_input_file(&pFormatCtx, openfile, avif, 0, NULL)!=0)
 			return -1; // Couldn't open file
 		
 		// Retrieve stream information
@@ -455,7 +734,7 @@ int main(int argc, char *argv[])
 			return -1; // Couldn't find stream information
 		
 		// Dump information about file onto standard error
-		dump_format(pFormatCtx, 0, argv[1], 0);
+		dump_format(pFormatCtx, 0, openfile, 0);
 		
 		// Find the first video stream
 		// not necessarily a video stream but this is legacy code
@@ -696,26 +975,27 @@ int main(int argc, char *argv[])
 						
 						// TODO: write a wave or aiff file. 
 							
-					// need to also take boundaries into consideration 
-					// PANIC: how to determine bytes per sample?
+						// PANIC: how to determine bytes per sample?
 
+#define BYTES_PER_SAMPLE 4
+					
 #ifdef DEBUG
 					fprintf (stderr,"sample counter: %lld  (%lld - %lld) spf %d\n",sampleCounter,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
 #endif
 					
-					
-					numSamples = numBytes / 4;
+					numSamples = numBytes / BYTES_PER_SAMPLE;
 					
 					if (!rangeString) {
 						write (1, aBuffer, numBytes);
+						
 						// whole decoded frame within range.
-
 					} else if (sampleCounter >= startFrame * samplesFrame &&
 							sampleCounter+numSamples <= endFrame * samplesFrame ) {
 #ifdef DEBUG
 				//			fprintf(stderr,"FULL WRITE\n");
 #endif
 							write (1, aBuffer, numBytes);
+						
 					// start of buffer outside range, end of buffer in range
 						} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
 							sampleCounter+numSamples <= endFrame * samplesFrame ) {
@@ -724,8 +1004,9 @@ int main(int argc, char *argv[])
 							fprintf(stderr,"START PARTIAL WRITE\n");
 #endif
 							
-							write(1,aBuffer+(startFrame-sampleCounter)*4,numBytes-(startFrame*samplesFrame-sampleCounter)*4);
-					// start of buffer in range, end of buffer outside range.
+							write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+
+							// start of buffer in range, end of buffer outside range.
 						} else if (sampleCounter >= startFrame * samplesFrame &&
 								   sampleCounter <= endFrame * samplesFrame ) {
 							// write a subset
@@ -733,8 +1014,9 @@ int main(int argc, char *argv[])
 							fprintf(stderr,"END PARTIAL WRITE\n");
 #endif
 							
-							write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*4);
-					// entire range contained within buffer
+							write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+
+							// entire range contained within buffer
 						} else if (sampleCounter < startFrame * samplesFrame &&
 							sampleCounter+numSamples > endFrame * samplesFrame ) {
 							// write a subset
@@ -742,7 +1024,7 @@ int main(int argc, char *argv[])
 							fprintf(stderr,"PARTIAL WRITE\n");
 #endif
 							
-							write(1,aBuffer+(startFrame-sampleCounter)*4,(endFrame-startFrame)*samplesFrame*4);
+							write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
 						} else {
 #ifdef DEBUG
 						//	fprintf(stderr,"NO WRITE\n");
