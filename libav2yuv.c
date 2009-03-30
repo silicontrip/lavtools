@@ -611,8 +611,8 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	for(i=0; i<pFormatCtx->nb_streams; i++)
 		if(pFormatCtx->streams[i]->codec->codec_type==sct)
 		{
-			// mark debug
-			fprintf (stderr,"Video Codec ID: %d (%s)\n",pFormatCtx->streams[i]->codec->codec_id ,pFormatCtx->streams[i]->codec->codec_name);
+			// DEBUG: print out codec
+//			fprintf (stderr,"Video Codec ID: %d (%s)\n",pFormatCtx->streams[i]->codec->codec_id ,pFormatCtx->streams[i]->codec->codec_name);
 			if (avStream == -1 && st == 0) {
 				// May still be overridden by the -s option
 				avStream=i;
@@ -623,7 +623,7 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 			}
 		}
 	if(avStream==-1) {
-		fprintf (stderr,"Couldn't find Audio or Video stream\n");
+		fprintf (stderr,"open_av_file: could not find an AV stream\n");
 		return -1; // Didn't find a video stream
 	}
 	
@@ -632,15 +632,18 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	
 	pCodecCtx = *pcc;
 	
-	fprintf (stderr,"avcodec_find_decoder\n");
 	// Find the decoder for the video stream
 	*pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
-	if(*pCodec==NULL)
+	if(*pCodec==NULL) {
+		fprintf (stderr,"open_av_file: could not find codec\n");
 		return -1; // Codec not found
+	}
 	
 	// Open codec
-	if(avcodec_open(pCodecCtx, *pCodec)<0)
+	if(avcodec_open(pCodecCtx, *pCodec)<0) {
+		fprintf (stderr,"open_av_file: could not open codec\n");
 		return -1; // Could not open codec
+	}
 	
 	return avStream;
 }
@@ -650,8 +653,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 {
 	// All video related decoding
 	
-	AVCodecContext  *pCodecCtx=pFormatCtx->streams[stream]->codec;
-
+	AVCodecContext *pCodecCtx=pFormatCtx->streams[stream]->codec;
 	
 	// Read framerate, aspect ratio and chroma subsampling from Codec
 	if (yuv_frame_rate->d == 0) {
@@ -668,10 +670,12 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 		yuv_aspect->n=1;
 		yuv_aspect->d=1;
 	}
-	if (convert) {
+	
+	if (*convert) {
 		if (*yuv_ss_mode == Y4M_UNKNOWN) {
+			fprintf (stderr,"init_video: Convert to Unknown Chroma Subsampling mode\n");
 			print_usage();
-			return 0;	
+			return -1;	
 		} else {
 			y4m_accept_extensions(1);
 			switch (*yuv_ss_mode) {
@@ -681,7 +685,8 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 				case Y4M_CHROMA_411: *convert_mode = PIX_FMT_YUV411P; break;
 				case Y4M_CHROMA_420JPEG: *convert_mode = PIX_FMT_YUVJ420P; break;
 				default:
-					mjpeg_error_exit1("Cannot convert to this chroma mode");
+					mjpeg_error("Cannot convert to this chroma mode");
+					return -1;
 					break;
 					
 			}
@@ -722,6 +727,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 		y4m_si_set_framerate(si, *yuv_frame_rate);
 		y4m_si_set_chroma(si, *yuv_ss_mode);
 	}
+	return 0;
 }	
 
 int main(int argc, char *argv[])
@@ -822,7 +828,11 @@ int main(int argc, char *argv[])
 			}
 		}
 		if (audioWrite==0) {
-			init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame); 
+			
+			if (init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame) == -1) {
+				fprintf (stderr,"Error initialising video file: %s\n",openfile);
+				exit (-1);
+			}
 		} else {
 			numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
 			if (rangeString) {
