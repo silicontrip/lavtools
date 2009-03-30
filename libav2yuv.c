@@ -173,104 +173,6 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
 }
 
-int64_t parseTimecode (char *tc, int frn,int frd) {
-	
-	// My only concern here is that some people use approximations for NTSC frame rates.
-	
-	int h=0,m=0,s=0,f=0;
-	char *stc[4];
-	int i,cc=0;
-	float fps,frameNumber;
-	int fn;
-	int64_t fn64;
-	
-	// I'm trying to remember if the ; represents 29.97 fps displayed as if running at 30 fps.
-	// So therefore doesn't display the correct time.
-	// or if it represents 29.97 rounded to the nearest frame. IE catches up a frame every 1001 frames.
-	
-	if (strlen(tc) == 0 ) 
-		return 0;
-	
-	// determine ntsc drop timecode format
-	
-	//	fprintf(stderr,"parser: passing '%s'\n",tc);
-	
-	if (strlen(tc) > 2) {
-		if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
-			
-			// or is this a : ?
-			if (tc[strlen(tc)-3] == ';') {
-				fprintf (stderr,"parser: NTSC Drop Code\n");
-				frn = 30;
-				frd = 1;
-				tc[strlen(tc)-3] == ':';
-			}
-		}
-	}
-	
-	fps = 1.0 * frn / frd;
-	
-	for (i=strlen(tc)-1; i>=0; i--) 
-	{
-		
-		if ( tc[i] == ':') {
-			if (cc > 4) { 
-				// too many : 
-				fprintf (stderr,"parse error: too many ':' in timecode\n");
-				return -1;
-			}
-			stc[cc++] = tc+i + 1;
-			tc[i]='\0';
-		} else if (tc[i]<'0' || tc[i]>'9') {
-			// illegal character
-			fprintf (stderr,"parse error: illegal character in timecode\n");
-			return -1;
-		}
-	}
-	if (cc > 4) { 
-		// too many : 
-		fprintf (stderr,"parse error: too many ':' in timecode\n");
-		return -1;
-	}
-	stc[cc++] = tc;
-	
-	// debug
-#ifdef DEBUG
-	fprintf (stderr,"parser: (%d): ",cc);
-	
-	for (i=0; i < cc; i++) 
-		fprintf (stderr,"%s, ",stc[i]);
-	
-	fprintf (stderr,"\n");
-#endif	
-	
-	f = atoi(stc[0]);
-	if (cc>1) 
-		s = atoi(stc[1]);
-	if (cc>2) 
-		m = atoi(stc[2]);
-	if (cc>3)
-		h = atoi(stc[3]);
-	
-	// fprintf (stderr,"parser: atoi %d %d %d %d\n",h,m,s,f);	
-	// validate time
-	
-	if ((h>0 && m>59) ||  (m>0 && s>59) || (s>0 && f >= fps))  {
-		fprintf (stderr,"parser error: timecode digit too large\n");
-		return -1;
-	}
-	
-	frameNumber =   1.0 * ( h * 3600 + m * 60 + s ) * fps + f;
-	fn = (frameNumber);
-	
-	fn64 = fn;
-	
-	//	fprintf (stderr,"parser: framenumber %d == %lld\n",fn,fn64);
-	
-	return fn64;
-	
-}
-
 int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 	
 	
@@ -569,6 +471,116 @@ static void print_usage()
 			 );
 }
 
+int parseCommandline (int argc, char *argv[], 
+int *yi,
+y4m_ratio_t *yfr,
+y4m_ratio_t *ya,
+int *ysm,
+int *fdOut,
+int *aw,
+int *sct,
+int *con,
+int *str,
+AVInputFormat *av,
+char *rs,
+int *sr)
+{
+
+	int i;
+	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:";
+	
+	*aw=0;
+	*sct=CODEC_TYPE_VIDEO;
+	*yi = Y4M_UNKNOWN;
+	*ysm = Y4M_UNKNOWN;
+	*fdOut = 1;
+	*con = 0;
+	*str = 0;
+	*sr = 0;
+	av = NULL;
+	
+		while ((i = getopt (argc, argv, legal_flags)) != -1) {
+		switch (i) {
+			case 'I':
+				switch (optarg[0]) {
+					case 'P':
+					case 'p':  *yi = Y4M_ILACE_NONE;  break;
+					case 'T':
+					case 't':  *yi = Y4M_ILACE_TOP_FIRST;  break;
+					case 'B':
+					case 'b':  *yi = Y4M_ILACE_BOTTOM_FIRST;  break;
+					default:
+						mjpeg_error("Unknown value for interlace: '%c'", optarg[0]);
+						return -1;
+						break;
+				}
+				break;
+			case 'F':
+				if( Y4M_OK != y4m_parse_ratio(yfr, optarg) )
+					mjpeg_error_exit1 ("Syntax for frame rate should be Numerator:Denominator");
+					return -1;
+                break;
+				case 'A':
+				if( Y4M_OK != y4m_parse_ratio(ya, optarg) ) {
+					if (!strcmp(optarg,PAL)) {
+						y4m_parse_ratio(ya, "128:117");
+					} else if (!strcmp(optarg,PAL_WIDE)) {
+						y4m_parse_ratio(ya, "640:351");
+					} else if (!strcmp(optarg,NTSC)) {
+						y4m_parse_ratio(ya, "4320:4739");
+					} else if (!strcmp(optarg,NTSC_WIDE)) {
+						y4m_parse_ratio(ya, "5760:4739");
+					} else {
+						mjpeg_error_exit1 ("Syntax for aspect ratio should be Numerator:Denominator");
+						return -1;
+					}
+				}
+				break;
+				case 'S':
+				*ysm = y4m_chroma_parse_keyword(optarg);
+				if (*ysm == Y4M_UNKNOWN) {
+					mjpeg_error("Unknown subsampling mode option:  %s", optarg);
+					mjpeg_error("Try: 420mpeg2 444 422 411");
+					return -1;
+				}
+				break;
+				case 'o':
+				*fdOut = open (optarg,O_CREAT|O_WRONLY,0644);
+				if (*fdOut == -1) {
+					mjpeg_error_exit1 ("Cannot open file for writing");
+				}
+				break;	
+				case 'w':
+				*aw=1;
+				*sct=CODEC_TYPE_AUDIO;
+				break;
+				case 'c':
+				*con = 1;
+				break;
+				case 's':
+				*str = atoi(optarg);
+				break;
+				case 'f':
+				av = av_find_input_format	(optarg);
+				break;
+				case 'r':
+				rs = (char *) malloc (strlen(optarg)+1);
+				strcpy(rs,optarg);
+				// would like to split into 2 parts to bring inline with EDL version
+				*sr=1;
+				break;
+				case 'e':
+				
+				case 'h':
+				case '?':
+					return -1 ;
+				break;
+		}
+	}
+	return 0;
+
+}
+
 int main(int argc, char *argv[])
 {
     AVFormatContext *pFormatCtx;
@@ -602,7 +614,7 @@ int main(int argc, char *argv[])
 	char *openfile;
 	int edlfiles;
 	
-	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:";
+	
 	
 	int y;
 	int                frame_data_size ;
@@ -621,85 +633,12 @@ int main(int argc, char *argv[])
     av_register_all();
 	
 	// Parse commandline arguments
-	while ((i = getopt (argc, argv, legal_flags)) != -1) {
-		switch (i) {
-			case 'I':
-				switch (optarg[0]) {
-					case 'P':
-					case 'p':  yuv_interlacing = Y4M_ILACE_NONE;  break;
-					case 'T':
-					case 't':  yuv_interlacing = Y4M_ILACE_TOP_FIRST;  break;
-					case 'B':
-					case 'b':  yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;  break;
-					default:
-						mjpeg_error("Unknown value for interlace: '%c'", optarg[0]);
-						return -1;
-						break;
-				}
-				break;
-			case 'F':
-				if( Y4M_OK != y4m_parse_ratio(&yuv_frame_rate, optarg) )
-					mjpeg_error_exit1 ("Syntax for frame rate should be Numerator:Denominator");
-				
-                break;
-				case 'A':
-				if( Y4M_OK != y4m_parse_ratio(&yuv_aspect, optarg) ) {
-					if (!strcmp(optarg,PAL)) {
-						y4m_parse_ratio(&yuv_aspect, "128:117");
-					} else if (!strcmp(optarg,PAL_WIDE)) {
-						y4m_parse_ratio(&yuv_aspect, "640:351");
-					} else if (!strcmp(optarg,NTSC)) {
-						y4m_parse_ratio(&yuv_aspect, "4320:4739");
-					} else if (!strcmp(optarg,NTSC_WIDE)) {
-						y4m_parse_ratio(&yuv_aspect, "5760:4739");
-					} else {
-						mjpeg_error_exit1 ("Syntax for aspect ratio should be Numerator:Denominator");
-					}
-				}
-				break;
-				case 'S':
-				yuv_ss_mode = y4m_chroma_parse_keyword(optarg);
-				if (yuv_ss_mode == Y4M_UNKNOWN) {
-					mjpeg_error("Unknown subsampling mode option:  %s", optarg);
-					mjpeg_error("Try: 420mpeg2 444 422 411");
-					return -1;
-				}
-				break;
-				case 'o':
-				fdOut = open (optarg,O_CREAT|O_WRONLY,0644);
-				if (fdOut == -1) {
-					mjpeg_error_exit1 ("Cannot open file for writing");
-				}
-				break;	
-				case 'w':
-				audioWrite=1;
-				search_codec_type=CODEC_TYPE_AUDIO;
-				break;
-				case 'c':
-				convert = 1;
-				break;
-				case 's':
-				stream = atoi(optarg);
-				break;
-				case 'f':
-				avif = av_find_input_format	(optarg);
-				break;
-				case 'r':
-				rangeString = (char *) malloc (strlen(optarg)+1);
-				strcpy(rangeString,optarg);
-				subRange=1;
-				break;
-				case 'e':
-				
-				case 'h':
-				case '?':
-				print_usage (argv);
-				return 0 ;
-				break;
+	if (parseCommandline(argc,argv,&yuv_interlacing,&yuv_frame_rate,&yuv_aspect, &yuv_ss_mode,&fdOut,
+		&audioWrite,&search_codec_type,&convert,&stream,avif,rangeString,&subRange) == -1) {
+			print_usage();
+			exit (-1);
 		}
-	}
 	
-	//fprintf (stderr,"optind: %d\n",optind);
 	optind--;
 	argc -= optind;
 	argv += optind;
