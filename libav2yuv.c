@@ -320,6 +320,8 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 	regex_t tc_reg;
 	size_t num=6;
 	regmatch_t codes[6];
+	int rc,f;
+	int le,off;
 		
 	char *pattern = "^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
 
@@ -329,15 +331,15 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 	}
 	
 	*audio = 0;
-	*video = 0
+	*video = 0;
 	*in = 0;
 	*out = 0;
 	fn[0] = '\0';
 	
 	//	fprintf (stderr, "REGEXEC %s\n",tc);
 	
-	nummatch = regexec(&tc_reg, line, num, codes, 0 );
-	if ( nummatch != 0) {
+	rc = regexec(&tc_reg, line, num, codes, 0 );
+	if ( rc != 0) {
 		fprintf (stderr, "parser: EDL error REGEX match failed\n");
 		return -1;
 	}
@@ -345,7 +347,7 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 	for (f=0; f<num; f++)  {
 		le =codes[f].rm_eo-codes[f].rm_so;
 		off = codes[f].rm_so;
-		fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,tc+off);
+		fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,line+off);
 	}
 	
 	return -1;
@@ -364,13 +366,13 @@ int edlcount (FILE *file, int *maxline, int *lines)
 	
 	
 	flockfile(file); // for optimising the single character reads
-	while (!foef(file)){
+	while (!feof(file)){
 		c = getc_unlocked(file);
 		count++;
-		if (c='\n') {
-			lines++;
-			if (count > maxline) {
-				maxline = count;
+		if (c==10) {
+			(*lines)++;
+			if (count > *maxline) {
+				*maxline = count;
 				count=0;
 			}
 		}
@@ -383,7 +385,7 @@ int edlcount (FILE *file, int *maxline, int *lines)
 int parseEDL (char *file, struct edlentry *list)
 {
 
-	FILE fh;
+	FILE *fh;
 	char *line;
 	int maxline,lines,count=0;
 	char *fn,*in,*out;
@@ -576,6 +578,8 @@ int main(int argc, char *argv[])
 	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
 	int samplesFrame;
 	char *rangeString = NULL;
+	char *openfile;
+	int edlfiles;
 	
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:";
 	
@@ -686,8 +690,22 @@ int main(int argc, char *argv[])
 	
 	for (;(argc--)>1;argv++) {
 		
+		openfile = argv[1];
+		
+		// check if filename is EDL
+		// parse edl file.
+		// set number of files for loop (1 otherwise)
+		// end if
+		
+		// for loop number of files (1 if not EDL)
+		
+		// if EDL
+		// set editmode (search_codec_type)
+		// set in and out points
+		// skip if write mode (audio or video) != edit mode
+		
 		// Open video file
-		if(av_open_input_file(&pFormatCtx, argv[1], avif, 0, NULL)!=0)
+		if(av_open_input_file(&pFormatCtx, openfile, avif, 0, NULL)!=0)
 			return -1; // Couldn't open file
 		
 		// Retrieve stream information
