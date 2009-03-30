@@ -729,7 +729,7 @@ int main(int argc, char *argv[])
 			fprintf (stderr,"Error with video file: %s\n",openfile);
 		}
 		
-		// get the frame rate of the first video stream, if cutting.
+		// get the frame rate of the first video stream, if cutting audio.
 //		if (audioWrite && rangeString) {
 		if (audioWrite && rangeString) {
 			for(i=0; i<pFormatCtx->nb_streams; i++) {
