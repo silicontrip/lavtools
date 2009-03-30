@@ -322,8 +322,9 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 	regmatch_t codes[6];
 	int rc,f;
 	int le,off;
+	char *va;
 		
-	char *pattern = "^([^ /]+) ([AVBavb]|VA|va) (C) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+) ([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+	char *pattern = "^([^ /]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
 
 	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
 		fprintf (stderr, "REGEX compile failed\n");
@@ -348,6 +349,26 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 		le =codes[f].rm_eo-codes[f].rm_so;
 		off = codes[f].rm_so;
 		fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,line+off);
+	}
+	
+	for (f=2; f <= 8; f+=2) 
+		if (codes[f].rm_eo != 0) {
+			line[codes[f].rm_so] = '\0';
+		}
+	
+	fn = line+codes[1].rm_so;
+	in = line+codes[7].rm_so;
+	out = line + codes[9].rm_so;
+	
+	va = line+codes[1].rm_so;
+	
+	if (!strcmp(va,"VA") || !strcmp(va,"va") || va[0]=='B' || va[0]=='b') {
+		*audio = 1;
+		*video = 1;
+	} else if (va[0]=='V' || va[0]=='v') {
+		*video = 1;
+	} else if (va[0]=='A' || va[0]=='a') {
+		*audio = 1;
 	}
 	
 	return -1;
@@ -400,7 +421,7 @@ int parseEDL (char *file, struct edlentry *list)
 //	count active lines
 //	count active characters
 
-	edlcount(fh,maxline,lines);
+	edlcount(fh,&maxline,&lines);
 	
 	// should sanity check maxline and lines
 
@@ -713,7 +734,7 @@ int main(int argc, char *argv[])
 			return -1; // Couldn't find stream information
 		
 		// Dump information about file onto standard error
-		dump_format(pFormatCtx, 0, argv[1], 0);
+		dump_format(pFormatCtx, 0, openfile, 0);
 		
 		// Find the first video stream
 		// not necessarily a video stream but this is legacy code
