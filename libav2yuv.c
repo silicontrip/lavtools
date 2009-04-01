@@ -173,7 +173,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
 }
 
-int splitTimecode(char *s, char *e, char *rs) {
+int splitTimecode(char **s, char **e, char *rs) {
 	
 	
 	int dashcount = 0;
@@ -188,15 +188,15 @@ int splitTimecode(char *s, char *e, char *rs) {
 	}
 	
 	if (dashcount == 1) {
-		e = rs + dashplace + 1;
-		s = rs;
+		*e = rs + dashplace + 1;
+		*s = rs;
 		rs[dashplace] = '\0';
 		return 0;
 	}		
 	return -1;
 }
 
-int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char *out)
+int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, char **out)
 {
 	
 	regex_t tc_reg;
@@ -206,7 +206,7 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 	int le,off;
 	char *va;
 	
-	char *pattern = "^([^ /]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+	char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
 	
 	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
 		fprintf (stderr, "REGEX compile failed\n");
@@ -217,7 +217,7 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 	*video = 0;
 	*in = 0;
 	*out = 0;
-	fn[0] = '\0';
+	*fn=0;
 	
 	//	fprintf (stderr, "REGEXEC %s\n",tc);
 	
@@ -238,9 +238,9 @@ int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char
 			line[codes[f].rm_so] = '\0';
 		}
 	
-	fn = line+codes[1].rm_so;
-	in = line+codes[7].rm_so;
-	out = line + codes[9].rm_so;
+	*fn = line+codes[1].rm_so;
+	*in = line+codes[7].rm_so;
+	*out = line + codes[9].rm_so;
 	
 	va = line+codes[1].rm_so;
 	
@@ -329,7 +329,7 @@ int parseEDL (char *file, struct edlentry *list)
 		
 		//		parse line
 		
-		if (parseEDLline (line, fn, &ema, &emv,in,out) == -1) {
+		if (parseEDLline (line, &fn, &ema, &emv,&in,&out) == -1) {
 			fprintf (stderr,"Error in EDL file line: %d: %s\n",count+1,line);
 		} else {
 			
@@ -810,7 +810,7 @@ int main(int argc, char *argv[])
 	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
     uint8_t         *buffer;
 	int16_t		*aBuffer = NULL;
-	char *tc_in,*tc_out;
+	char *tc_in = NULL,*tc_out=NULL;
 	
 	int i,fdOut = 1 ;
 	int yuv_interlacing = Y4M_UNKNOWN;
@@ -828,6 +828,7 @@ int main(int argc, char *argv[])
 	char *rangeString = NULL;
 	char *openfile;
 	int edlfiles;
+	struct edlentry edllist;
 	int y;
 	int                frame_data_size ;
 	uint8_t            *yuv_data[3] ;      
@@ -860,12 +861,26 @@ int main(int argc, char *argv[])
 		return 0 ;
 	}
 	
+	if (rangeString) 
+		if (splitTimecode(&tc_in,&tc_out,rangeString)==-1) {
+			fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+			exit -1;
+		}
+	
 	for (;(argc--)>1;argv++) {
 		
 		openfile = argv[1];
 		
 		// check if filename is EDL
-		// parse edl file.
+		
+		// fprintf (stderr,"file ext: %s\n",openfile+strlen(openfile)-3);
+		
+		if (!strcmp(openfile+strlen(openfile)-3,"edl"))
+		{
+			fprintf (stderr,"parsing edl file\n");
+			edlfiles = parseEDL(openfile,&edllist);
+			exit (0);
+		}
 		// set number of files for loop (1 otherwise)
 		// end if
 		
@@ -883,7 +898,7 @@ int main(int argc, char *argv[])
 		
 		// get the frame rate of the first video stream, if cutting audio.
 		//		if (audioWrite && rangeString) {
-		if (audioWrite && rangeString) {
+		if (audioWrite && tc_in) {
 			for(i=0; i<pFormatCtx->nb_streams; i++) {
 				if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
 				{
@@ -914,15 +929,10 @@ int main(int argc, char *argv[])
 		
 		// convert cut range into frame numbers.
 		// now do I remember how NTSC drop frame works?
-		if (rangeString) {
-			
-			fprintf (stderr,"Parsing timecode\n");
-			
+		if (tc_in) {
 			startFrame = -1; endFrame = -1;
-			if (splitTimecode(tc_in,tc_out,rangeString)!=-1) {
-				startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
-				endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
-			}
+			startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
+			endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
 			if (startFrame == -1 || endFrame == -1) {
 				fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 				return -1;
