@@ -424,7 +424,7 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 	cfs = y4m_si_get_plane_length(sinfo,1);
 	
 #ifdef DEBUG
-	fprintf (stderr,"Allocatting: %d and %d bytes\n",fs,cfs);
+	fprintf (stderr,"Allocating: %d and %d bytes\n",fs,cfs);
 #endif
 	
 	m[0] = (uint8_t *)malloc( fs );
@@ -776,6 +776,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				
 				if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
 				{
+					// should this be fatal?
 					mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
 				} 
 				*header_written = 1;
@@ -783,6 +784,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			
 			if (convert) {
 				// convert to 444
+				// need to look into the sw_scaler
 				img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
@@ -899,7 +901,6 @@ int main(int argc, char *argv[])
 		}
 		
 		// get the frame rate of the first video stream, if cutting audio.
-		//		if (audioWrite && rangeString) {
 		if (audioWrite && tc_in) {
 			for(i=0; i<pFormatCtx->nb_streams; i++) {
 				if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
