@@ -200,13 +200,14 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 {
 	
 	regex_t tc_reg;
-	size_t num=6;
-	regmatch_t codes[6];
+	size_t num=10;
+	regmatch_t codes[10];
 	int rc,f;
 	int le,off;
 	char *va;
 	
-	char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+	// char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
+	char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)(.*)$";
 	
 	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
 		fprintf (stderr, "REGEX compile failed\n");
@@ -226,12 +227,14 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 		fprintf (stderr, "parser: EDL error REGEX match failed\n");
 		return -1;
 	}
-	
+
+	/*
 	for (f=0; f<num; f++)  {
 		le =codes[f].rm_eo-codes[f].rm_so;
 		off = codes[f].rm_so;
 		fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,line+off);
 	}
+	*/
 	
 	for (f=2; f <= 8; f+=2) 
 		if (codes[f].rm_eo != 0) {
@@ -253,7 +256,7 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 		*audio = 1;
 	}
 	
-	return -1;
+	return 0;
 	
 }
 
@@ -334,7 +337,6 @@ int parseEDL (char *file, struct edlentry *list)
 		} else {
 			
 			//	malloc filename
-			
 			list[count].filename = (char *)malloc(strlen(fn)+1);
 			if (list[count].filename == NULL) {
 				fprintf (stderr,"Error allocating edl filename memory\n");
