@@ -173,14 +173,12 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
 }
 
-int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
+int splitTimecode(char *s, char *e, char *rs) {
 	
 	
 	int dashcount = 0;
 	int dashplace = 0;
-	char *re;
 	int i;
-	int64_t ls,le;
 	
 	for (i=0; i<strlen(rs); i++) {
 		if (rs[i] == '-') {
@@ -190,30 +188,12 @@ int parseTimecodeRange(int64_t *s, int64_t *e, char *rs, int frn,int frd) {
 	}
 	
 	if (dashcount == 1) {
-		
-		re = rs + dashplace + 1;
+		e = rs + dashplace + 1;
+		s = rs;
 		rs[dashplace] = '\0';
-		
-		ls = parseTimecodeRE(rs,frn,frd);
-		le = parseTimecodeRE(re,frn,frd);
-		
-		//		fprintf (stderr,"parser: frame range: %lld - %lld\n",ls,le);
-		
-		if (le < ls) {
-			fprintf (stderr,"End before start\n");
-			return -1;
-		}
-		
-		if (le==-1 || ls == -1)
-			return -1;
-		
-		*e = le;
-		*s = ls;
-		
-	} else {
-		return -1;
-	}
-	return 0;	
+		return 0;
+	}		
+	return -1;
 }
 
 int parseEDLline (char *line, char *fn, char *audio, char *video, char *in, char *out)
@@ -482,7 +462,7 @@ int parseCommandline (int argc, char *argv[],
 					  int *con,
 					  int *str,
 					  AVInputFormat *av,
-					  char *rs,
+					  char **rs,
 					  int *sr)
 {
 	
@@ -531,7 +511,8 @@ int parseCommandline (int argc, char *argv[],
 					} else if (!strcmp(optarg,NTSC_WIDE)) {
 						y4m_parse_ratio(ya, "5760:4739");
 					} else {
-						mjpeg_error_exit1 ("Syntax for aspect ratio should be Numerator:Denominator");
+						mjpeg_error("Syntax for aspect ratio should be Numerator:Denominator");
+						mjpeg_error("Or "PAL", "PAL_WIDE", "NTSC" and "NTSC_WIDE".");
 						return -1;
 					}
 				}
@@ -564,8 +545,8 @@ int parseCommandline (int argc, char *argv[],
 				av = av_find_input_format	(optarg);
 				break;
 			case 'r':
-				rs = (char *) malloc (strlen(optarg)+1);
-				strcpy(rs,optarg);
+				*rs = (char *) malloc (strlen(optarg)+1);
+				strcpy(*rs,optarg);
 				// would like to split into 2 parts to bring inline with EDL version
 				*sr=1;
 				break;
@@ -788,7 +769,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
 				
-				fprintf (stderr,"YUV interlace: %d\n",yuv_interlacing);
+				fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
 				fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
 				
 				if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
@@ -829,6 +810,7 @@ int main(int argc, char *argv[])
 	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
     uint8_t         *buffer;
 	int16_t		*aBuffer = NULL;
+	char *tc_in,*tc_out;
 	
 	int i,fdOut = 1 ;
 	int yuv_interlacing = Y4M_UNKNOWN;
@@ -864,7 +846,7 @@ int main(int argc, char *argv[])
 	
 	// Parse commandline arguments
 	if (parseCommandline(argc,argv,&yuv_interlacing,&yuv_frame_rate,&yuv_aspect, &yuv_ss_mode,&fdOut,
-						 &audioWrite,&search_codec_type,&convert,&stream,avif,rangeString,&subRange) == -1) {
+						 &audioWrite,&search_codec_type,&convert,&stream,avif,&rangeString,&subRange) == -1) {
 		print_usage();
 		exit (-1);
 	}
@@ -934,7 +916,14 @@ int main(int argc, char *argv[])
 		// now do I remember how NTSC drop frame works?
 		if (rangeString) {
 			
-			if (parseTimecodeRange(&startFrame,&endFrame,rangeString,yuv_frame_rate.n,yuv_frame_rate.d)) {
+			fprintf (stderr,"Parsing timecode\n");
+			
+			startFrame = -1; endFrame = -1;
+			if (splitTimecode(tc_in,tc_out,rangeString)!=-1) {
+				startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
+				endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+			}
+			if (startFrame == -1 || endFrame == -1) {
 				fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 				return -1;
 			}
@@ -1029,11 +1018,11 @@ int main(int argc, char *argv[])
 					numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 					
 				}
+				
 				frameCounter++;
 				
 			}
 			
-			// Free the packet that was allocated by av_read_frame
 			}
 	}
 	if (audioWrite==0) {
@@ -1056,9 +1045,9 @@ int main(int argc, char *argv[])
     av_close_input_file(pFormatCtx);
 	
 	if (audioWrite == 0) {
-		fprintf (stderr,"%d Frames decoded\n",frameCounter);
+		fprintf (stderr,"%d Frames processed\n",frameCounter);
 	} else {
-		fprintf(stderr,"%d Samples decoded\n",sampleCounter);
+		fprintf(stderr,"%d Samples processed\n",sampleCounter);
 	}
     return 0;
 }
