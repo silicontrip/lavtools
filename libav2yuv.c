@@ -829,8 +829,8 @@ int main(int argc, char *argv[])
 	int samplesFrame;
 	char *rangeString = NULL;
 	char *openfile;
-	int edlfiles;
-	struct edlentry edllist;
+	int edlfiles,edlcount;
+	struct edlentry *edllist + NULL;
 	int y;
 	int                frame_data_size ;
 	uint8_t            *yuv_data[3] ;      
@@ -877,22 +877,27 @@ int main(int argc, char *argv[])
 		
 		// fprintf (stderr,"file ext: %s\n",openfile+strlen(openfile)-3);
 		
+		edlfiles = 1;
 		if (!strcmp(openfile+strlen(openfile)-3,"edl"))
 		{
 			fprintf (stderr,"parsing edl file\n");
 			edlfiles = parseEDL(openfile,&edllist);
-			exit (0);
 		}
 		// set number of files for loop (1 otherwise)
 		// end if
 		
 		// for loop number of files (1 if not EDL)
+		for (edlcount=0;edlcount<edlfiles;edlcount++) {
+		
 		
 		// if EDL
-		// set editmode (search_codec_type)
-		// set in and out points
-		// skip if write mode (audio or video) != edit mode
-		
+			if (edllist) {
+				// set editmode (search_codec_type)
+				
+				// set in and out points
+				
+				// skip if write mode (audio or video) != edit mode
+			}
 		stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
 		if (stream == -1) {
 			fprintf (stderr,"Error with video file: %s\n",openfile);
@@ -1034,8 +1039,8 @@ int main(int argc, char *argv[])
 				frameCounter++;
 				
 			}
-			
-			}
+		}
+		}
 	}
 	if (audioWrite==0) {
 		y4m_fini_stream_info(&streaminfo);
