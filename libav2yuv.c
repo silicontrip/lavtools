@@ -245,7 +245,9 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	*in = line+codes[7].rm_so;
 	*out = line + codes[9].rm_so;
 	
-	va = line+codes[1].rm_so;
+	va = line+codes[3].rm_so;
+	
+	fprintf (stderr,"EDITMODE: %s\n",va);
 	
 	if (!strcmp(va,"VA") || !strcmp(va,"va") || va[0]=='B' || va[0]=='b') {
 		*audio = 1;
@@ -288,7 +290,7 @@ int edlcount (FILE *file, int *maxline, int *lines)
 	
 }
 
-int parseEDL (char *file, struct edlentry *list)
+int parseEDL (char *file, struct edlentry **list)
 {
 	
 	FILE *fh;
@@ -296,6 +298,7 @@ int parseEDL (char *file, struct edlentry *list)
 	int maxline,lines,count=0;
 	char *fn,*in,*out;
 	char ema,emv;
+	struct edlentry *inner;
 	
 	fh = fopen(file,"r");
 	if (fh == NULL) {
@@ -320,7 +323,8 @@ int parseEDL (char *file, struct edlentry *list)
 		return -1;
 	}
 	
-	list = (struct edlentry *)malloc(lines*sizeof(struct edlentry));
+	*list = (struct edlentry *)malloc(lines*sizeof(struct edlentry));
+	inner = *list;
 	if (line == NULL) {
 		fprintf (stderr,"Error allocating edl memory\n");
 		free(line);
@@ -335,10 +339,10 @@ int parseEDL (char *file, struct edlentry *list)
 		if (parseEDLline (line, &fn, &ema, &emv,&in,&out) == -1) {
 			fprintf (stderr,"Error in EDL file line: %d: %s\n",count+1,line);
 		} else {
-			
+		//	fprintf (stderr,"Parsing line: %d\n",count);
 			//	malloc filename
-			list[count].filename = (char *)malloc(strlen(fn)+1);
-			if (list[count].filename == NULL) {
+			inner[count].filename = (char *)malloc(strlen(fn)+1);
+			if (inner[count].filename == NULL) {
 				fprintf (stderr,"Error allocating edl filename memory\n");
 				free(line);
 				free(list);
@@ -352,8 +356,8 @@ int parseEDL (char *file, struct edlentry *list)
 			//	parse timecode;
 			//	check in < out
 			
-			list[count].in = (char *)malloc(strlen(in)+1);
-			if (list[count].in == NULL) {
+			inner[count].in = (char *)malloc(strlen(in)+1);
+			if (inner[count].in == NULL) {
 				fprintf (stderr,"Error allocating edl timecode memory\n");
 				free(line);
 				// grr memory leak
@@ -362,8 +366,8 @@ int parseEDL (char *file, struct edlentry *list)
 				fclose(fh);
 				return -1;
 			}
-			list[count].out = (char *)malloc(strlen(out)+1);
-			if (list[count].out == NULL) {
+			inner[count].out = (char *)malloc(strlen(out)+1);
+			if (inner[count].out == NULL) {
 				fprintf (stderr,"Error allocating edl filename memory\n");
 				free(line);
 				//			free(list.filename);
@@ -374,16 +378,20 @@ int parseEDL (char *file, struct edlentry *list)
 			}
 			// copy values to struct.
 			
-			strcpy(list[count].filename,fn);
-			strcpy(list[count].in,in);
-			strcpy(list[count].out,out);
+			strcpy(inner[count].filename,fn);
+			strcpy(inner[count].in,in);
+			strcpy(inner[count].out,out);
 			
-			list[count].audio = ema;
-			list[count].video = emv;
+			fprintf (stderr,"a: %d v: %d\n",ema,emv);
+			
+			inner[count].audio = ema;
+			inner[count].video = emv;
 			
 			count++;
+			// fprintf (stderr,"End of loop\n");
 		}
 	}
+	return count;
 }
 
 
@@ -829,8 +837,8 @@ int main(int argc, char *argv[])
 	int samplesFrame;
 	char *rangeString = NULL;
 	char *openfile;
-	int edlfiles,edlcount;
-	struct edlentry *edllist + NULL;
+	int edlfiles,edlcounter;
+	struct edlentry *edllist = NULL;
 	int y,skip=0;
 	int                frame_data_size ;
 	uint8_t            *yuv_data[3] ;      
@@ -883,34 +891,37 @@ int main(int argc, char *argv[])
 		// Actually I should also check for string length.
 		if (!strcmp(openfile+strlen(openfile)-4,".edl"))
 		{
-			fprintf (stderr,"parsing edl file\n");
+		//	fprintf (stderr,"parsing edl file\n");
 			edlfiles = parseEDL(openfile,&edllist);
+		//	fprintf (stderr,"EDL struct location: %x containing %d entries\n",edllist,edlfiles);
 		}
 		// set number of files for loop (1 otherwise)
 		// end if
 		
 		// for loop number of files (1 if not EDL)
-		for (edlcount=0;edlcount<edlfiles;edlcount++) {
+		for (edlcounter=0;edlcounter<edlfiles;edlcounter++) {
 			
 			
 			// if EDL
 			if (edllist) {
+				fprintf (stderr,"running EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
+				fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
 				// set editmode (search_codec_type)
 				// set in and out points
-				tc_in = edllist[edlcount].in;
-				tc_out = edllist[edlcount].out;
+				tc_in = edllist[edlcounter].in;
+				tc_out = edllist[edlcounter].out;
 				
 				skip = 0;
-				if (audioWrite && edllist[edlcount].audio) {
+				if (audioWrite && edllist[edlcounter].audio) {
 					search_codec_type = CODEC_TYPE_AUDIO;
 				} else
-					if (!audioWrite && edllist[edlcount].video) {
+					if (!audioWrite && edllist[edlcounter].video) {
 						search_codec_type = CODEC_TYPE_VIDEO;
 					} else {
 						// skip if write mode (audio or video) != edit mode
 						skip = 1;
 					}
-				openfile = edllist[edlcount].filename;
+				openfile = edllist[edlcounter].filename;
 				
 			}
 			if (!skip) {
