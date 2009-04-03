@@ -87,7 +87,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
 	//	char *pattern = "^([0-9][0-9]*)(:)([0-9][0-9]*)(:)([0-9][0-9]*)([:;])([0-9][0-9]*)$";
 	//	char *pattern = "^([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)$";
-	char *pattern = "^([0-9]*)(^|:)([0-9]*)(^|:)([0-9]*)(^|[:;])([0-9]+)$";
+	char *pattern = "^([0-9]*)(^|:)([0-9]*)(^|:)([0-9]*)(^|[:;])([0-9]+).*$";
 	//	char *pattern = "^\([0-9]*\)\(:?\)\([0-9]*\)\(:?\)\([0-9]*\)\([:;]?\)\([0-9]+\)$";
 	//	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
 	
@@ -106,7 +106,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 		return -1;
 	}
 	
-	//	fprintf (stderr, "REGEXEC %s\n",tc);
+	fprintf (stderr, "REGEXEC %s\n",tc);
 	
 	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
 	if ( nummatch != 0) {
@@ -207,7 +207,7 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	char *va;
 	
 	// char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
-	char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)(.*)$";
+	char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+).*$";
 	
 	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
 		fprintf (stderr, "REGEX compile failed\n");
@@ -247,7 +247,7 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	
 	va = line+codes[3].rm_so;
 	
-	fprintf (stderr,"EDITMODE: %s\n",va);
+//	fprintf (stderr,"EDITMODE: %s\n",va);
 	
 	if (!strcmp(va,"VA") || !strcmp(va,"va") || va[0]=='B' || va[0]=='b') {
 		*audio = 1;
@@ -382,7 +382,7 @@ int parseEDL (char *file, struct edlentry **list)
 			strcpy(inner[count].in,in);
 			strcpy(inner[count].out,out);
 			
-			fprintf (stderr,"a: %d v: %d\n",ema,emv);
+		//	fprintf (stderr,"a: %d v: %d\n",ema,emv);
 			
 			inner[count].audio = ema;
 			inner[count].video = emv;
