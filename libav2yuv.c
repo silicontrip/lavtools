@@ -106,7 +106,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 		return -1;
 	}
 	
-	fprintf (stderr, "REGEXEC %s\n",tc);
+	// fprintf (stderr, "REGEXEC %s\n",tc);
 	
 	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
 	if ( nummatch != 0) {
@@ -586,13 +586,13 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	
 	pFormatCtx = *pfc;
 	
-	fprintf (stderr,"av_find_stream_info\n");
+//	fprintf (stderr,"av_find_stream_info\n");
 	
 	// Retrieve stream information
 	if(av_find_stream_info(pFormatCtx)<0)
 		return -1; // Couldn't find stream information
 	
-	fprintf (stderr,"dump_format\n");
+//	fprintf (stderr,"dump_format\n");
 	
 	// Dump information about file onto standard error
 	dump_format(pFormatCtx, 0, fn, 0);
@@ -904,6 +904,8 @@ int main(int argc, char *argv[])
 			
 			// if EDL
 			if (edllist) {
+				// should allow for multiple edits from the one file.
+				
 				fprintf (stderr,"running EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
 				fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
 				// set editmode (search_codec_type)
@@ -965,6 +967,7 @@ int main(int argc, char *argv[])
 				// now do I remember how NTSC drop frame works?
 				if (tc_in) {
 					startFrame = -1; endFrame = -1;
+					frameCounter = 0; sampleCounter = 0;
 					startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 					endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
 					if (startFrame == -1 || endFrame == -1) {
