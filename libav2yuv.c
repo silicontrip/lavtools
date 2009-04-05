@@ -49,6 +49,7 @@
  mps : seconds with 'mps' suffix (e.g. 5.2mps). This corresponds to the 'seconds' value displayed by Windows MediaPlayer.
  */
 
+
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
 
@@ -60,6 +61,7 @@
 #include <fcntl.h>
 #include <regex.h>
 
+#define BYTES_PER_SAMPLE 4
 
 #define PAL "PAL"
 #define PAL_WIDE "PAL_WIDE"
@@ -953,7 +955,7 @@ int main(int argc, char *argv[])
 					}
 				} else {
 					numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
-					if (rangeString) {
+					if (tc_in) {
 						// does this need more precision?
 						samplesFrame  = pCodecCtx->sample_rate * yuv_frame_rate.d / yuv_frame_rate.n ;
 					}
@@ -976,6 +978,12 @@ int main(int argc, char *argv[])
 					}
 				}
 				
+#ifdef DEBUG
+			if (audioWrite!=0) {
+				fprintf (stderr,"sample counter: %lld - %lld  (%lld - %lld) spf %d\n",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
+			}
+#endif
+				
 				
 				//fprintf (stderr,"loop until nothing left\n");
 				// Loop until nothing read
@@ -988,7 +996,7 @@ int main(int argc, char *argv[])
 						if (audioWrite==0) {
 							
 #ifdef DEBUG
-							fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
+								fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
 #endif
 							if (frameCounter >= startFrame && frameCounter<= endFrame) {
 								
@@ -1008,32 +1016,22 @@ int main(int argc, char *argv[])
 							
 							// PANIC: how to determine bytes per sample?
 							
-#define BYTES_PER_SAMPLE 4
 							
-#ifdef DEBUG
-							fprintf (stderr,"sample counter: %lld  (%lld - %lld) spf %d\n",sampleCounter,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
-#endif
 							
 							numSamples = numBytes / BYTES_PER_SAMPLE;
 							
-							if (!rangeString) {
+							if (!tc_in) {
 								write (1, aBuffer, numBytes);
 								
 								// whole decoded frame within range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
 									   sampleCounter+numSamples <= endFrame * samplesFrame ) {
-#ifdef DEBUG
-								//			fprintf(stderr,"FULL WRITE\n");
-#endif
 								write (1, aBuffer, numBytes);
 								
 								// start of buffer outside range, end of buffer in range
 							} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
 									   sampleCounter+numSamples <= endFrame * samplesFrame ) {
 								// write a subset
-#ifdef DEBUG
-								fprintf(stderr,"START PARTIAL WRITE\n");
-#endif
 								
 								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
 								
@@ -1041,9 +1039,6 @@ int main(int argc, char *argv[])
 							} else if (sampleCounter >= startFrame * samplesFrame &&
 									   sampleCounter <= endFrame * samplesFrame ) {
 								// write a subset
-#ifdef DEBUG
-								fprintf(stderr,"END PARTIAL WRITE\n");
-#endif
 								
 								write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
 								
@@ -1051,16 +1046,9 @@ int main(int argc, char *argv[])
 							} else if (sampleCounter < startFrame * samplesFrame &&
 									   sampleCounter+numSamples > endFrame * samplesFrame ) {
 								// write a subset
-#ifdef DEBUG
-								fprintf(stderr,"PARTIAL WRITE\n");
-#endif
 								
 								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
-							} else {
-#ifdef DEBUG
-								//	fprintf(stderr,"NO WRITE\n");
-#endif
-							}
+							} 
 							sampleCounter += numSamples;
 							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 							
