@@ -434,7 +434,7 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 	cfs = y4m_si_get_plane_length(sinfo,1);
 	
 #ifdef DEBUG
-	fprintf (stderr,"Allocatting: %d and %d bytes\n",fs,cfs);
+	fprintf (stderr,"Allocating: %d and %d bytes\n",fs,cfs);
 #endif
 	
 	m[0] = (uint8_t *)malloc( fs );
@@ -780,22 +780,24 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #ifdef DEBUG
 			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
+				
+				fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
+				fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
+				
+				if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
+				{
+					// should this be fatal?
+					mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
+				} 
+				*header_written = 1;
+			}
 			
-			fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
-			fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
-			
-			if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
-			{
-				mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
-			} 
-			*header_written = 1;
-		}
-		
-		if (convert) {
-			// convert to 444
-			img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
-			chromacpy(yuv_data,*pFrame444,streaminfo);
-		} else {
+			if (convert) {
+				// convert to 444
+				// need to look into the sw_scaler
+				img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
+				chromacpy(yuv_data,*pFrame444,streaminfo);
+			} else {
 #ifdef DEBUG
 			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
