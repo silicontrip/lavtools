@@ -49,6 +49,7 @@
  mps : seconds with 'mps' suffix (e.g. 5.2mps). This corresponds to the 'seconds' value displayed by Windows MediaPlayer.
  */
 
+
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
 
@@ -60,6 +61,7 @@
 #include <fcntl.h>
 #include <regex.h>
 
+#define BYTES_PER_SAMPLE 4
 
 #define PAL "PAL"
 #define PAL_WIDE "PAL_WIDE"
@@ -87,7 +89,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	
 	//	char *pattern = "^([0-9][0-9]*)(:)([0-9][0-9]*)(:)([0-9][0-9]*)([:;])([0-9][0-9]*)$";
 	//	char *pattern = "^([0-9]*)(:?)([0-9]*)(:?)([0-9]*)([:;]?)([0-9]+)$";
-	char *pattern = "^([0-9]*)(^|:)([0-9]*)(^|:)([0-9]*)(^|[:;])([0-9]+)$";
+	char *pattern = "^([0-9]*)(^|:)([0-9]*)(^|:)([0-9]*)(^|[:;])([0-9]+).*$";
 	//	char *pattern = "^\([0-9]*\)\(:?\)\([0-9]*\)\(:?\)\([0-9]*\)\([:;]?\)\([0-9]+\)$";
 	//	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
 	
@@ -106,7 +108,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 		return -1;
 	}
 	
-	//	fprintf (stderr, "REGEXEC %s\n",tc);
+	// fprintf (stderr, "REGEXEC %s\n",tc);
 	
 	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
 	if ( nummatch != 0) {
@@ -207,7 +209,7 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	char *va;
 	
 	// char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
-	char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)(.*)$";
+	char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+).*$";
 	
 	if (regcomp(&tc_reg, pattern, REG_EXTENDED) != 0) {
 		fprintf (stderr, "REGEX compile failed\n");
@@ -227,14 +229,14 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 		fprintf (stderr, "parser: EDL error REGEX match failed\n");
 		return -1;
 	}
-
+	
 	/*
-	for (f=0; f<num; f++)  {
-		le =codes[f].rm_eo-codes[f].rm_so;
-		off = codes[f].rm_so;
-		fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,line+off);
-	}
-	*/
+	 for (f=0; f<num; f++)  {
+	 le =codes[f].rm_eo-codes[f].rm_so;
+	 off = codes[f].rm_so;
+	 fprintf (stderr,"%d: from %lld to %lld (%.*s)\n",f,codes[f].rm_so,codes[f].rm_eo,le,line+off);
+	 }
+	 */
 	
 	for (f=2; f <= 8; f+=2) 
 		if (codes[f].rm_eo != 0) {
@@ -245,7 +247,9 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	*in = line+codes[7].rm_so;
 	*out = line + codes[9].rm_so;
 	
-	va = line+codes[1].rm_so;
+	va = line+codes[3].rm_so;
+	
+//	fprintf (stderr,"EDITMODE: %s\n",va);
 	
 	if (!strcmp(va,"VA") || !strcmp(va,"va") || va[0]=='B' || va[0]=='b') {
 		*audio = 1;
@@ -288,7 +292,7 @@ int edlcount (FILE *file, int *maxline, int *lines)
 	
 }
 
-int parseEDL (char *file, struct edlentry *list)
+int parseEDL (char *file, struct edlentry **list)
 {
 	
 	FILE *fh;
@@ -296,6 +300,7 @@ int parseEDL (char *file, struct edlentry *list)
 	int maxline,lines,count=0;
 	char *fn,*in,*out;
 	char ema,emv;
+	struct edlentry *inner;
 	
 	fh = fopen(file,"r");
 	if (fh == NULL) {
@@ -320,7 +325,8 @@ int parseEDL (char *file, struct edlentry *list)
 		return -1;
 	}
 	
-	list = (struct edlentry *)malloc(lines*sizeof(struct edlentry));
+	*list = (struct edlentry *)malloc(lines*sizeof(struct edlentry));
+	inner = *list;
 	if (line == NULL) {
 		fprintf (stderr,"Error allocating edl memory\n");
 		free(line);
@@ -335,10 +341,10 @@ int parseEDL (char *file, struct edlentry *list)
 		if (parseEDLline (line, &fn, &ema, &emv,&in,&out) == -1) {
 			fprintf (stderr,"Error in EDL file line: %d: %s\n",count+1,line);
 		} else {
-			
+		//	fprintf (stderr,"Parsing line: %d\n",count);
 			//	malloc filename
-			list[count].filename = (char *)malloc(strlen(fn)+1);
-			if (list[count].filename == NULL) {
+			inner[count].filename = (char *)malloc(strlen(fn)+1);
+			if (inner[count].filename == NULL) {
 				fprintf (stderr,"Error allocating edl filename memory\n");
 				free(line);
 				free(list);
@@ -352,8 +358,8 @@ int parseEDL (char *file, struct edlentry *list)
 			//	parse timecode;
 			//	check in < out
 			
-			list[count].in = (char *)malloc(strlen(in)+1);
-			if (list[count].in == NULL) {
+			inner[count].in = (char *)malloc(strlen(in)+1);
+			if (inner[count].in == NULL) {
 				fprintf (stderr,"Error allocating edl timecode memory\n");
 				free(line);
 				// grr memory leak
@@ -362,8 +368,8 @@ int parseEDL (char *file, struct edlentry *list)
 				fclose(fh);
 				return -1;
 			}
-			list[count].out = (char *)malloc(strlen(out)+1);
-			if (list[count].out == NULL) {
+			inner[count].out = (char *)malloc(strlen(out)+1);
+			if (inner[count].out == NULL) {
 				fprintf (stderr,"Error allocating edl filename memory\n");
 				free(line);
 				//			free(list.filename);
@@ -374,16 +380,20 @@ int parseEDL (char *file, struct edlentry *list)
 			}
 			// copy values to struct.
 			
-			strcpy(list[count].filename,fn);
-			strcpy(list[count].in,in);
-			strcpy(list[count].out,out);
+			strcpy(inner[count].filename,fn);
+			strcpy(inner[count].in,in);
+			strcpy(inner[count].out,out);
 			
-			list[count].audio = ema;
-			list[count].video = emv;
+		//	fprintf (stderr,"a: %d v: %d\n",ema,emv);
+			
+			inner[count].audio = ema;
+			inner[count].video = emv;
 			
 			count++;
+			// fprintf (stderr,"End of loop\n");
 		}
 	}
+	return count;
 }
 
 
@@ -578,13 +588,13 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	
 	pFormatCtx = *pfc;
 	
-	fprintf (stderr,"av_find_stream_info\n");
+//	fprintf (stderr,"av_find_stream_info\n");
 	
 	// Retrieve stream information
 	if(av_find_stream_info(pFormatCtx)<0)
 		return -1; // Couldn't find stream information
 	
-	fprintf (stderr,"dump_format\n");
+//	fprintf (stderr,"dump_format\n");
 	
 	// Dump information about file onto standard error
 	dump_format(pFormatCtx, 0, fn, 0);
@@ -595,7 +605,7 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 		if(pFormatCtx->streams[i]->codec->codec_type==sct)
 		{
 			// DEBUG: print out codec
-//			fprintf (stderr,"Video Codec ID: %d (%s)\n",pFormatCtx->streams[i]->codec->codec_id ,pFormatCtx->streams[i]->codec->codec_name);
+			//			fprintf (stderr,"Video Codec ID: %d (%s)\n",pFormatCtx->streams[i]->codec->codec_id ,pFormatCtx->streams[i]->codec->codec_name);
 			if (avStream == -1 && st == 0) {
 				// May still be overridden by the -s option
 				avStream=i;
@@ -722,53 +732,53 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	int write_error_code;
 	
 #ifdef DEBUG
-		fprintf (stderr,"decode video\n");
+	fprintf (stderr,"decode video\n");
 #endif
-		avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, 
-							 packet->data, packet->size);  
-		// Did we get a video frame?
-		// frameFinished does not mean decoder finished, means that the packet can be freed.
+	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, 
+						 packet->data, packet->size);  
+	// Did we get a video frame?
+	// frameFinished does not mean decoder finished, means that the packet can be freed.
 #ifdef DEBUG
-		fprintf (stderr,"frameFinished: %d\n",frameFinished);
+	fprintf (stderr,"frameFinished: %d\n",frameFinished);
 #endif
-		if(frameFinished)
-		{
-			// Save the frame to disk
-			
-			// As we don't know interlacing until the first frame
-			// we wait until the first frame is read before setting the interlace flag
-			// and outputting the YUV header
-			// It also appears that some codecs don't set width or height until the first frame either
-			if (!*header_written) {
-				if (*yuv_interlacing == Y4M_UNKNOWN) {
-					if (pFrame->interlaced_frame) {
-						if (pFrame->top_field_first) {
-							*yuv_interlacing = Y4M_ILACE_TOP_FIRST;
-						} else {
-							*yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
-						}
+	if(frameFinished)
+	{
+		// Save the frame to disk
+		
+		// As we don't know interlacing until the first frame
+		// we wait until the first frame is read before setting the interlace flag
+		// and outputting the YUV header
+		// It also appears that some codecs don't set width or height until the first frame either
+		if (!*header_written) {
+			if (*yuv_interlacing == Y4M_UNKNOWN) {
+				if (pFrame->interlaced_frame) {
+					if (pFrame->top_field_first) {
+						*yuv_interlacing = Y4M_ILACE_TOP_FIRST;
 					} else {
-						*yuv_interlacing = Y4M_ILACE_NONE;
+						*yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
 					}
+				} else {
+					*yuv_interlacing = Y4M_ILACE_NONE;
 				}
-				if (convert) {
-					// initialise conversion to different chroma subsampling
-					*pFrame444=avcodec_alloc_frame();
-					numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
-					*buffer=(uint8_t *)malloc(numBytes);
-					avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
-				}
-				
-				y4m_si_set_interlace(streaminfo, *yuv_interlacing);
-				y4m_si_set_width(streaminfo, pCodecCtx->width);
-				y4m_si_set_height(streaminfo, pCodecCtx->height);
-				
+			}
+			if (convert) {
+				// initialise conversion to different chroma subsampling
+				*pFrame444=avcodec_alloc_frame();
+				numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
+				*buffer=(uint8_t *)malloc(numBytes);
+				avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
+			}
+			
+			y4m_si_set_interlace(streaminfo, *yuv_interlacing);
+			y4m_si_set_width(streaminfo, pCodecCtx->width);
+			y4m_si_set_height(streaminfo, pCodecCtx->height);
+			
 #ifdef DEBUG
-				fprintf (stderr,"yuv_data: %x pFrame: %x\nchromalloc\n",yuv_data,pFrame);
+			fprintf (stderr,"yuv_data: %x pFrame: %x\nchromalloc\n",yuv_data,pFrame);
 #endif					
-				chromalloc(yuv_data,streaminfo);
+			chromalloc(yuv_data,streaminfo);
 #ifdef DEBUG
-				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
 				
 				fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
@@ -789,16 +799,16 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
 #ifdef DEBUG
-				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
-				chromacpy(yuv_data,pFrame,streaminfo);
-			}
-			write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
-		} /* frame finished */
-		
+			chromacpy(yuv_data,pFrame,streaminfo);
+		}
+		write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
+	} /* frame finished */
+	
 	if (frameFinished)
 		av_free_packet(packet);
-
+	
 }	
 
 int main(int argc, char *argv[])
@@ -831,9 +841,9 @@ int main(int argc, char *argv[])
 	int samplesFrame;
 	char *rangeString = NULL;
 	char *openfile;
-	int edlfiles;
-	struct edlentry edllist;
-	int y;
+	int edlfiles,edlcounter;
+	struct edlentry *edllist = NULL;
+	int y,skip=0;
 	int                frame_data_size ;
 	uint8_t            *yuv_data[3] ;      
 	
@@ -879,164 +889,179 @@ int main(int argc, char *argv[])
 		
 		// fprintf (stderr,"file ext: %s\n",openfile+strlen(openfile)-3);
 		
-		if (!strcmp(openfile+strlen(openfile)-3,"edl"))
+		edlfiles = 1;
+		// Should I make EDL file a special case using a command line option.
+		// Or do the following.  look for edl at the end.
+		// Actually I should also check for string length.
+		if (!strcmp(openfile+strlen(openfile)-4,".edl"))
 		{
-			fprintf (stderr,"parsing edl file\n");
+		//	fprintf (stderr,"parsing edl file\n");
 			edlfiles = parseEDL(openfile,&edllist);
-			exit (0);
+		//	fprintf (stderr,"EDL struct location: %x containing %d entries\n",edllist,edlfiles);
 		}
 		// set number of files for loop (1 otherwise)
 		// end if
 		
 		// for loop number of files (1 if not EDL)
-		
-		// if EDL
-		// set editmode (search_codec_type)
-		// set in and out points
-		// skip if write mode (audio or video) != edit mode
-		
-		stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
-		if (stream == -1) {
-			fprintf (stderr,"Error with video file: %s\n",openfile);
-		}
-		
-		// get the frame rate of the first video stream, if cutting audio.
-		if (audioWrite && tc_in) {
-			for(i=0; i<pFormatCtx->nb_streams; i++) {
-				if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
-				{
+		for (edlcounter=0;edlcounter<edlfiles;edlcounter++) {
+			
+			
+			// if EDL
+			if (edllist) {
+				// should allow for multiple edits from the one file.
+				
+				fprintf (stderr,"running EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
+				fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
+				// set editmode (search_codec_type)
+				// set in and out points
+				tc_in = edllist[edlcounter].in;
+				tc_out = edllist[edlcounter].out;
+				
+				skip = 0;
+				if (audioWrite && edllist[edlcounter].audio) {
+					search_codec_type = CODEC_TYPE_AUDIO;
+				} else
+					if (!audioWrite && edllist[edlcounter].video) {
+						search_codec_type = CODEC_TYPE_VIDEO;
+					} else {
+						// skip if write mode (audio or video) != edit mode
+						skip = 1;
+					}
+				openfile = edllist[edlcounter].filename;
+				
+			}
+			if (!skip) {
+				stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
+				if (stream == -1) {
+					fprintf (stderr,"Error with video file: %s\n",openfile);
+				}
+				
+				// get the frame rate of the first video stream, if cutting audio.
+				//		if (audioWrite && rangeString) {
+				if (audioWrite && tc_in) {
 					if (yuv_frame_rate.d == 0) {
-						yuv_frame_rate.n = pFormatCtx->streams[i]->r_frame_rate.num;
-						yuv_frame_rate.d = pFormatCtx->streams[i]->r_frame_rate.den;
+						for(i=0; i<pFormatCtx->nb_streams; i++) {
+							if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
+							{
+								yuv_frame_rate.n = pFormatCtx->streams[i]->r_frame_rate.num;
+								yuv_frame_rate.d = pFormatCtx->streams[i]->r_frame_rate.den;
+							}
+						}
 					}
 				}
-			}
-		}
-		if (audioWrite==0) {
-			
-			if (init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame) == -1) {
-				fprintf (stderr,"Error initialising video file: %s\n",openfile);
-				exit (-1);
-			}
-		} else {
-			numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
-			if (rangeString) {
-				// does this need more precision?
-				samplesFrame  = pCodecCtx->sample_rate * yuv_frame_rate.d / yuv_frame_rate.n ;
-			}
-			if (aBuffer == NULL) {
-				aBuffer = (int16_t *) malloc (numBytes);
-				// allocate for audio
-			}
-		}
-		
-		// convert cut range into frame numbers.
-		// now do I remember how NTSC drop frame works?
-		if (tc_in) {
-			startFrame = -1; endFrame = -1;
-			startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
-			endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
-			if (startFrame == -1 || endFrame == -1) {
-				fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
-				return -1;
-			}
-		}
-		
-		
-		//fprintf (stderr,"loop until nothing left\n");
-		// Loop until nothing read
-		while(av_read_frame(pFormatCtx, &packet)>=0 )
-		{
-			// Is this a packet from the desired stream?
-			if(packet.stream_index==stream)
-			{
-				// Decode video frame
 				if (audioWrite==0) {
 					
-#ifdef DEBUG
-					fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
-#endif
-					if (frameCounter >= startFrame && frameCounter<= endFrame) {
-					
-						 process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
-										   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-										   yuv_data, fdOut, &frameinfo);
-						
+					if (init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame) == -1) {
+						fprintf (stderr,"Error initialising video file: %s\n",openfile);
+						exit (-1);
 					}
-					
 				} else {
-					// decode Audio
-					avcodec_decode_audio2(pCodecCtx, 
-										  aBuffer, &numBytes,
-										  packet.data, packet.size);
-					
-					// TODO: write a wave or aiff file. 
-					
-					// PANIC: how to determine bytes per sample?
-					
-#define BYTES_PER_SAMPLE 4
-					
-#ifdef DEBUG
-					fprintf (stderr,"sample counter: %lld  (%lld - %lld) spf %d\n",sampleCounter,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
-#endif
-					
-					numSamples = numBytes / BYTES_PER_SAMPLE;
-					
-					if (!rangeString) {
-						write (1, aBuffer, numBytes);
-						
-						// whole decoded frame within range.
-					} else if (sampleCounter >= startFrame * samplesFrame &&
-							   sampleCounter+numSamples <= endFrame * samplesFrame ) {
-#ifdef DEBUG
-						//			fprintf(stderr,"FULL WRITE\n");
-#endif
-						write (1, aBuffer, numBytes);
-						
-						// start of buffer outside range, end of buffer in range
-					} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
-							   sampleCounter+numSamples <= endFrame * samplesFrame ) {
-						// write a subset
-#ifdef DEBUG
-						fprintf(stderr,"START PARTIAL WRITE\n");
-#endif
-						
-						write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
-						
-						// start of buffer in range, end of buffer outside range.
-					} else if (sampleCounter >= startFrame * samplesFrame &&
-							   sampleCounter <= endFrame * samplesFrame ) {
-						// write a subset
-#ifdef DEBUG
-						fprintf(stderr,"END PARTIAL WRITE\n");
-#endif
-						
-						write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
-						
-						// entire range contained within buffer
-					} else if (sampleCounter < startFrame * samplesFrame &&
-							   sampleCounter+numSamples > endFrame * samplesFrame ) {
-						// write a subset
-#ifdef DEBUG
-						fprintf(stderr,"PARTIAL WRITE\n");
-#endif
-						
-						write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
-					} else {
-#ifdef DEBUG
-						//	fprintf(stderr,"NO WRITE\n");
-#endif
+					numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
+					if (tc_in) {
+						// does this need more precision?
+						samplesFrame  = pCodecCtx->sample_rate * yuv_frame_rate.d / yuv_frame_rate.n ;
 					}
-					sampleCounter += numSamples;
-					numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
-					
+					if (aBuffer == NULL) {
+						aBuffer = (int16_t *) malloc (numBytes);
+						// allocate for audio
+					}
 				}
 				
-				frameCounter++;
+				// convert cut range into frame numbers.
+				// now do I remember how NTSC drop frame works?
+				if (tc_in) {
+					startFrame = -1; endFrame = -1;
+					frameCounter = 0; sampleCounter = 0;
+					startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
+					endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+					if (startFrame == -1 || endFrame == -1) {
+						fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+						return -1;
+					}
+				}
 				
+#ifdef DEBUG
+			if (audioWrite!=0) {
+				fprintf (stderr,"sample counter: %lld - %lld  (%lld - %lld) spf %d\n",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
 			}
-			
+#endif
+				
+				
+				//fprintf (stderr,"loop until nothing left\n");
+				// Loop until nothing read
+				while(av_read_frame(pFormatCtx, &packet)>=0 )
+				{
+					// Is this a packet from the desired stream?
+					if(packet.stream_index==stream)
+					{
+						// Decode video frame
+						if (audioWrite==0) {
+							
+#ifdef DEBUG
+								fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
+#endif
+							if (frameCounter >= startFrame && frameCounter<= endFrame) {
+								
+								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
+											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+											   yuv_data, fdOut, &frameinfo);
+								
+							}
+							
+						} else {
+							// decode Audio
+							avcodec_decode_audio2(pCodecCtx, 
+												  aBuffer, &numBytes,
+												  packet.data, packet.size);
+							
+							// TODO: write a wave or aiff file. 
+							
+							// PANIC: how to determine bytes per sample?
+							
+							
+							
+							numSamples = numBytes / BYTES_PER_SAMPLE;
+							
+							if (!tc_in) {
+								write (1, aBuffer, numBytes);
+								
+								// whole decoded frame within range.
+							} else if (sampleCounter >= startFrame * samplesFrame &&
+									   sampleCounter+numSamples <= endFrame * samplesFrame ) {
+								write (1, aBuffer, numBytes);
+								
+								// start of buffer outside range, end of buffer in range
+							} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
+									   sampleCounter+numSamples <= endFrame * samplesFrame ) {
+								// write a subset
+								
+								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+								
+								// start of buffer in range, end of buffer outside range.
+							} else if (sampleCounter >= startFrame * samplesFrame &&
+									   sampleCounter <= endFrame * samplesFrame ) {
+								// write a subset
+								
+								write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+								
+								// entire range contained within buffer
+							} else if (sampleCounter < startFrame * samplesFrame &&
+									   sampleCounter+numSamples > endFrame * samplesFrame ) {
+								// write a subset
+								
+								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
+							} 
+							sampleCounter += numSamples;
+							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
+							
+						}
+						
+						frameCounter++;
+						
+					}
+				}
 			}
+		}
 	}
 	if (audioWrite==0) {
 		y4m_fini_stream_info(&streaminfo);
