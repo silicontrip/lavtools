@@ -14,6 +14,7 @@
 // gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
+// 5th Apr 2009 - First regression test passed.  EDL version.
 // 18th Mar 2009 - Audio range fixed, sample accurate.
 // 17th Mar 2009 - Multifile version.
 // 4th Feb 2009 - Range version. Audio range not working
