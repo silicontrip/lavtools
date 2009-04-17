@@ -492,6 +492,8 @@ int parseCommandline (int argc, char *argv[],
 	*sr = 0;
 	av = NULL;
 	
+	
+	// Parse commandline arguments
 	while ((i = getopt (argc, argv, legal_flags)) != -1) {
 		switch (i) {
 			case 'I':
@@ -967,6 +969,7 @@ int main(int argc, char *argv[])
 						// allocate for audio
 					}
 				}
+				frameCounter++;
 				
 				// convert cut range into frame numbers.
 				// now do I remember how NTSC drop frame works?
@@ -1062,6 +1065,10 @@ int main(int argc, char *argv[])
 					}
 				}
 			}
+			
+			// Free the packet that was allocated by av_read_frame
+			if (frameFinished)
+				av_free_packet(&packet);
 		}
 	}
 	if (audioWrite==0) {

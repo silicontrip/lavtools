@@ -30,19 +30,20 @@ The Libav tools require the libavcodec library which is part of the
 
 function imageinline($thisdir, $max)
 {
-
+$basepath="/Users/mark/Sites/";
+$baseuri="/~mark/";
 ?>
 <div id="thumb">
 <p>
-<a href="images.php/<?=$thisdir?>" >
+<a href="/~mark/images.php/<?=$thisdir?>" >
 <?
-	if ($dir = @opendir("./$thisdir/")) {
+	if ($dir = @opendir($basepath . $thisdir)) {
 		$count = 0;
 		while ((($file = readdir($dir)) !== false) && ($count != $max)) {
 			list ($base,$ext)=explode(".",$file);
 			if ((strtolower($ext) == "jpg" ) || 
 			(strtolower($ext) == "png" ) ) {
-				if (is_file("./$thisdir/TN/$file")) {
+				if (is_file("$basepath/$thisdir/TN/$file")) {
 ?>
 <img src="<?=$baseuri?><?=$thisdir?>/TN/<?=$file?>" border="1">
 <?
