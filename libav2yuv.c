@@ -1013,7 +1013,7 @@ int main(int argc, char *argv[])
 							
 						} else {
 							// decode Audio
-							avcodec_decode_audio(pCodecCtx, aBuffer, &numBytes, packet.data, packet.size);
+							avcodec_decode_audio2(pCodecCtx, aBuffer, &numBytes, packet.data, packet.size);
 							//avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
 							
 							// TODO: write a wave or aiff file. 
