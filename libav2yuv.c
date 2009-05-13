@@ -14,6 +14,7 @@
 // gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
+// 13th May 2009 - Use of swscale, also including commented code for audio3 and video2.
 // 5th Apr 2009 - First regression test passed.  EDL version.
 // 18th Mar 2009 - Audio range fixed, sample accurate.
 // 17th Mar 2009 - Multifile version.
@@ -56,6 +57,8 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include <libswscale/swscale.h> 
+
 
 #include <stdio.h>
 #include <string.h>
@@ -730,9 +733,10 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				   int *header_written, int *yuv_interlacing, int convert, int convert_mode, y4m_stream_info_t *streaminfo,
 				   uint8_t  *yuv_data[3], int fdOut, y4m_frame_info_t *frameinfo)
 {
-	
+	struct SwsContext *srcContext;
 	int frameFinished,numBytes;
 	int write_error_code;
+	AVFrame *lFrame;
 	
 #ifdef DEBUG
 	fprintf (stderr,"decode video\n");
@@ -767,6 +771,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if (convert) {
 				// initialise conversion to different chroma subsampling
 				*pFrame444=avcodec_alloc_frame();
+				lFrame = *pFrame444;
 				numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
 				*buffer=(uint8_t *)malloc(numBytes);
 				avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
@@ -798,8 +803,10 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if (convert) {
 				// convert to 444
 				// need to look into the sw_scaler
+				srcContext = sws_getContext(pCodecCtx->width, pCodecCtx->height,pCodecCtx->pix_fmt,pCodecCtx->width, pCodecCtx->height, PIX_FMT_YUV444P, SWS_BICUBIC, NULL, NULL, NULL);
+				sws_scale(srcContext,  pFrame->data, pFrame->linesize, 0, pCodecCtx->height, lFrame->data, lFrame->linesize);
 				// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
-				chromacpy(yuv_data,*pFrame444,streaminfo);
+				chromacpy(yuv_data,lFrame,streaminfo);
 			} else {
 #ifdef DEBUG
 			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
