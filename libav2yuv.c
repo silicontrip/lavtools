@@ -797,7 +797,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if (convert) {
 				// convert to 444
 				// need to look into the sw_scaler
-				img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
+				// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
 #ifdef DEBUG
