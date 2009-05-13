@@ -54,8 +54,8 @@
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
 
-#include <ffmpeg/avcodec.h>
-#include <ffmpeg/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -737,8 +737,8 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #ifdef DEBUG
 	fprintf (stderr,"decode video\n");
 #endif
-	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, 
-						 packet->data, packet->size);  
+	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
+	//avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
 	// Did we get a video frame?
 	// frameFinished does not mean decoder finished, means that the packet can be freed.
 #ifdef DEBUG
@@ -798,7 +798,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if (convert) {
 				// convert to 444
 				// need to look into the sw_scaler
-				img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
+				// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
 #ifdef DEBUG
@@ -808,7 +808,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		}
 		write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
 	} /* frame finished */
-	
+
 	if (frameFinished)
 		av_free_packet(packet);
 	
@@ -1014,9 +1014,8 @@ int main(int argc, char *argv[])
 							
 						} else {
 							// decode Audio
-							avcodec_decode_audio2(pCodecCtx, 
-												  aBuffer, &numBytes,
-												  packet.data, packet.size);
+							avcodec_decode_audio2(pCodecCtx, aBuffer, &numBytes, packet.data, packet.size);
+							//avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
 							
 							// TODO: write a wave or aiff file. 
 							
@@ -1067,8 +1066,7 @@ int main(int argc, char *argv[])
 			}
 			
 			// Free the packet that was allocated by av_read_frame
-			if (frameFinished)
-				av_free_packet(&packet);
+			av_free_packet(&packet);
 		}
 	}
 	if (audioWrite==0) {
