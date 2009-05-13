@@ -736,7 +736,8 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #ifdef DEBUG
 	fprintf (stderr,"decode video\n");
 #endif
-	avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
+	//avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
 	// Did we get a video frame?
 	// frameFinished does not mean decoder finished, means that the packet can be freed.
 #ifdef DEBUG
@@ -1012,7 +1013,8 @@ int main(int argc, char *argv[])
 							
 						} else {
 							// decode Audio
-							avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
+							avcodec_decode_audio(pCodecCtx, aBuffer, &numBytes, packet.data, packet.size);
+							//avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
 							
 							// TODO: write a wave or aiff file. 
 							
