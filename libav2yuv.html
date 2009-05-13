@@ -14,8 +14,13 @@ files. This is a first working version is not optimised and may contain bugs.
 I hope to have more testing over the next few months. See sample EDL file
 below.
 </P>
+<p>
+Now uses sws_scaler for chroma resampling rather than the deprecated img_convert,
+So will compile with the newer version of FFMPEG.  Also have provision for decode_audio3
+and decode_video2 which has appeared in the latest ffmpeg snapshot.
+</p>
 
-<p> I use this regularily for file conversions, so I hope the code
+<p>I use this regularily for file conversions, so I hope the code
 is quite mature, with a thorough set of options and help.  Any bugs
 should be picked up quickly.  </p>
 <p>As I do want this to be a one program fits all for yuv video conversion
@@ -27,7 +32,7 @@ so I can make this the best software.</p>
 </p>
 
 <h4>HISTORY</h4> <p> <ul> 
-
+<li>13 May 2009. SWS_SCALER version
 <li>5 Apr 2009. First release of the EDL.
 <li>2 Feb 2009. First release of the PCM writer version (use the -w flag)
 <li>23 Feb 2008.  Found a bug that would
