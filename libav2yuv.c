@@ -15,11 +15,11 @@
 //
 // I really should put history here
 // 13th May 2009 - Use of swscale, also including commented code for audio3 and video2.
-// 5th Apr 2009 - First regression test passed.  EDL version.
+//  5th Apr 2009 - First regression test passed.  EDL version.
 // 18th Mar 2009 - Audio range fixed, sample accurate.
 // 17th Mar 2009 - Multifile version.
-// 4th Feb 2009 - Range version. Audio range not working
-// 2nd Feb 2009 - Audio writing version.
+//  4th Feb 2009 - Range version. Audio range not working
+//  2nd Feb 2009 - Audio writing version.
 // 7th July 2008 - Added Force Format option 
 // 4th July 2008 - Added Aspect Ratio Constants
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
@@ -835,6 +835,10 @@ int main(int argc, char *argv[])
     uint8_t         *buffer;
 	int16_t		*aBuffer = NULL;
 	char *tc_in = NULL,*tc_out=NULL;
+	AVOutputFormat *audiofmt;
+	AVFormatContext *audioctx = NULL; 
+	AVCodec *audiocodec = NULL;
+	AVStream *audiostream = NULL;
 	
 	int i,fdOut = 1 ;
 	int yuv_interlacing = Y4M_UNKNOWN;
@@ -974,6 +978,16 @@ int main(int argc, char *argv[])
 					if (aBuffer == NULL) {
 						aBuffer = (int16_t *) malloc (numBytes);
 						// allocate for audio
+						// setup library for wave writing.
+						audiofmt = guess_format(NULL, "libav.wav", NULL);
+						audioctx = ffmpeg_writer_init(audiofmt, NULL);
+						audiocodec = avcodec_find_encoder(audiofmt->audio_codec); 
+						// determine the correct audio parameters
+						fprintf (stderr,"Audio codec write: %s\n",(char *)audiocodec->name);
+						// should be gathered from pFormatCtx->streams[stream]
+						audiostream = ffmpeg_add_audio_stream(audioctx, (char *)audiocodec->name, SAMPLE_FMT_S16, 2, 44100, 0);
+						ffmpeg_writer_open(audioctx, "-"); 
+
 					}
 				}
 				frameCounter++;
@@ -1028,8 +1042,6 @@ int main(int argc, char *argv[])
 							
 							// PANIC: how to determine bytes per sample?
 							
-							
-							
 							numSamples = numBytes / BYTES_PER_SAMPLE;
 							
 							if (!tc_in) {
@@ -1038,6 +1050,8 @@ int main(int argc, char *argv[])
 								// whole decoded frame within range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
 									   sampleCounter+numSamples <= endFrame * samplesFrame ) {
+//								ffmpeg_write_frame(audioctx, audiostream, aBuffer, fnum, NULL); 
+
 								write (1, aBuffer, numBytes);
 								
 								// start of buffer outside range, end of buffer in range
@@ -1087,6 +1101,7 @@ int main(int argc, char *argv[])
 		// Free the YUV frame
 		av_free(pFrame);
 	} else {
+		ffmpeg_writer_close(audioctx); 
 		free (aBuffer);
 	}
     // Close the codec
