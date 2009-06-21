@@ -745,7 +745,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	fprintf (stderr,"frameFinished: %d\n",frameFinished);
 #endif
 	
-		// Save the frame to disk
+			// Save the frame to disk
 		
 		// As we don't know interlacing until the first frame
 		// we wait until the first frame is read before setting the interlace flag
@@ -794,6 +794,9 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				*header_written = 1;
 			}
 			
+			if (frameFinished) { // appears that if it's not decoded there isn't anything in the ffmpeg buffer
+								// this can cause seg faults.
+
 			if (convert) {
 				// convert to 444
 				// need to look into the sw_scaler
@@ -801,10 +804,14 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
 #ifdef DEBUG
-			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
-			chromacpy(yuv_data,pFrame,streaminfo);
-		}
+				chromacpy(yuv_data,pFrame,streaminfo);
+			}
+			}
+#ifdef DEBUG
+		fprintf (stderr,"writing yuv data\n");
+#endif
 		write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
 	/* frame finished */
 
@@ -982,11 +989,11 @@ int main(int argc, char *argv[])
 						return -1;
 					}
 				}
-				
+#ifdef DEBUG
 			if (audioWrite!=0) {
 				fprintf (stderr,"sample counter: %lld - %lld  (%lld - %lld) spf %d\n",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
 			}
-				
+#endif	
 				
 				//fprintf (stderr,"loop until nothing left\n");
 				// Loop until nothing read
@@ -1002,6 +1009,9 @@ int main(int argc, char *argv[])
 								fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
 #endif
 							if (frameCounter >= startFrame && frameCounter<= endFrame) {
+								
+								// need to decode about 1 second before the start but not write until the correct frame.
+								// will need to split process_video into decode_video and write_video
 								
 								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
