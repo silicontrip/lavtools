@@ -14,12 +14,11 @@
 // gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
-// 13th May 2009 - Use of swscale, also including commented code for audio3 and video2.
-//  5th Apr 2009 - First regression test passed.  EDL version.
+// 5th Apr 2009 - First regression test passed.  EDL version.
 // 18th Mar 2009 - Audio range fixed, sample accurate.
 // 17th Mar 2009 - Multifile version.
-//  4th Feb 2009 - Range version. Audio range not working
-//  2nd Feb 2009 - Audio writing version.
+// 4th Feb 2009 - Range version. Audio range not working
+// 2nd Feb 2009 - Audio writing version.
 // 7th July 2008 - Added Force Format option 
 // 4th July 2008 - Added Aspect Ratio Constants
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
@@ -55,10 +54,8 @@
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
 
-#include <libavcodec/avcodec.h>
-#include <libavformat/avformat.h>
-#include <libswscale/swscale.h> 
-
+#include <ffmpeg/avcodec.h>
+#include <ffmpeg/avformat.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -733,10 +730,9 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				   int *header_written, int *yuv_interlacing, int convert, int convert_mode, y4m_stream_info_t *streaminfo,
 				   uint8_t  *yuv_data[3], int fdOut, y4m_frame_info_t *frameinfo)
 {
-	struct SwsContext *srcContext;
+	
 	int frameFinished,numBytes;
 	int write_error_code;
-	AVFrame *lFrame;
 	
 #ifdef DEBUG
 	fprintf (stderr,"decode video\n");
@@ -748,8 +744,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #ifdef DEBUG
 	fprintf (stderr,"frameFinished: %d\n",frameFinished);
 #endif
-	if(frameFinished)
-	{
+	
 		// Save the frame to disk
 		
 		// As we don't know interlacing until the first frame
@@ -771,7 +766,6 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if (convert) {
 				// initialise conversion to different chroma subsampling
 				*pFrame444=avcodec_alloc_frame();
-				lFrame = *pFrame444;
 				numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
 				*buffer=(uint8_t *)malloc(numBytes);
 				avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
@@ -803,10 +797,8 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if (convert) {
 				// convert to 444
 				// need to look into the sw_scaler
-				srcContext = sws_getContext(pCodecCtx->width, pCodecCtx->height,pCodecCtx->pix_fmt,pCodecCtx->width, pCodecCtx->height, PIX_FMT_YUV444P, SWS_BICUBIC, NULL, NULL, NULL);
-				sws_scale(srcContext,  pFrame->data, pFrame->linesize, 0, pCodecCtx->height, lFrame->data, lFrame->linesize);
 				// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
-				chromacpy(yuv_data,lFrame,streaminfo);
+				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
 #ifdef DEBUG
 			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
@@ -814,7 +806,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			chromacpy(yuv_data,pFrame,streaminfo);
 		}
 		write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
-	} /* frame finished */
+	/* frame finished */
 
 	if (frameFinished)
 		av_free_packet(packet);
@@ -835,10 +827,6 @@ int main(int argc, char *argv[])
     uint8_t         *buffer;
 	int16_t		*aBuffer = NULL;
 	char *tc_in = NULL,*tc_out=NULL;
-	AVOutputFormat *audiofmt;
-	AVFormatContext *audioctx = NULL; 
-	AVCodec *audiocodec = NULL;
-	AVStream *audiostream = NULL;
 	
 	int i,fdOut = 1 ;
 	int yuv_interlacing = Y4M_UNKNOWN;
@@ -978,16 +966,6 @@ int main(int argc, char *argv[])
 					if (aBuffer == NULL) {
 						aBuffer = (int16_t *) malloc (numBytes);
 						// allocate for audio
-						// setup library for wave writing.
-						audiofmt = guess_format(NULL, "libav.wav", NULL);
-						audioctx = ffmpeg_writer_init(audiofmt, NULL);
-						audiocodec = avcodec_find_encoder(audiofmt->audio_codec); 
-						// determine the correct audio parameters
-						fprintf (stderr,"Audio codec write: %s\n",(char *)audiocodec->name);
-						// should be gathered from pFormatCtx->streams[stream]
-						audiostream = ffmpeg_add_audio_stream(audioctx, (char *)audiocodec->name, SAMPLE_FMT_S16, 2, 44100, 0);
-						ffmpeg_writer_open(audioctx, "-"); 
-
 					}
 				}
 				frameCounter++;
@@ -1005,11 +983,9 @@ int main(int argc, char *argv[])
 					}
 				}
 				
-#ifdef DEBUG
 			if (audioWrite!=0) {
 				fprintf (stderr,"sample counter: %lld - %lld  (%lld - %lld) spf %d\n",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
 			}
-#endif
 				
 				
 				//fprintf (stderr,"loop until nothing left\n");
@@ -1042,6 +1018,8 @@ int main(int argc, char *argv[])
 							
 							// PANIC: how to determine bytes per sample?
 							
+							
+							
 							numSamples = numBytes / BYTES_PER_SAMPLE;
 							
 							if (!tc_in) {
@@ -1049,31 +1027,29 @@ int main(int argc, char *argv[])
 								
 								// whole decoded frame within range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
-									   sampleCounter+numSamples <= endFrame * samplesFrame ) {
-//								ffmpeg_write_frame(audioctx, audiostream, aBuffer, fnum, NULL); 
-
+									   sampleCounter+numSamples <= (endFrame+1) * samplesFrame  ) {
 								write (1, aBuffer, numBytes);
 								
 								// start of buffer outside range, end of buffer in range
 							} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
-									   sampleCounter+numSamples <= endFrame * samplesFrame ) {
+									   sampleCounter+numSamples <= (endFrame+1) * samplesFrame ) {
 								// write a subset
 								
 								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
 								
 								// start of buffer in range, end of buffer outside range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
-									   sampleCounter <= endFrame * samplesFrame ) {
+									   sampleCounter <= (endFrame+1) * samplesFrame ) {
 								// write a subset
 								
-								write(1,aBuffer,(endFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+								write(1,aBuffer,((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
 								
 								// entire range contained within buffer
 							} else if (sampleCounter < startFrame * samplesFrame &&
-									   sampleCounter+numSamples > endFrame * samplesFrame ) {
+									   sampleCounter+numSamples > (endFrame+1) * samplesFrame ) {
 								// write a subset
 								
-								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
+								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,((endFrame+1)-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
 							} 
 							sampleCounter += numSamples;
 							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
@@ -1101,7 +1077,6 @@ int main(int argc, char *argv[])
 		// Free the YUV frame
 		av_free(pFrame);
 	} else {
-		ffmpeg_writer_close(audioctx); 
 		free (aBuffer);
 	}
     // Close the codec
