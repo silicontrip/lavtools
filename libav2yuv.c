@@ -847,9 +847,11 @@ int main(int argc, char *argv[])
 	int header_written = 0;
 	int convert = 0;
 	int stream = 0,subRange=0;
+	int finishedit = 0;
 	enum PixelFormat convert_mode;
 	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
 	int samplesFrame;
+	int newFile;
 	char *rangeString = NULL;
 	char *openfile;
 	int edlfiles,edlcounter;
@@ -923,6 +925,7 @@ int main(int argc, char *argv[])
 				
 				fprintf (stderr,"running EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
 				fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
+				
 				// set editmode (search_codec_type)
 				// set in and out points
 				tc_in = edllist[edlcounter].in;
@@ -931,75 +934,108 @@ int main(int argc, char *argv[])
 				skip = 0;
 				if (audioWrite && edllist[edlcounter].audio) {
 					search_codec_type = CODEC_TYPE_AUDIO;
-				} else
-					if (!audioWrite && edllist[edlcounter].video) {
-						search_codec_type = CODEC_TYPE_VIDEO;
-					} else {
+				} else if (!audioWrite && edllist[edlcounter].video) {
+					search_codec_type = CODEC_TYPE_VIDEO;
+				} else {
 						// skip if write mode (audio or video) != edit mode
-						skip = 1;
-					}
-				openfile = edllist[edlcounter].filename;
-				
-			}
-			if (!skip) {
-				stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
-				if (stream == -1) {
-					fprintf (stderr,"Error with video file: %s\n",openfile);
+					skip = 1;
 				}
 				
-				// get the frame rate of the first video stream, if cutting audio.
-				//		if (audioWrite && rangeString) {
-				if (audioWrite && tc_in) {
-					if (yuv_frame_rate.d == 0) {
-						for(i=0; i<pFormatCtx->nb_streams; i++) {
-							if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
-							{
-								yuv_frame_rate.n = pFormatCtx->streams[i]->r_frame_rate.num;
-								yuv_frame_rate.d = pFormatCtx->streams[i]->r_frame_rate.den;
+				if (!skip) {
+					// this means that we've exited early from an edit
+					newFile =1;
+					if (finishedit) {
+						finishedit=0;
+						// check that the file names are the same
+						if (!strcmp(openfile,edllist[edlcounter].filename)) {
+						
+							// check that the start of the new edit is later than the current frame/sample counter
+							// this means that we've exited early from an edit
+							startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
+							endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+							if (startFrame == -1 || endFrame == -1) {
+								fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+								return -1;
+							}
+							
+							if (audioWrite) {
+								if (sampleCounter < startFrame * samplesFrame)  {
+									newFile = 0;
+								}
+							} else {
+								if (frameCounter < startFrame) {
+									newFile=0;
+								}
 							}
 						}
 					}
 				}
-				if (audioWrite==0) {
-					
-					if (init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame) == -1) {
-						fprintf (stderr,"Error initialising video file: %s\n",openfile);
-						exit (-1);
-					}
-				} else {
-					numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
-					if (tc_in) {
-						// does this need more precision?
-						samplesFrame  = pCodecCtx->sample_rate * yuv_frame_rate.d / yuv_frame_rate.n ;
-					}
-					if (aBuffer == NULL) {
-						aBuffer = (int16_t *) malloc (numBytes);
-						// allocate for audio
-					}
-				}
-				frameCounter++;
+							
 				
-				// convert cut range into frame numbers.
-				// now do I remember how NTSC drop frame works?
-				if (tc_in) {
-					startFrame = -1; endFrame = -1;
-					frameCounter = 0; sampleCounter = 0;
-					startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
-					endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
-					if (startFrame == -1 || endFrame == -1) {
-						fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
-						return -1;
+				openfile = edllist[edlcounter].filename;
+				
+			}
+			if (!skip) {
+				if (newFile) {
+					stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
+					if (stream == -1) {
+						fprintf (stderr,"Error with video file: %s\n",openfile);
+					}
+					
+					// get the frame rate of the first video stream, if cutting audio.
+					//		if (audioWrite && rangeString) {
+					if (audioWrite && tc_in) {
+						if (yuv_frame_rate.d == 0) {
+							for(i=0; i<pFormatCtx->nb_streams; i++) {
+								if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
+								{
+									yuv_frame_rate.n = pFormatCtx->streams[i]->r_frame_rate.num;
+									yuv_frame_rate.d = pFormatCtx->streams[i]->r_frame_rate.den;
+								}
+							}
+						}
+					}
+					if (audioWrite==0) {
+						
+						if (init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame) == -1) {
+							fprintf (stderr,"Error initialising video file: %s\n",openfile);
+							exit (-1);
+						}
+					} else {
+						numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
+						if (tc_in) {
+							// does this need more precision?
+							samplesFrame  = pCodecCtx->sample_rate * yuv_frame_rate.d / yuv_frame_rate.n ;
+						}
+						if (aBuffer == NULL) {
+							aBuffer = (int16_t *) malloc (numBytes);
+							// allocate for audio
+						}
+					}
+					frameCounter++;
+					
+					// convert cut range into frame numbers.
+					// now do I remember how NTSC drop frame works?
+					if (tc_in) {
+						startFrame = -1; endFrame = -1;
+						frameCounter = 0; sampleCounter = 0;
+						startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
+						endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+						if (startFrame == -1 || endFrame == -1) {
+							fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+							return -1;
+						}
 					}
 				}
 #ifdef DEBUG
-			if (audioWrite!=0) {
-				fprintf (stderr,"sample counter: %lld - %lld  (%lld - %lld) spf %d\n",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
-			}
+				if (audioWrite!=0) {
+					fprintf (stderr,"sample counter: %lld - %lld  (%lld - %lld) spf %d\n",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
+				}
 #endif	
 				
 				//fprintf (stderr,"loop until nothing left\n");
 				// Loop until nothing read
-				while(av_read_frame(pFormatCtx, &packet)>=0 )
+				while(av_read_frame(pFormatCtx, &packet)>=0 && !finishedit)
 				{
 					// Is this a packet from the desired stream?
 					if(packet.stream_index==stream)
@@ -1009,7 +1045,8 @@ int main(int argc, char *argv[])
 							
 #ifdef DEBUG
 								fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
-#endif
+#endif	
+
 							// need to make 25 adjustable
 							if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
 								
@@ -1028,6 +1065,9 @@ int main(int argc, char *argv[])
 											   yuv_data, fdOut, &frameinfo,1);
 								
 							}
+							if (frameCounter > endFrame) {
+								finishedit = 1;
+							}
 							
 						} else {
 							// decode Audio
@@ -1037,9 +1077,6 @@ int main(int argc, char *argv[])
 							// TODO: write a wave or aiff file. 
 							
 							// PANIC: how to determine bytes per sample?
-							
-							
-							
 							numSamples = numBytes / BYTES_PER_SAMPLE;
 							
 							if (!tc_in) {
@@ -1073,6 +1110,10 @@ int main(int argc, char *argv[])
 							} 
 							sampleCounter += numSamples;
 							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
+							
+							if (sampleCounter > (endFrame+1) * samplesFrame) {
+								finishedit = 1;
+							}
 							
 						}
 			
