@@ -1075,7 +1075,7 @@ int main(int argc, char *argv[])
 							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 							
 						}
-						
+			
 						frameCounter++;
 						
 					}
