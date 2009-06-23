@@ -22,6 +22,7 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
 gcc -O3 yuvdiag.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvdiag
+gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils yuvdiag.c -o yuvdiag
  */
 
 #ifdef HAVE_CONFIG_H
@@ -206,6 +207,8 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
 	int dw,dh;
 	int dx,dy;
 	
+//fprintf (stderr,"black_box\n");
+	
 	dw = y4m_si_get_plane_width(sinfo,0);
 	
 	for (dy=y; dy<y+h;dy++) {
@@ -224,48 +227,57 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
 
 void read_font(uint8_t **d)
 {
-
+	
 	FILE *fd;
 	int y,x;
 	int w,h;
 	char type[8],width[8],height[8],depth[8];
 	
+//fprintf (stderr,"read_font\n");
+	
 	
 	*d = (uint8_t *) malloc (LINEWIDTH*CHARHEIGHT);
 	
 	fd = fopen ("yuvdiag_font.pbm","r");
-
+	
+	if (fd != NULL) {
+		
 		// fprintf(stderr,"read_font: fgets\n");
-
-	fgets(type,7,fd);
-	fgets(width,7,fd);
-	fgets(height,7,fd);
-	fgets(depth,7,fd);
-	
-	
-	w=atoi(width);
-	h=atoi(height);
-
-	fprintf (stderr,"type: %s width %d height %d depth %s",type,w,h,depth);
-
-
-	for (y=0;y<CHARHEIGHT;y++) {
-	
-		// fprintf(stderr,"y: %d\n",y);
-	
+		
+		fgets(type,7,fd);
+		fgets(width,7,fd);
+		fgets(height,7,fd);
+		fgets(depth,7,fd);
+		
+		
+		w=atoi(width);
+		h=atoi(height);
+		
+		fprintf (stderr,"type: %s width %d height %d depth %s",type,w,h,depth);
+		
+		
+		for (y=0;y<CHARHEIGHT;y++) {
+			
+			// fprintf(stderr,"y: %d\n",y);
+			
 			fread(*d+y*LINEWIDTH,LINEWIDTH,1,fd);
 			fseek(fd,w-LINEWIDTH, SEEK_CUR);
+		}
+		fclose(fd);
+	} else {
+		mjpeg_error_exit1("Cannot open yuvdiag font (./yuvdiag_font.pbm)");
 	}
-	fclose(fd);
-
+	
 }	
 
 void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 
 	int h,m,s,f;
-	
 	y4m_ratio_t fr;
 
+//	fprintf (stderr,"string_tc\n");
+
+	
 	fr = y4m_si_get_framerate (sinfo);
 
 	h = fr.d * fc / fr.n / 3600;
@@ -288,6 +300,8 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 	int cpos,rpos;
 
 			dw = y4m_si_get_plane_width(sinfo,0);
+
+//fprintf (stderr,"render_string\n");
 
 
 //	fprintf (stderr,"render_string strlen: %d\n",strlen(time));
@@ -322,6 +336,8 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 	char time[32];
 	
 	int w,h;
+
+//	fprintf (stderr,"timecode\n");
 
 	read_font(&font_data);
 	
