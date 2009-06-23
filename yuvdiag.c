@@ -200,14 +200,34 @@ void draw_luma (uint8_t *m[], y4m_stream_info_t  *sinfo)
 
 }
 
+void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
+
+	int h,m,s,f;
+	
+	y4m_ratio_t fr;
+
+	fr = y4m_si_get_framerate (sinfo);
+
+	h = fr.d * fc / fr.n / 3600;
+	m = (fr.d * fc / fr.n / 60) % 60;
+	s = (fr.d * fc / fr.n) % 60;
+	f = fc % (fr.n / fr.d);
+	
+	// need to handle NTSC drop frame
+	
+	sprintf(tc,"TCR*%02d:%02d:%02d:%02d");
+
+}
+
+
 static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
 	int                read_error_code ;
-	int                write_error_code ;
+	int                write_error_code = Y4M_OK;
 	int frameCounter = 0;
-	
+	char time[] = "TCR*00:00:00:00   ";
 
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
@@ -219,9 +239,31 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-						write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
+		
+			// convert counter into TC string
+			string_tc(time,frameCounter,inStrInfo);
+			
+			fprintf (stderr,"TC: %s\n");
+			// render string
+		
+			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
+			frameCounter++;
 		}
+		y4m_fini_frame_info( &in_frame );
+		y4m_init_frame_info( &in_frame );
+		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+
 	}
+		// Clean-up regardless an error happened or not
+	y4m_fini_frame_info( &in_frame );
+	
+	free( yuv_data[0] );
+	free( yuv_data[1] );
+	free( yuv_data[2] );
+	
+	if( read_error_code != Y4M_ERR_EOF )
+		mjpeg_error_exit1 ("Error reading from input stream!");
+
 }
 
 static void channel(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream_info_t  *outStrInfo )
@@ -549,7 +591,7 @@ int main (int argc, char *argv[])
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	int width, mode, c;
-	const static char *legal_flags = "vyiclh";
+	const static char *legal_flags = "tvyiclh";
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
