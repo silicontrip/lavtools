@@ -734,89 +734,92 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	int frameFinished,numBytes;
 	int write_error_code;
 	
-#ifdef DEBUG
+#ifdef DEBUGPROCESSVIDEO
 	fprintf (stderr,"decode video\n");
 #endif
-	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
-	//avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
-	// Did we get a video frame?
-	// frameFinished does not mean decoder finished, means that the packet can be freed.
-#ifdef DEBUG
-	fprintf (stderr,"frameFinished: %d\n",frameFinished);
+	
+		avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
+		//avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+		// Did we get a video frame?
+		// frameFinished does not mean decoder finished, means that the packet can be freed.
+#ifdef DEBUGPROCESSVIDEO
+		fprintf (stderr,"frameFinished: %d\n",frameFinished);
 #endif
-	
-	// Save the frame to disk
-	
-	// As we don't know interlacing until the first frame
-	// we wait until the first frame is read before setting the interlace flag
-	// and outputting the YUV header
-	// It also appears that some codecs don't set width or height until the first frame either
-	if (!*header_written) {
-		if (*yuv_interlacing == Y4M_UNKNOWN) {
-			if (pFrame->interlaced_frame) {
-				if (pFrame->top_field_first) {
-					*yuv_interlacing = Y4M_ILACE_TOP_FIRST;
-				} else {
-					*yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
+		
+		// Save the frame to disk
+		
+		// As we don't know interlacing until the first frame
+		// we wait until the first frame is read before setting the interlace flag
+		// and outputting the YUV header
+		// It also appears that some codecs don't set width or height until the first frame either
+		if (!*header_written) {
+			if (frameFinished) {
+				if (*yuv_interlacing == Y4M_UNKNOWN) {
+					if (pFrame->interlaced_frame) {
+						if (pFrame->top_field_first) {
+							*yuv_interlacing = Y4M_ILACE_TOP_FIRST;
+						} else {
+							*yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
+						}
+					} else {
+						*yuv_interlacing = Y4M_ILACE_NONE;
+					}
 				}
-			} else {
-				*yuv_interlacing = Y4M_ILACE_NONE;
+				if (convert) {
+					// initialise conversion to different chroma subsampling
+					*pFrame444=avcodec_alloc_frame();
+					numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
+					*buffer=(uint8_t *)malloc(numBytes);
+					avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
+				}
+				
+				y4m_si_set_interlace(streaminfo, *yuv_interlacing);
+				y4m_si_set_width(streaminfo, pCodecCtx->width);
+				y4m_si_set_height(streaminfo, pCodecCtx->height);
+				
+#ifdef DEBUGPROCESSVIDEO
+				fprintf (stderr,"yuv_data: %x pFrame: %x\nchromalloc\n",yuv_data,pFrame);
+#endif					
+				chromalloc(yuv_data,streaminfo);
+#ifdef DEBUGPROCESSVIDEO
+				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+#endif					
+				
+				fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
+				fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
+				
+				if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
+				{
+					// should this be fatal?
+					mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
+				} 
+				*header_written = 1;
 			}
 		}
-		if (convert) {
-			// initialise conversion to different chroma subsampling
-			*pFrame444=avcodec_alloc_frame();
-			numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
-			*buffer=(uint8_t *)malloc(numBytes);
-			avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
-		}
 		
-		y4m_si_set_interlace(streaminfo, *yuv_interlacing);
-		y4m_si_set_width(streaminfo, pCodecCtx->width);
-		y4m_si_set_height(streaminfo, pCodecCtx->height);
-		
-#ifdef DEBUG
-		fprintf (stderr,"yuv_data: %x pFrame: %x\nchromalloc\n",yuv_data,pFrame);
+		if (frameFinished) { // appears that if it's not decoded there isn't anything in the ffmpeg buffer
+			// this can cause seg faults.
+			
+			if (convert) {
+				// convert to 444
+				// need to look into the sw_scaler
+				// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
+				chromacpy(yuv_data,*pFrame444,streaminfo);
+			} else {
+#ifdef DEBUGPROCESSVIDEO
+				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
-		chromalloc(yuv_data,streaminfo);
-#ifdef DEBUG
-		fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
-#endif					
+				chromacpy(yuv_data,pFrame,streaminfo);
+			}
+		} /* frame finished */
 		
-		fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
-		fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
-		
-		if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
-		{
-			// should this be fatal?
-			mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
-		} 
-		*header_written = 1;
-	}
-	
-	if (frameFinished) { // appears that if it's not decoded there isn't anything in the ffmpeg buffer
-		// this can cause seg faults.
-		
-		if (convert) {
-			// convert to 444
-			// need to look into the sw_scaler
-			// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
-			chromacpy(yuv_data,*pFrame444,streaminfo);
-		} else {
-#ifdef DEBUG
-			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
-#endif					
-			chromacpy(yuv_data,pFrame,streaminfo);
-		}
-	} /* frame finished */
-	
-	if (write) {
-#ifdef DEBUG
-		fprintf (stderr,"writing yuv data\n");
+		if (write && *header_written) {
+#ifdef DEBUGPROCESSVIDEO
+			fprintf (stderr,"writing yuv data\n");
 #endif
-		write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
-	}
-	
+			write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
+		}
+
 	if (frameFinished)
 		av_free_packet(packet);
 	
@@ -849,7 +852,7 @@ int main(int argc, char *argv[])
 	int stream = 0,subRange=0;
 	int finishedit = 0;
 	enum PixelFormat convert_mode;
-	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
+	int64_t sampleCounter=0,frameCounter=1,startFrame=0,endFrame=1<<30;
 	int samplesFrame;
 	int newFile;
 	char *rangeString = NULL;
@@ -942,9 +945,8 @@ int main(int argc, char *argv[])
 				}
 				
 				if (!skip) {
-					// this means that we've exited early from an edit
 					newFile =1;
-					if (finishedit) {
+					if (finishedit) {	// this means that we've exited early from an edit
 						finishedit=0;
 						// check that the file names are the same
 						if (!strcmp(openfile,edllist[edlcounter].filename)) {
@@ -1012,13 +1014,13 @@ int main(int argc, char *argv[])
 							// allocate for audio
 						}
 					}
-					frameCounter++;
+				//	frameCounter++;
 					
 					// convert cut range into frame numbers.
 					// now do I remember how NTSC drop frame works?
 					if (tc_in) {
 						startFrame = -1; endFrame = -1;
-						frameCounter = 0; sampleCounter = 0;
+						frameCounter = 1; sampleCounter = 0;
 						startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 						endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
 						if (startFrame == -1 || endFrame == -1) {
@@ -1046,9 +1048,16 @@ int main(int argc, char *argv[])
 #ifdef DEBUG
 								fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
 #endif	
-
+							if (frameCounter >= startFrame && frameCounter<= endFrame) {
+								
+								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
+											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+											   yuv_data, fdOut, &frameinfo,1);
+								
+							}
+							
 							// need to make 25 adjustable
-							if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
+							else if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
 								
 								// need to decode about 1 second before the start but not write until the correct frame.								
 								// decode without writing
@@ -1056,14 +1065,10 @@ int main(int argc, char *argv[])
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
 											   yuv_data, fdOut, &frameinfo,0);
 								
-							}
-							
-							if (frameCounter >= startFrame && frameCounter<= endFrame) {
-								
+							} else if (frameCounter<25) {
 								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-											   yuv_data, fdOut, &frameinfo,1);
-								
+											   yuv_data, fdOut, &frameinfo,0);
 							}
 							if (frameCounter > endFrame) {
 								finishedit = 1;
@@ -1117,8 +1122,11 @@ int main(int argc, char *argv[])
 							
 						}
 			
-						frameCounter++;
-						
+						if (header_written) {
+							frameCounter++;
+						} else {
+							fprintf (stderr,"SKIPPED COUNTING FRAME...\n");
+						}
 					}
 				}
 			}
