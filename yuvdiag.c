@@ -200,6 +200,64 @@ void draw_luma (uint8_t *m[], y4m_stream_info_t  *sinfo)
 
 }
 
+void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
+{
+
+	int dw,dh;
+	int dx,dy;
+	
+	dw = y4m_si_get_plane_width(sinfo,0);
+	
+	for (dy=y; dy<y+h;dy++) {
+		for (dx=x; dx<x+w;dx++) {
+		//	fprintf (stderr,"dx: %d dy: %d\n",dx,dy);
+			yuv[0][dx+dy*dw] = 16;
+		}
+	}
+}
+
+
+#define CHARWIDTH 14
+#define CHARHEIGHT 22
+
+void read_font(uint8_t **d)
+{
+
+	FILE *fd;
+	int y,x;
+	int w,h;
+	char type[8],width[8],height[8],depth[8];
+	
+	
+	*d = (uint8_t *) malloc (CHARWIDTH*CHARHEIGHT*96);
+	
+	fd = fopen ("yuvdiag_font.pbm","r");
+
+		// fprintf(stderr,"read_font: fgets\n");
+
+	fgets(type,7,fd);
+	fgets(width,7,fd);
+	fgets(height,7,fd);
+	fgets(depth,7,fd);
+	
+	
+	w=atoi(width);
+	h=atoi(height);
+
+	fprintf (stderr,"type: %s width %d height %d depth %s",type,w,h,depth);
+
+
+	for (y=0;y<CHARHEIGHT;y++) {
+	
+		// fprintf(stderr,"y: %d\n",y);
+	
+			fread(*d+y*CHARWIDTH*96,CHARWIDTH*96,1,fd);
+			fseek(fd,w-CHARWIDTH*96, SEEK_CUR);
+	}
+	fclose(fd);
+
+}	
+
 void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 
 	int h,m,s,f;
@@ -213,28 +271,73 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 	s = (fr.d * fc / fr.n) % 60;
 	f = fc % (fr.n / fr.d);
 	
-	// need to handle NTSC drop frame
+	// TODO: need to handle NTSC drop frame
 	
-	sprintf(tc,"TCR*%02d:%02d:%02d:%02d");
+	sprintf(tc,"TCR*%02d:%02d:%02d:%02d",h,m,s,f);
 
 }
 
+
+void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
+{
+
+	int dw,dx,dy;
+	char c,r;
+
+			dw = y4m_si_get_plane_width(sinfo,0);
+
+
+//	fprintf (stderr,"render_string strlen: %d\n",strlen(time));
+	
+	for (c=0;c<strlen(time);c++) {
+
+		r=time[c];
+
+//fprintf (stderr,"render_string char: %c\n",r);
+
+	
+		for (dy=0; dy<CHARHEIGHT;dy++) {
+			for (dx=0; dx<CHARWIDTH;dx++) {
+				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
+
+				yuv[0][(x+dx+c*CHARWIDTH)+(y+dy)*dw] = fd[dx+c*CHARWIDTH+dy*CHARWIDTH*96];
+				
+			}
+		}
+	}
+
+}
 
 static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
+	uint8_t				*font_data;
 	int                read_error_code ;
 	int                write_error_code = Y4M_OK;
 	int frameCounter = 0;
-	char time[] = "TCR*00:00:00:00   ";
+	char time[32];
+	
+	int w,h;
 
+	read_font(&font_data);
+	
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+
+	w = y4m_si_get_plane_width(inStrInfo,0);
+	h = y4m_si_get_plane_height(inStrInfo,0);
+
 
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	
+
+	w = (w / 2) - (15 * CHARWIDTH / 2);
+	h = h - 24-CHARHEIGHT;
+	
+		fprintf (stderr,"box pos: %d %d\n",w,h);
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		
 		// do work
@@ -242,9 +345,14 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 		
 			// convert counter into TC string
 			string_tc(time,frameCounter,inStrInfo);
+
+			// draw black box
 			
-			fprintf (stderr,"TC: %s\n");
+			black_box(yuv_data,inStrInfo,w,h,15 * CHARWIDTH,CHARHEIGHT);
+			
 			// render string
+		
+			render_string (yuv_data,font_data,inStrInfo,w,h,time);
 		
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 			frameCounter++;
@@ -260,6 +368,8 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
+	
+	free (time);
 	
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
