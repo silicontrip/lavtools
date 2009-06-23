@@ -51,6 +51,7 @@ static void print_usage()
 		"\t -y copy yuv channels into the luma channel\n"
 		"\t -c chroma scope\n" 
 		"\t -l luma scope\n" 
+		"\t -t time code\n"
 		"\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 		"\t -h print this help\n"
 	);
@@ -197,6 +198,30 @@ void draw_luma (uint8_t *m[], y4m_stream_info_t  *sinfo)
 		// fprintf(stderr,"draw_luma: exit\n");
 
 
+}
+
+static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
+{
+	y4m_frame_info_t   in_frame ;
+	uint8_t            *yuv_data[3];
+	int                read_error_code ;
+	int                write_error_code ;
+	int frameCounter = 0;
+	
+
+	if (chromalloc(yuv_data,inStrInfo))		
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+
+	y4m_init_frame_info( &in_frame );
+	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+	
+	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
+		
+		// do work
+		if (read_error_code == Y4M_OK) {
+						write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
+		}
+	}
 }
 
 static void channel(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream_info_t  *outStrInfo )
@@ -511,7 +536,7 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 #define MODE_CHROMA 1
 #define MODE_LUMA 2
 #define MODE_HIST 3
-
+#define MODE_TIMEC 4
 
 // *************************************************************************************
 // MAIN
@@ -550,6 +575,9 @@ int main (int argc, char *argv[])
 					break;
 				case 'l':
 					mode = MODE_LUMA;
+					break;
+				case 't':
+					mode = MODE_TIMEC;
 					break;
 
 				}
@@ -608,7 +636,11 @@ int main (int argc, char *argv[])
 		y4m_write_stream_header(fdOut,&out_streaminfo);
 		acc_hist(fdIn, &in_streaminfo, fdOut, &out_streaminfo);
 	}
-	
+	if (mode == MODE_TIMEC) {
+		y4m_write_stream_header(fdOut,&in_streaminfo);
+		timecode(fdIn, &in_streaminfo, fdOut);
+	}
+
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	
