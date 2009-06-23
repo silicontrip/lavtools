@@ -217,8 +217,10 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
 }
 
 
-#define CHARWIDTH 14
+#define CHARWIDTH 14.4
 #define CHARHEIGHT 22
+#define LINEWIDTH 1376
+
 
 void read_font(uint8_t **d)
 {
@@ -229,7 +231,7 @@ void read_font(uint8_t **d)
 	char type[8],width[8],height[8],depth[8];
 	
 	
-	*d = (uint8_t *) malloc (CHARWIDTH*CHARHEIGHT*96);
+	*d = (uint8_t *) malloc (LINEWIDTH*CHARHEIGHT);
 	
 	fd = fopen ("yuvdiag_font.pbm","r");
 
@@ -251,8 +253,8 @@ void read_font(uint8_t **d)
 	
 		// fprintf(stderr,"y: %d\n",y);
 	
-			fread(*d+y*CHARWIDTH*96,CHARWIDTH*96,1,fd);
-			fseek(fd,w-CHARWIDTH*96, SEEK_CUR);
+			fread(*d+y*LINEWIDTH,LINEWIDTH,1,fd);
+			fseek(fd,w-LINEWIDTH, SEEK_CUR);
 	}
 	fclose(fd);
 
@@ -283,6 +285,7 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 
 	int dw,dx,dy;
 	char c,r;
+	int cpos,rpos;
 
 			dw = y4m_si_get_plane_width(sinfo,0);
 
@@ -299,8 +302,8 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 		for (dy=0; dy<CHARHEIGHT;dy++) {
 			for (dx=0; dx<CHARWIDTH;dx++) {
 				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
-
-				yuv[0][(x+dx+c*CHARWIDTH)+(y+dy)*dw] = fd[dx+c*CHARWIDTH+dy*CHARWIDTH*96];
+				cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
+				yuv[0][(x+dx+cpos)+(y+dy)*dw] = fd[dx+rpos+dy*LINEWIDTH];
 				
 			}
 		}
