@@ -853,7 +853,7 @@ int main(int argc, char *argv[])
 	int stream = 0,subRange=0;
 	int finishedit = 0;
 	enum PixelFormat convert_mode;
-	int64_t sampleCounter=0,frameCounter=1,startFrame=0,endFrame=1<<30;
+	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
 	int samplesFrame;
 	int newFile;
 	char *rangeString = NULL;
