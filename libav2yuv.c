@@ -1057,7 +1057,15 @@ int main(int argc, char *argv[])
 							}
 							
 							// need to make 25 adjustable
-							else if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
+							else 								
+							{	
+								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
+																			   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+																			   yuv_data, fdOut, &frameinfo,0);
+							}
+								
+							/*	
+								if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
 								
 								// need to decode about 1 second before the start but not write until the correct frame.								
 								// decode without writing
@@ -1070,6 +1078,7 @@ int main(int argc, char *argv[])
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
 											   yuv_data, fdOut, &frameinfo,0);
 							}
+							*/
 							if (frameCounter > endFrame) {
 								finishedit = 1;
 							}
