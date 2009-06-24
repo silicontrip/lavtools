@@ -797,7 +797,8 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			}
 		}
 		
-		if (frameFinished) { // appears that if it's not decoded there isn't anything in the ffmpeg buffer
+	if (*header_written) {
+		// if (frameFinished) { // appears that if it's not decoded there isn't anything in the ffmpeg buffer
 			// this can cause seg faults.
 			
 			if (convert) {
@@ -1045,8 +1046,8 @@ int main(int argc, char *argv[])
 						// Decode video frame
 						if (audioWrite==0) {
 							
-#ifdef DEBUG
-								fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
+#ifdef DEBUGCOUNT
+							fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
 #endif	
 							if (frameCounter >= startFrame && frameCounter<= endFrame) {
 								
@@ -1054,18 +1055,7 @@ int main(int argc, char *argv[])
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
 											   yuv_data, fdOut, &frameinfo,1);
 								
-							}
-							
-							// need to make 25 adjustable
-							else 								
-							{	
-								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
-																			   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-																			   yuv_data, fdOut, &frameinfo,0);
-							}
-								
-							/*	
-								if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
+							} else if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
 								
 								// need to decode about 1 second before the start but not write until the correct frame.								
 								// decode without writing
@@ -1078,10 +1068,14 @@ int main(int argc, char *argv[])
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
 											   yuv_data, fdOut, &frameinfo,0);
 							}
-							*/
+							
 							if (frameCounter > endFrame) {
 								finishedit = 1;
 							}
+							
+							if (header_written) {
+								frameCounter++;
+							} 
 							
 						} else {
 							// decode Audio
@@ -1131,17 +1125,16 @@ int main(int argc, char *argv[])
 							
 						}
 			
-						if (header_written) {
-							frameCounter++;
-						} else {
+/* else {
 							fprintf (stderr,"SKIPPED COUNTING FRAME...\n");
 						}
+						 */
 					}
 				}
 			}
 			
 			// Free the packet that was allocated by av_read_frame
-			av_free_packet(&packet);
+		//	av_free_packet(&packet);
 		}
 	}
 	if (audioWrite==0) {
