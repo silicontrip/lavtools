@@ -930,8 +930,11 @@ int main(int argc, char *argv[])
 			if (edllist) {
 				// should allow for multiple edits from the one file.
 				
-				fprintf (stderr,"running EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
-				fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
+				fprintf (stderr,"\nrunning EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
+				fprintf (stderr,"in: %s out: %s",edllist[edlcounter].in, edllist[edlcounter].out);
+
+				//fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
+
 				
 				// set editmode (search_codec_type)
 				// set in and out points
@@ -1087,7 +1090,9 @@ int main(int argc, char *argv[])
 								// for some reason when we finish we skip a frame which is causing syncing problems.
 								// so count it here.
 								// I would like to determine the cause, but this is the work around.
-								frameCounter--;
+							frameCounter++;
+							//	frameCounter--;
+	
 							}
 							
 							if (header_written) {
