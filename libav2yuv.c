@@ -822,9 +822,11 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data);
 		}
 
+	
 	if (frameFinished)
 		av_free_packet(packet);
-	
+		else 
+			fprintf (stderr,"\n\n*** FRAME NOT FINISHED ***\n\n");
 }	
 
 int main(int argc, char *argv[])
@@ -1057,7 +1059,8 @@ int main(int argc, char *argv[])
 											   yuv_data, fdOut, &frameinfo,1);
 								
 							} else
-							/* {
+								/*
+							 {
 								
 								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
@@ -1084,7 +1087,7 @@ int main(int argc, char *argv[])
 								// for some reason when we finish we skip a frame which is causing syncing problems.
 								// so count it here.
 								// I would like to determine the cause, but this is the work around.
-								frameCounter++;
+								frameCounter--;
 							}
 							
 							if (header_written) {
