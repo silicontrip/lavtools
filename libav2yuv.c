@@ -798,7 +798,8 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		}
 		
 	if (*header_written) {
-		// if (frameFinished) { // appears that if it's not decoded there isn't anything in the ffmpeg buffer
+		// if (frameFinished) { 
+			// appears that if it's not decoded there isn't anything in the ffmpeg buffer
 			// this can cause seg faults.
 			
 			if (convert) {
@@ -818,7 +819,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #ifdef DEBUGPROCESSVIDEO
 			fprintf (stderr,"writing yuv data\n");
 #endif
-			write_error_code = y4m_write_frame( fdOut, streaminfo, frameinfo, yuv_data);
+			write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data);
 		}
 
 	if (frameFinished)
@@ -1021,13 +1022,13 @@ int main(int argc, char *argv[])
 					// now do I remember how NTSC drop frame works?
 					if (tc_in) {
 						startFrame = -1; endFrame = -1;
-						frameCounter = 1; sampleCounter = 0;
 						startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 						endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
 						if (startFrame == -1 || endFrame == -1) {
 							fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 							return -1;
 						}
+						frameCounter = 0; sampleCounter = 0;
 					}
 				}
 #ifdef DEBUG
@@ -1055,7 +1056,16 @@ int main(int argc, char *argv[])
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
 											   yuv_data, fdOut, &frameinfo,1);
 								
-							} else if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
+							} else
+							/* {
+								
+								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
+											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+											   yuv_data, fdOut, &frameinfo,0);
+							}
+							 */
+								
+								if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
 								
 								// need to decode about 1 second before the start but not write until the correct frame.								
 								// decode without writing
@@ -1071,6 +1081,10 @@ int main(int argc, char *argv[])
 							
 							if (frameCounter > endFrame) {
 								finishedit = 1;
+								// for some reason when we finish we skip a frame which is causing syncing problems.
+								// so count it here.
+								// I would like to determine the cause, but this is the work around.
+								frameCounter++;
 							}
 							
 							if (header_written) {
