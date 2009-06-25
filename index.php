@@ -1,3 +1,4 @@
+<?php include ("../news.php"); ?>
 <HTML> <HEAD> <TITLE> Mark's video filters </TITLE>
 
 <link rel="stylesheet" href="/trip.css" type="text/css" media="screen" />
