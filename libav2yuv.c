@@ -14,6 +14,7 @@
 // gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 // I really should put history here
+// 5th Jul 2010 - Force framerate command line argument not parsed correctly
 // 5th Apr 2009 - First regression test passed.  EDL version.
 // 18th Mar 2009 - Audio range fixed, sample accurate.
 // 17th Mar 2009 - Multifile version.
@@ -511,9 +512,10 @@ int parseCommandline (int argc, char *argv[],
 				}
 				break;
 			case 'F':
-				if( Y4M_OK != y4m_parse_ratio(yfr, optarg) )
+				if( Y4M_OK != y4m_parse_ratio(yfr, optarg) ) {
 					mjpeg_error_exit1 ("Syntax for frame rate should be Numerator:Denominator");
-				return -1;
+					return -1;
+				}
                 break;
 			case 'A':
 				if( Y4M_OK != y4m_parse_ratio(ya, optarg) ) {
@@ -1087,7 +1089,8 @@ int main(int argc, char *argv[])
 								// for some reason when we finish we skip a frame which is causing syncing problems.
 								// so count it here.
 								// I would like to determine the cause, but this is the work around.
-								frameCounter--;
+								frameCounter++;
+								
 							}
 							
 							if (header_written) {
