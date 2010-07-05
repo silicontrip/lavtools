@@ -735,7 +735,9 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	
 	int frameFinished,numBytes;
 	int write_error_code;
-	
+
+	struct SwsContext *img_convert_ctx;
+
 #ifdef DEBUGPROCESSVIDEO
 	fprintf (stderr,"decode video\n");
 #endif
@@ -773,6 +775,9 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 					numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
 					*buffer=(uint8_t *)malloc(numBytes);
 					avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
+					img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, 
+													 pCodecCtx->width, pCodecCtx->height, convert_mode, NULL, NULL, NULL, NULL); 
+					
 				}
 				
 				y4m_si_set_interlace(streaminfo, *yuv_interlacing);
@@ -790,6 +795,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
 				fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
 				
+				// Need to work out why this isn't being set earlier
 				y4m_accept_extensions(1);
 				if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
 				{
@@ -809,6 +815,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				// convert to 444
 				// need to look into the sw_scaler
 				// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
+				sws_scale(img_convert_ctx, pFrame444->data, pFrame444->linesize, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
 #ifdef DEBUGPROCESSVIDEO
@@ -824,12 +831,16 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #endif
 			write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data);
 		}
-
 	
 	if (frameFinished)
 		av_free_packet(packet);
 		else 
 			fprintf (stderr,"\n\n*** FRAME NOT FINISHED ***\n\n");
+	
+	if (convert) 
+		av_free(img_convert_ctx);
+		
+	
 }	
 
 int main(int argc, char *argv[])
@@ -927,7 +938,6 @@ int main(int argc, char *argv[])
 		
 		// for loop number of files (1 if not EDL)
 		for (edlcounter=0;edlcounter<edlfiles;edlcounter++) {
-			
 			
 			// if EDL
 			if (edllist) {
