@@ -837,9 +837,6 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		else 
 			fprintf (stderr,"\n\n*** FRAME NOT FINISHED ***\n\n");
 	
-	if (convert) 
-		av_free(img_convert_ctx);
-		
 	
 }	
 
