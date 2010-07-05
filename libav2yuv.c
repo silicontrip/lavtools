@@ -790,6 +790,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				fprintf (stderr,"YUV interlace: %d\n",*yuv_interlacing);
 				fprintf (stderr,"YUV Output Resolution: %dx%d\n",pCodecCtx->width, pCodecCtx->height);
 				
+				y4m_accept_extensions(1);
 				if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
 				{
 					// should this be fatal?
