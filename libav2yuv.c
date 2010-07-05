@@ -480,7 +480,7 @@ int parseCommandline (int argc, char *argv[],
 {
 	
 	int i;
-	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:";
+	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:v:";
 	
 	*aw=0;
 	*sct=CODEC_TYPE_VIDEO;
@@ -566,6 +566,10 @@ int parseCommandline (int argc, char *argv[],
 				// would like to split into 2 parts to bring inline with EDL version
 				*sr=1;
 				break;
+			case 'v':
+				mjpeg_default_handler_verbosity (atoi (optarg));
+				break;
+				
 			case 'e':
 				
 			case 'h':
@@ -730,6 +734,25 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 	return 0;
 }	
 
+// I give up, I cannot work out why av_write_frame is not working
+int manual_write_yuv (uint8_t *m[3], y4m_stream_info_t *sinfo) {
+
+	int fs,cfs;
+	int r=0;
+	fs = y4m_si_get_plane_length(sinfo,0);
+	cfs = y4m_si_get_plane_length(sinfo,1);
+	
+	
+	printf("FRAME\n");
+	
+	write(1,m[0],fs);
+	write(1,m[1],cfs);
+	write(1,m[2],cfs);
+
+	return 0;
+	
+}
+
 int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame444, AVPacket *packet, uint8_t	**buffer,
 				   int *header_written, int *yuv_interlacing, int convert, int convert_mode, y4m_stream_info_t *streaminfo,
 				   uint8_t  *yuv_data[3], int fdOut, y4m_frame_info_t *frameinfo, int write, struct SwsContext *img_convert_ctx)
@@ -817,11 +840,15 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if (img_convert_ctx) {
 
 			//	mjpeg_debug("sws_scale(%x,%x,%lu,%d,%x,%lu).",img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize,pCodecCtx->height,pFrame->data, pFrame->linesize);
-				sws_scale(img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
+				//sws_scale(img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
+				sws_scale(img_convert_ctx,  pFrame->data, pFrame->linesize, 0, pCodecCtx->height,(*pFrame444)->data, (*pFrame444)->linesize);
+
 			//	mjpeg_debug("after sws_scale(). %d \n",convert_mode);
 				
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			
+			//	manual_write_yuv(yuv_data,streaminfo);
+				
 				/*
 				yuv_width[0] = y4m_si_get_plane_width(streaminfo,0);
 				yuv_width[1] = y4m_si_get_plane_width(streaminfo,1);
