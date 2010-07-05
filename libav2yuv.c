@@ -57,6 +57,7 @@
 
 #include <ffmpeg/avcodec.h>
 #include <ffmpeg/avformat.h>
+#include <libswscale/swscale.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -730,13 +731,13 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 
 int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame444, AVPacket *packet, uint8_t	**buffer,
 				   int *header_written, int *yuv_interlacing, int convert, int convert_mode, y4m_stream_info_t *streaminfo,
-				   uint8_t  *yuv_data[3], int fdOut, y4m_frame_info_t *frameinfo, int write)
+				   uint8_t  *yuv_data[3], int fdOut, y4m_frame_info_t *frameinfo, int write, struct SwsContext *img_convert_ctx)
 {
 	
 	int frameFinished,numBytes;
 	int write_error_code;
 
-	struct SwsContext *img_convert_ctx;
+	;
 
 #ifdef DEBUGPROCESSVIDEO
 	fprintf (stderr,"decode video\n");
@@ -775,8 +776,6 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 					numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
 					*buffer=(uint8_t *)malloc(numBytes);
 					avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
-					img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, 
-													 pCodecCtx->width, pCodecCtx->height, convert_mode, NULL, NULL, NULL, NULL); 
 					
 				}
 				
@@ -815,7 +814,11 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				// convert to 444
 				// need to look into the sw_scaler
 				// img_convert((AVPicture *)*pFrame444, convert_mode, (AVPicture*)pFrame, pCodecCtx->pix_fmt, pCodecCtx->width, pCodecCtx->height);
-				sws_scale(img_convert_ctx, ((AVPicture *)pFrame444)->data, ((AVPicture *)pFrame444)->linesize, 0, pCodecCtx->height, ((AVPicture *)pFrame)->data, ((AVPicture *)pFrame)->linesize);
+		//		fprintf (stderr, "sws_scale(%x,%x,%lu,%d,%x,%lu).\n",img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize,pCodecCtx->height,pFrame->data, pFrame->linesize);
+
+				sws_scale(img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
+			//	fprintf (stderr, "after sws_scale().\n");
+
 				chromacpy(yuv_data,*pFrame444,streaminfo);
 			} else {
 #ifdef DEBUGPROCESSVIDEO
@@ -826,9 +829,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		} /* frame finished */
 		
 		if (write && *header_written) {
-#ifdef DEBUGPROCESSVIDEO
 			fprintf (stderr,"writing yuv data\n");
-#endif
 			write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data);
 		}
 	
@@ -877,6 +878,7 @@ int main(int argc, char *argv[])
 	int y,skip=0;
 	int                frame_data_size ;
 	uint8_t            *yuv_data[3] ;      
+	struct SwsContext *img_convert_ctx;
 	
 	y4m_stream_info_t streaminfo;
 	y4m_frame_info_t frameinfo;
@@ -1025,6 +1027,10 @@ int main(int argc, char *argv[])
 							fprintf (stderr,"Error initialising video file: %s\n",openfile);
 							exit (-1);
 						}
+						if (convert) {
+							img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, 
+															 pCodecCtx->width, pCodecCtx->height, convert_mode, SWS_FULL_CHR_H_INT, NULL, NULL, NULL); 
+						}
 					} else {
 						numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
 						if (tc_in) {
@@ -1060,12 +1066,12 @@ int main(int argc, char *argv[])
 				}
 #endif	
 				
-				fprintf (stderr,"loop until nothing left (%x:%x)\n",pFormatCtx,&packet);
+			//	fprintf (stderr,"loop until nothing left (%x:%x)\n",pFormatCtx,&packet);
 				// Loop until nothing read
 				while(av_read_frame(pFormatCtx, &packet)>=0 && !finishedit)
 				{
 					
-					 fprintf (stderr,"inside loop until nothing left\n");
+					// fprintf (stderr,"inside loop until nothing left\n");
 
 					
 					// Is this a packet from the desired stream?
@@ -1074,14 +1080,12 @@ int main(int argc, char *argv[])
 						// Decode video frame
 						if (audioWrite==0) {
 							
-#ifdef DEBUGCOUNT
-							fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
-#endif	
+							// fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
 							if (frameCounter >= startFrame && frameCounter<= endFrame) {
 								
 								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-											   yuv_data, fdOut, &frameinfo,1);
+											   yuv_data, fdOut, &frameinfo,1,img_convert_ctx);
 								
 							} else
 								/*
@@ -1099,12 +1103,12 @@ int main(int argc, char *argv[])
 								// decode without writing
 								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-											   yuv_data, fdOut, &frameinfo,0);
+											   yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
 								
 							} else if (frameCounter<25) {
 								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
 											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-											   yuv_data, fdOut, &frameinfo,0);
+											   yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
 							}
 							
 							if (frameCounter > endFrame) {
