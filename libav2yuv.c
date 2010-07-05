@@ -522,7 +522,7 @@ int parseCommandline (int argc, char *argv[],
 					if (!strcmp(optarg,PAL)) {
 						y4m_parse_ratio(ya, "128:117");
 					} else if (!strcmp(optarg,PAL_WIDE)) {
-						y4m_parse_ratio(ya, "640:351");
+						y4m_parse_ratio(ya, "512:351");
 					} else if (!strcmp(optarg,NTSC)) {
 						y4m_parse_ratio(ya, "4320:4739");
 					} else if (!strcmp(optarg,NTSC_WIDE)) {
@@ -932,8 +932,11 @@ int main(int argc, char *argv[])
 			if (edllist) {
 				// should allow for multiple edits from the one file.
 				
-				fprintf (stderr,"running EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
-				fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
+				fprintf (stderr,"\nrunning EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
+				fprintf (stderr,"in: %s out: %s",edllist[edlcounter].in, edllist[edlcounter].out);
+
+				//fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
+
 				
 				// set editmode (search_codec_type)
 				// set in and out points
@@ -962,9 +965,13 @@ int main(int argc, char *argv[])
 							startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 							endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
 							if (startFrame == -1 || endFrame == -1) {
-								fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
-								return -1;
+								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 							}
+
+							if (startFrame > endFrame) {
+								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+							}
+
 							
 							if (audioWrite) {
 								if (sampleCounter < startFrame * samplesFrame)  {
@@ -1028,10 +1035,13 @@ int main(int argc, char *argv[])
 						startFrame = -1; endFrame = -1;
 						startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 						endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
-						if (startFrame == -1 || endFrame == -1) {
-							fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
-							return -1;
-						}
+							if (startFrame == -1 || endFrame == -1) {
+								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+							}
+
+							if (startFrame > endFrame) {
+								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+							}
 						frameCounter = 0; sampleCounter = 0;
 					}
 				}
