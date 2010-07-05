@@ -869,7 +869,7 @@ int main(int argc, char *argv[])
 	enum PixelFormat convert_mode;
 	int64_t sampleCounter=0,frameCounter=0,startFrame=0,endFrame=1<<30;
 	int samplesFrame;
-	int newFile;
+	int newFile =1;
 	char *rangeString = NULL;
 	char *openfile;
 	int edlfiles,edlcounter;
@@ -999,6 +999,7 @@ int main(int argc, char *argv[])
 				
 			}
 			if (!skip) {
+				fprintf (stderr,"not skip\n");
 				if (newFile) {
 					stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
 					if (stream == -1) {
@@ -1059,10 +1060,14 @@ int main(int argc, char *argv[])
 				}
 #endif	
 				
-				//fprintf (stderr,"loop until nothing left\n");
+				fprintf (stderr,"loop until nothing left (%x:%x)\n",pFormatCtx,&packet);
 				// Loop until nothing read
 				while(av_read_frame(pFormatCtx, &packet)>=0 && !finishedit)
 				{
+					
+					 fprintf (stderr,"inside loop until nothing left\n");
+
+					
 					// Is this a packet from the desired stream?
 					if(packet.stream_index==stream)
 					{
