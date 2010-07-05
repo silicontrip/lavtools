@@ -411,17 +411,17 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 	cw = y4m_si_get_plane_width(sinfo,1);
 	ch = y4m_si_get_plane_height(sinfo,1);
 	
+//mjpeg_debug ("copy %d bytes to: %x from: %x",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
+
+	
 	for (y=0; y<h; y++) {
-#ifdef DEBUG
-		fprintf (stderr,"copy %d bytes to: %x from: %x\n",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
-#endif
+//		mjpeg_debug ("copy %d bytes to: %x from: %x",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
 		
 		memcpy(dst[0]+y*w,(src->data[0])+y*src->linesize[0],w);
 		if (y<ch) {
 #ifdef DEBUG
 			fprintf (stderr,"copy %d bytes to: %x from: %x\n",cw,dst[1]+y*cw,(src->data[1])+y*src->linesize[1]);
 #endif
-			
 			memcpy(dst[1]+y*cw,(src->data[1])+y*src->linesize[1],cw);
 			memcpy(dst[2]+y*cw,(src->data[2])+y*src->linesize[2],cw);
 		}
@@ -537,7 +537,7 @@ int parseCommandline (int argc, char *argv[],
 				*ysm = y4m_chroma_parse_keyword(optarg);
 				if (*ysm == Y4M_UNKNOWN) {
 					mjpeg_error("Unknown subsampling mode option:  %s", optarg);
-					mjpeg_error("Try: 420mpeg2 444 422 411");
+					mjpeg_error("Try: 420mpeg2 420jpeg 444 422 411 mono");
 					return -1;
 				}
 				break;
@@ -680,6 +680,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 				case Y4M_CHROMA_444: *convert_mode = PIX_FMT_YUV444P; break;
 				case Y4M_CHROMA_411: *convert_mode = PIX_FMT_YUV411P; break;
 				case Y4M_CHROMA_420JPEG: *convert_mode = PIX_FMT_YUVJ420P; break;
+				case Y4M_CHROMA_MONO: *convert_mode = PIX_FMT_GRAY8; break;
 				default:
 					mjpeg_error("Cannot convert to this chroma mode");
 					return -1;
@@ -846,6 +847,9 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			
 			// y4m_accept_extensions(1);
 
+			mjpeg_debug ("Stream info length: %d chroma: %d",y4m_si_get_framelength(streaminfo),y4m_si_get_chroma(streaminfo));
+			
+			
 			if ((write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data) != Y4M_OK)) 
 				mjpeg_error("Write frame failed: %s", y4m_strerr(write_error_code));
 
