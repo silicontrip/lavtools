@@ -252,7 +252,7 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	
 	va = line+codes[3].rm_so;
 	
-//	fprintf (stderr,"EDITMODE: %s\n",va);
+	//	fprintf (stderr,"EDITMODE: %s\n",va);
 	
 	if (!strcmp(va,"VA") || !strcmp(va,"va") || va[0]=='B' || va[0]=='b') {
 		*audio = 1;
@@ -344,7 +344,7 @@ int parseEDL (char *file, struct edlentry **list)
 		if (parseEDLline (line, &fn, &ema, &emv,&in,&out) == -1) {
 			fprintf (stderr,"Error in EDL file line: %d: %s\n",count+1,line);
 		} else {
-		//	fprintf (stderr,"Parsing line: %d\n",count);
+			//	fprintf (stderr,"Parsing line: %d\n",count);
 			//	malloc filename
 			inner[count].filename = (char *)malloc(strlen(fn)+1);
 			if (inner[count].filename == NULL) {
@@ -387,7 +387,7 @@ int parseEDL (char *file, struct edlentry **list)
 			strcpy(inner[count].in,in);
 			strcpy(inner[count].out,out);
 			
-		//	fprintf (stderr,"a: %d v: %d\n",ema,emv);
+			//	fprintf (stderr,"a: %d v: %d\n",ema,emv);
 			
 			inner[count].audio = ema;
 			inner[count].video = emv;
@@ -411,11 +411,11 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 	cw = y4m_si_get_plane_width(sinfo,1);
 	ch = y4m_si_get_plane_height(sinfo,1);
 	
-//mjpeg_debug ("copy %d bytes to: %x from: %x",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
-
+	//mjpeg_debug ("copy %d bytes to: %x from: %x",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
+	
 	
 	for (y=0; y<h; y++) {
-//		mjpeg_debug ("copy %d bytes to: %x from: %x",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
+		//		mjpeg_debug ("copy %d bytes to: %x from: %x",w,dst[0]+y*w,(src->data[0])+y*src->linesize[0]);
 		
 		memcpy(dst[0]+y*w,(src->data[0])+y*src->linesize[0],w);
 		if (y<ch) {
@@ -436,7 +436,7 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
 	
-//	fprintf (stderr,"Allocating: %d and %d bytes\n",fs,cfs);
+	//	fprintf (stderr,"Allocating: %d and %d bytes\n",fs,cfs);
 	
 	m[0] = (uint8_t *)malloc( fs );
 	m[1] = (uint8_t *)malloc( cfs);
@@ -596,13 +596,13 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	
 	pFormatCtx = *pfc;
 	
-//	fprintf (stderr,"av_find_stream_info\n");
+	//	fprintf (stderr,"av_find_stream_info\n");
 	
 	// Retrieve stream information
 	if(av_find_stream_info(pFormatCtx)<0)
 		return -1; // Couldn't find stream information
 	
-//	fprintf (stderr,"dump_format\n");
+	//	fprintf (stderr,"dump_format\n");
 	
 	// Dump information about file onto standard error
 	dump_format(pFormatCtx, 0, fn, 0);
@@ -692,7 +692,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 			}
 			mjpeg_warn("Enabling non standard YUV4MPEG stream");
 			y4m_accept_extensions(1);
-
+			
 		}
 	} else if (*yuv_ss_mode == Y4M_UNKNOWN) {
 		switch (pCodecCtx->pix_fmt) {
@@ -736,7 +736,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 
 // I give up, I cannot work out why av_write_frame is not working
 int manual_write_yuv (uint8_t *m[3], y4m_stream_info_t *sinfo) {
-
+	
 	int fs,cfs;
 	int r=0;
 	fs = y4m_si_get_plane_length(sinfo,0);
@@ -748,7 +748,7 @@ int manual_write_yuv (uint8_t *m[3], y4m_stream_info_t *sinfo) {
 	write(1,m[0],fs);
 	write(1,m[1],cfs);
 	write(1,m[2],cfs);
-
+	
 	return 0;
 	
 }
@@ -761,131 +761,131 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	int frameFinished,numBytes;
 	int write_error_code;
 	int yuv_width[3];
-
-//	mjpeg_debug ("decode video");
 	
-		avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
-		//avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
-		// Did we get a video frame?
-		// frameFinished does not mean decoder finished, means that the packet can be freed.
+	//	mjpeg_debug ("decode video");
+	
+	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
+	//avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+	// Did we get a video frame?
+	// frameFinished does not mean decoder finished, means that the packet can be freed.
 	
 #ifdef DEBUGPROCESSVIDEO
-		fprintf (stderr,"frameFinished: %d\n",frameFinished);
+	fprintf (stderr,"frameFinished: %d\n",frameFinished);
 #endif
-		
-		// Save the frame to disk
-		
-		// As we don't know interlacing until the first frame
-		// we wait until the first frame is read before setting the interlace flag
-		// and outputting the YUV header
-		// It also appears that some codecs don't set width or height until the first frame either
 	
-		if (!*header_written) {
-			if (frameFinished) {
-				if (*yuv_interlacing == Y4M_UNKNOWN) {
-					if (pFrame->interlaced_frame) {
-						if (pFrame->top_field_first) {
-							*yuv_interlacing = Y4M_ILACE_TOP_FIRST;
-						} else {
-							*yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
-						}
+	// Save the frame to disk
+	
+	// As we don't know interlacing until the first frame
+	// we wait until the first frame is read before setting the interlace flag
+	// and outputting the YUV header
+	// It also appears that some codecs don't set width or height until the first frame either
+	
+	if (!*header_written) {
+		if (frameFinished) {
+			if (*yuv_interlacing == Y4M_UNKNOWN) {
+				if (pFrame->interlaced_frame) {
+					if (pFrame->top_field_first) {
+						*yuv_interlacing = Y4M_ILACE_TOP_FIRST;
 					} else {
-						*yuv_interlacing = Y4M_ILACE_NONE;
+						*yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;
 					}
+				} else {
+					*yuv_interlacing = Y4M_ILACE_NONE;
 				}
-				
-				if (img_convert_ctx) {
-					// initialise conversion to different chroma subsampling
-					*pFrame444=avcodec_alloc_frame();
-					numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
-					*buffer=(uint8_t *)malloc(numBytes);
-					avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
-				//	fprintf (stderr,"buffer: %x pFrame444: %x\nchromalloc\n",buffer,pFrame444);
-
-				}
-				
-				y4m_si_set_interlace(streaminfo, *yuv_interlacing);
-				y4m_si_set_width(streaminfo, pCodecCtx->width);
-				y4m_si_set_height(streaminfo, pCodecCtx->height);
-				
-#ifdef DEBUGPROCESSVIDEO
-				fprintf (stderr,"yuv_data: %x pFrame: %x\nchromalloc\n",yuv_data,pFrame);
-#endif					
-				
-				chromalloc(yuv_data,streaminfo);
-				
-#ifdef DEBUGPROCESSVIDEO
-				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
-#endif					
-				
-				mjpeg_info ("YUV interlace: %d",*yuv_interlacing);
-				mjpeg_info ("YUV Output Resolution: %dx%d",pCodecCtx->width, pCodecCtx->height);
-				
-				// Need to work out why this isn't being set earlier
-			//	y4m_accept_extensions(1);
-				if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
-				{
-					// should this be fatal?
-					mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
-				} 
-				*header_written = 1;
 			}
-		}
-		
-	if (*header_written) {
-		// if (frameFinished) { 
-			// appears that if it's not decoded there isn't anything in the ffmpeg buffer
-			// this can cause seg faults.
 			
 			if (img_convert_ctx) {
-
-			//	mjpeg_debug("sws_scale(%x,%x,%lu,%d,%x,%lu).",img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize,pCodecCtx->height,pFrame->data, pFrame->linesize);
-				//sws_scale(img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
-				sws_scale(img_convert_ctx,  pFrame->data, pFrame->linesize, 0, pCodecCtx->height,(*pFrame444)->data, (*pFrame444)->linesize);
-
-			//	mjpeg_debug("after sws_scale(). %d \n",convert_mode);
+				// initialise conversion to different chroma subsampling
+				*pFrame444=avcodec_alloc_frame();
+				numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
+				*buffer=(uint8_t *)malloc(numBytes);
+				avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
+				//	fprintf (stderr,"buffer: %x pFrame444: %x\nchromalloc\n",buffer,pFrame444);
 				
-				chromacpy(yuv_data,*pFrame444,streaminfo);
+			}
+			
+			y4m_si_set_interlace(streaminfo, *yuv_interlacing);
+			y4m_si_set_width(streaminfo, pCodecCtx->width);
+			y4m_si_set_height(streaminfo, pCodecCtx->height);
+			
+#ifdef DEBUGPROCESSVIDEO
+			fprintf (stderr,"yuv_data: %x pFrame: %x\nchromalloc\n",yuv_data,pFrame);
+#endif					
+			
+			chromalloc(yuv_data,streaminfo);
+			
+#ifdef DEBUGPROCESSVIDEO
+			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+#endif					
+			
+			mjpeg_info ("YUV interlace: %d",*yuv_interlacing);
+			mjpeg_info ("YUV Output Resolution: %dx%d",pCodecCtx->width, pCodecCtx->height);
+			
+			// Need to work out why this isn't being set earlier
+			//	y4m_accept_extensions(1);
+			if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
+			{
+				// should this be fatal?
+				mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
+			} 
+			*header_written = 1;
+		}
+	}
+	
+	if (*header_written) {
+		// if (frameFinished) { 
+		// appears that if it's not decoded there isn't anything in the ffmpeg buffer
+		// this can cause seg faults.
+		
+		if (img_convert_ctx) {
+			
+			//	mjpeg_debug("sws_scale(%x,%x,%lu,%d,%x,%lu).",img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize,pCodecCtx->height,pFrame->data, pFrame->linesize);
+			//sws_scale(img_convert_ctx, (*pFrame444)->data, (*pFrame444)->linesize, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
+			sws_scale(img_convert_ctx,  pFrame->data, pFrame->linesize, 0, pCodecCtx->height,(*pFrame444)->data, (*pFrame444)->linesize);
+			
+			//	mjpeg_debug("after sws_scale(). %d \n",convert_mode);
+			
+			chromacpy(yuv_data,*pFrame444,streaminfo);
 			
 			//	manual_write_yuv(yuv_data,streaminfo);
-				
-				/*
-				yuv_width[0] = y4m_si_get_plane_width(streaminfo,0);
-				yuv_width[1] = y4m_si_get_plane_width(streaminfo,1);
-				yuv_width[2] = y4m_si_get_plane_width(streaminfo,2);
-				
-				sws_scale(img_convert_ctx, yuv_data, yuv_width, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
-				 */
-				
-			} else {
+			
+			/*
+			 yuv_width[0] = y4m_si_get_plane_width(streaminfo,0);
+			 yuv_width[1] = y4m_si_get_plane_width(streaminfo,1);
+			 yuv_width[2] = y4m_si_get_plane_width(streaminfo,2);
+			 
+			 sws_scale(img_convert_ctx, yuv_data, yuv_width, 0, pCodecCtx->height, pFrame->data, pFrame->linesize);
+			 */
+			
+		} else {
 #ifdef DEBUGPROCESSVIDEO
-				fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
+			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
-				chromacpy(yuv_data,pFrame,streaminfo);
-			}
-		} /* frame finished */
-		
-		if (write && *header_written) {
-
-	//		mjpeg_debug("writing yuv data (%d, %x, %x, %x, %d,%d)",fdOut, streaminfo, frameinfo, yuv_data,
-	//				y4m_si_get_plane_length(streaminfo,0),y4m_si_get_plane_length(streaminfo,1));
-	//		mjpeg_debug("yuvdata: %x %x %x",yuv_data[0],yuv_data[1],yuv_data[2]);
-	//		mjpeg_debug("frameinfo : %d %d %d", y4m_fi_get_presentation(frameinfo), y4m_fi_get_temporal(frameinfo), y4m_fi_get_spatial(frameinfo));
-			
-			// y4m_accept_extensions(1);
-
-			mjpeg_debug ("Stream info length: %d chroma: %d",y4m_si_get_framelength(streaminfo),y4m_si_get_chroma(streaminfo));
-			
-			
-			if ((write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data) != Y4M_OK)) 
-				mjpeg_error("Write frame failed: %s", y4m_strerr(write_error_code));
-
+			chromacpy(yuv_data,pFrame,streaminfo);
 		}
+	} /* frame finished */
+	
+	if (write && *header_written) {
+		
+		//		mjpeg_debug("writing yuv data (%d, %x, %x, %x, %d,%d)",fdOut, streaminfo, frameinfo, yuv_data,
+		//				y4m_si_get_plane_length(streaminfo,0),y4m_si_get_plane_length(streaminfo,1));
+		//		mjpeg_debug("yuvdata: %x %x %x",yuv_data[0],yuv_data[1],yuv_data[2]);
+		//		mjpeg_debug("frameinfo : %d %d %d", y4m_fi_get_presentation(frameinfo), y4m_fi_get_temporal(frameinfo), y4m_fi_get_spatial(frameinfo));
+		
+		// y4m_accept_extensions(1);
+		
+		mjpeg_debug ("Stream info length: %d chroma: %d",y4m_si_get_framelength(streaminfo),y4m_si_get_chroma(streaminfo));
+		
+		
+		if ((write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data) != Y4M_OK)) 
+			mjpeg_error("Write frame failed: %s", y4m_strerr(write_error_code));
+		
+	}
 	
 	if (frameFinished)
 		av_free_packet(packet);
-		else 
-			mjpeg_warn ("FRAME NOT FINISHED");
+	else 
+		mjpeg_warn ("FRAME NOT FINISHED");
 	
 	
 }	
@@ -941,7 +941,7 @@ int main(int argc, char *argv[])
     // Register all formats and codecs
     av_register_all();
 	mjpeg_default_handler_verbosity (0);
-
+	
 	
 	// Parse commandline arguments
 	if (parseCommandline(argc,argv,&yuv_interlacing,&yuv_frame_rate,&yuv_aspect, &yuv_ss_mode,&fdOut,
@@ -973,15 +973,15 @@ int main(int argc, char *argv[])
 		
 		// fprintf (stderr,"file ext: %s\n",openfile+strlen(openfile)-3);
 		
-		edlfiles = 1;
+		edlfiles = 1; skip = 0;
 		// Should I make EDL file a special case using a command line option.
 		// Or do the following.  look for edl at the end.
 		// Actually I should also check for string length.
 		if (!strcmp(openfile+strlen(openfile)-4,".edl"))
 		{
-		//	fprintf (stderr,"parsing edl file\n");
+			//	fprintf (stderr,"parsing edl file\n");
 			edlfiles = parseEDL(openfile,&edllist);
-		//	fprintf (stderr,"EDL struct location: %x containing %d entries\n",edllist,edlfiles);
+			//	fprintf (stderr,"EDL struct location: %x containing %d entries\n",edllist,edlfiles);
 		}
 		// set number of files for loop (1 otherwise)
 		// end if
@@ -995,9 +995,9 @@ int main(int argc, char *argv[])
 				
 				fprintf (stderr,"\nrunning EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
 				fprintf (stderr,"in: %s out: %s",edllist[edlcounter].in, edllist[edlcounter].out);
-
+				
 				//fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
-
+				
 				
 				// set editmode (search_codec_type)
 				// set in and out points
@@ -1010,7 +1010,7 @@ int main(int argc, char *argv[])
 				} else if (!audioWrite && edllist[edlcounter].video) {
 					search_codec_type = CODEC_TYPE_VIDEO;
 				} else {
-						// skip if write mode (audio or video) != edit mode
+					// skip if write mode (audio or video) != edit mode
 					skip = 1;
 				}
 				
@@ -1020,7 +1020,7 @@ int main(int argc, char *argv[])
 						finishedit=0;
 						// check that the file names are the same
 						if (!strcmp(openfile,edllist[edlcounter].filename)) {
-						
+							
 							// check that the start of the new edit is later than the current frame/sample counter
 							// this means that we've exited early from an edit
 							startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
@@ -1028,11 +1028,11 @@ int main(int argc, char *argv[])
 							if (startFrame == -1 || endFrame == -1) {
 								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 							}
-
+							
 							if (startFrame > endFrame) {
 								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 							}
-
+							
 							
 							if (audioWrite) {
 								if (sampleCounter < startFrame * samplesFrame)  {
@@ -1046,13 +1046,12 @@ int main(int argc, char *argv[])
 						}
 					}
 				}
-							
+				
 				
 				openfile = edllist[edlcounter].filename;
 				
 			}
 			if (!skip) {
-//				fprintf (stderr,"not skip\n");
 				if (newFile) {
 					stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
 					if (stream == -1) {
@@ -1092,7 +1091,7 @@ int main(int argc, char *argv[])
 							// allocate for audio
 						}
 					}
-				//	frameCounter++;
+					//	frameCounter++;
 					
 					// convert cut range into frame numbers.
 					// now do I remember how NTSC drop frame works?
@@ -1100,29 +1099,29 @@ int main(int argc, char *argv[])
 						startFrame = -1; endFrame = -1;
 						startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 						endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
-							if (startFrame == -1 || endFrame == -1) {
-								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
-							}
-
-							if (startFrame > endFrame) {
-								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
-							}
+						if (startFrame == -1 || endFrame == -1) {
+							mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+						}
+						
+						if (startFrame > endFrame) {
+							mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+						}
 						frameCounter = 0; sampleCounter = 0;
 					}
 				}
 #ifdef DEBUG
 				if (audioWrite!=0) {
-					fprintf (stderr,"sample counter: %lld - %lld  (%lld - %lld) spf %d\n",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
+					mjpeg_debug ("sample counter: %lld - %lld  (%lld - %lld) spf %d",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
 				}
 #endif	
 				
-			//	fprintf (stderr,"loop until nothing left (%x:%x)\n",pFormatCtx,&packet);
+				//	fprintf (stderr,"loop until nothing left (%x:%x)\n",pFormatCtx,&packet);
 				// Loop until nothing read
 				while(av_read_frame(pFormatCtx, &packet)>=0 && !finishedit)
 				{
 					
 					// fprintf (stderr,"inside loop until nothing left\n");
-
+					
 					
 					// Is this a packet from the desired stream?
 					if(packet.stream_index==stream)
@@ -1138,27 +1137,27 @@ int main(int argc, char *argv[])
 											   yuv_data, fdOut, &frameinfo,1,img_convert_ctx);
 								
 							} else
-								/*
+							/*
 							 {
-								
-								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
-											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-											   yuv_data, fdOut, &frameinfo,0);
-							}
+							 
+							 process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
+							 &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+							 yuv_data, fdOut, &frameinfo,0);
+							 }
 							 */
 								
 								if (frameCounter >= (startFrame-25) && frameCounter< startFrame) {
-								
-								// need to decode about 1 second before the start but not write until the correct frame.								
-								// decode without writing
+									
+									// need to decode about 1 second before the start but not write until the correct frame.								
+									// decode without writing
 									process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
-										&header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-										yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
-								
+												   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+												   yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
+									
 								} else if (frameCounter<25) {
 									process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
-										&header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
-										yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
+												   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+												   yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
 								}
 							
 							if (frameCounter > endFrame) {
@@ -1221,38 +1220,47 @@ int main(int argc, char *argv[])
 							}
 							
 						}
-			
-/* else {
-							fprintf (stderr,"SKIPPED COUNTING FRAME...\n");
-						}
+						
+						/* else {
+						 fprintf (stderr,"SKIPPED COUNTING FRAME...\n");
+						 }
 						 */
 					}
 				}
 			}
 			
 			// Free the packet that was allocated by av_read_frame
-		//	av_free_packet(&packet);
+			//	av_free_packet(&packet);
 		}
-	}
-	if (audioWrite==0) {
-		y4m_fini_stream_info(&streaminfo);
-		y4m_fini_frame_info(&frameinfo);
+		av_free_packet(&packet);
+		if (img_convert_ctx) {
+			free (buffer);
+			av_free(img_convert_ctx);
+		}
 		
-		free(yuv_data[0]);
-		free(yuv_data[1]);
-		free(yuv_data[2]);
 		
-		// Free the YUV frame
-		av_free(pFrame);
-	} else {
-		free (aBuffer);
+		//END of file loop
+		
+		if (audioWrite==0) {
+			y4m_fini_stream_info(&streaminfo);
+			y4m_fini_frame_info(&frameinfo);
+			
+			free(yuv_data[0]);
+			free(yuv_data[1]);
+			free(yuv_data[2]);
+			
+			// Free the YUV frame
+			av_free(pFrame);
+		} else {
+			free (aBuffer);
+		}
+		
+		// Close the codec
+		avcodec_close(pCodecCtx);
+		
+		// Close the video file
+		av_close_input_file(pFormatCtx);
 	}
-    // Close the codec
-    avcodec_close(pCodecCtx);
-	
-    // Close the video file
-    av_close_input_file(pFormatCtx);
-	
 	if (audioWrite == 0) {
 		mjpeg_info ("%d Frames processed",frameCounter);
 	} else {
