@@ -940,6 +940,8 @@ int main(int argc, char *argv[])
 	
     // Register all formats and codecs
     av_register_all();
+	mjpeg_default_handler_verbosity (0);
+
 	
 	// Parse commandline arguments
 	if (parseCommandline(argc,argv,&yuv_interlacing,&yuv_frame_rate,&yuv_aspect, &yuv_ss_mode,&fdOut,
