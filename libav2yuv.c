@@ -1232,23 +1232,13 @@ int main(int argc, char *argv[])
 			// Free the packet that was allocated by av_read_frame
 			//	av_free_packet(&packet);
 		}
-		av_free_packet(&packet);
+		
 		if (img_convert_ctx) {
 			free (buffer);
 			av_free(img_convert_ctx);
 		}
-		
-		
-		//END of file loop
-		
+
 		if (audioWrite==0) {
-			y4m_fini_stream_info(&streaminfo);
-			y4m_fini_frame_info(&frameinfo);
-			
-			free(yuv_data[0]);
-			free(yuv_data[1]);
-			free(yuv_data[2]);
-			
 			// Free the YUV frame
 			av_free(pFrame);
 		} else {
@@ -1260,8 +1250,21 @@ int main(int argc, char *argv[])
 		
 		// Close the video file
 		av_close_input_file(pFormatCtx);
+		
 	}
+	av_free_packet(&packet);
+
+	//END of file loop
+
 	if (audioWrite == 0) {
+
+		y4m_fini_stream_info(&streaminfo);
+		y4m_fini_frame_info(&frameinfo);
+		
+		free(yuv_data[0]);
+		free(yuv_data[1]);
+		free(yuv_data[2]);
+		
 		mjpeg_info ("%d Frames processed",frameCounter);
 	} else {
 		mjpeg_info ("%d Samples processed",sampleCounter);
