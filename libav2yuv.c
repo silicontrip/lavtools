@@ -1,3 +1,4 @@
+/*
 // libav2yuv
 // adapted from
 // avcodec_sample.0.4.9.cpp
@@ -13,6 +14,12 @@
 // quadrant gcc -O3 -I/sw/include -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv 
 // gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
+// valgrind build
+
+gcc -g -I/opt/local/include -I/usr/local/include/mjpegtools libav2yuv.c -c
+gcc -g -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.o -o libav2yuv
+dsymutil libav2yuv
+
 // I really should put history here
 // 5th Jul 2010 - Force framerate command line argument not parsed correctly
 // 5th Apr 2009 - First regression test passed.  EDL version.
@@ -25,6 +32,7 @@
 // 3rd July 2008 - Will choose the first stream found if no stream is specified  
 // 24th Feb 2008 - Found an unexpected behaviour where frames were being dropped. libav said that no frame was decoded. Have output the previous frame in this instance.
 //
+*/
 
 /* Possible inclusion for EDL
  Comments
@@ -715,22 +723,23 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 	}
 	
 	
-	if (*pFrame == NULL) {
+	if (*pFrame != NULL) 	
+		av_free(*pFrame);
 		// Allocate video frame
-		*pFrame=avcodec_alloc_frame();
+	*pFrame=avcodec_alloc_frame();
 		
-		// Output YUV format details
-		// is there some mjpeg_info functions?
-		mjpeg_info ("YUV Aspect Ratio: %d:%d",yuv_aspect->n,yuv_aspect->d);
-		mjpeg_info ("YUV frame rate: %d:%d",yuv_frame_rate->n,yuv_frame_rate->d);
-		mjpeg_info ("YUV Chroma Subsampling: %d",*yuv_ss_mode);
+	// Output YUV format details
+	// is there some mjpeg_info functions?
+	mjpeg_info ("YUV Aspect Ratio: %d:%d",yuv_aspect->n,yuv_aspect->d);
+	mjpeg_info ("YUV frame rate: %d:%d",yuv_frame_rate->n,yuv_frame_rate->d);
+	mjpeg_info ("YUV Chroma Subsampling: %d",*yuv_ss_mode);
 		
-		// Set the YUV stream details
-		// Interlace is handled when the first frame is read.
-		y4m_si_set_sampleaspect(si, *yuv_aspect);
-		y4m_si_set_framerate(si, *yuv_frame_rate);
-		y4m_si_set_chroma(si, *yuv_ss_mode);
-	}
+	// Set the YUV stream details
+	// Interlace is handled when the first frame is read.
+	y4m_si_set_sampleaspect(si, *yuv_aspect);
+	y4m_si_set_framerate(si, *yuv_frame_rate);
+	y4m_si_set_chroma(si, *yuv_ss_mode);
+	
 	return 0;
 }	
 
@@ -796,8 +805,12 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			
 			if (img_convert_ctx) {
 				// initialise conversion to different chroma subsampling
+				if (*pFrame444)
+					av_free(*pFrame444);
 				*pFrame444=avcodec_alloc_frame();
 				numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
+				if (*buffer)
+					free(*buffer);
 				*buffer=(uint8_t *)malloc(numBytes);
 				avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
 				//	fprintf (stderr,"buffer: %x pFrame444: %x\nchromalloc\n",buffer,pFrame444);
@@ -1232,26 +1245,29 @@ int main(int argc, char *argv[])
 			// Free the packet that was allocated by av_read_frame
 			//	av_free_packet(&packet);
 		}
-		
-		if (img_convert_ctx) {
-			free (buffer);
-			av_free(img_convert_ctx);
-		}
-
-		if (audioWrite==0) {
-			// Free the YUV frame
-			av_free(pFrame);
-		} else {
-			free (aBuffer);
-		}
-		
-		// Close the codec
-		avcodec_close(pCodecCtx);
-		
-		// Close the video file
-		av_close_input_file(pFormatCtx);
-		
+	
 	}
+	
+	if (audioWrite==0) {
+		// Free the YUV frame
+		av_free(pFrame);
+	} else {
+		free (aBuffer);
+	}
+	
+	
+	// Close the codec
+	avcodec_close(pCodecCtx);
+	
+	// Close the video file
+	av_close_input_file(pFormatCtx);
+	
+	
+	if (img_convert_ctx) {
+		av_free(img_convert_ctx);
+	}
+	
+	
 	av_free_packet(&packet);
 
 	//END of file loop
