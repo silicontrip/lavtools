@@ -79,6 +79,10 @@ dsymutil libav2yuv
 #define NTSC "NTSC"
 #define NTSC_WIDE "NTSC_WIDE"
 
+struct commandlineopts {
+	&yuv_interlacing,&yuv_frame_rate,&yuv_aspect, &yuv_ss_mode,&fdOut,
+	&audioWrite,&search_codec_type,&convert,&stream,avif,&rangeString,&subRange
+
 struct edlentry {
 	char *filename;
 	char audio;
