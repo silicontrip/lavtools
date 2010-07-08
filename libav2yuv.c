@@ -331,15 +331,15 @@ int parseEDL (char *file, struct edlentry **list)
 	
 	line = (char *)malloc(maxline);
 	if (line == NULL) {
-		fprintf (stderr,"Error allocating line memory\n");
+		mjpeg_error("Error allocating line memory");
 		fclose (fh);
 		return -1;
 	}
-	
+
 	*list = (struct edlentry *)malloc(lines*sizeof(struct edlentry));
 	inner = *list;
 	if (line == NULL) {
-		fprintf (stderr,"Error allocating edl memory\n");
+		mjpeg_error("Error allocating edl memory\n");
 		free(line);
 		fclose (fh);
 		return -1;
@@ -354,9 +354,11 @@ int parseEDL (char *file, struct edlentry **list)
 		} else {
 			//	fprintf (stderr,"Parsing line: %d\n",count);
 			//	malloc filename
+			mjpeg_debug("malloc filename.");
+
 			inner[count].filename = (char *)malloc(strlen(fn)+1);
 			if (inner[count].filename == NULL) {
-				fprintf (stderr,"Error allocating edl filename memory\n");
+				mjpeg_error("Error allocating edl filename memory");
 				free(line);
 				free(list);
 				fclose(fh);
@@ -368,10 +370,10 @@ int parseEDL (char *file, struct edlentry **list)
 			// cannot parse timecode at this point as we have no knowledge of the frame rate.
 			//	parse timecode;
 			//	check in < out
-			
+
 			inner[count].in = (char *)malloc(strlen(in)+1);
 			if (inner[count].in == NULL) {
-				fprintf (stderr,"Error allocating edl timecode memory\n");
+				mjpeg_debug("Error allocating edl timecode memory");
 				free(line);
 				// grr memory leak
 				// free(list.filename);
@@ -379,9 +381,10 @@ int parseEDL (char *file, struct edlentry **list)
 				fclose(fh);
 				return -1;
 			}
+
 			inner[count].out = (char *)malloc(strlen(out)+1);
 			if (inner[count].out == NULL) {
-				fprintf (stderr,"Error allocating edl filename memory\n");
+				mjpeg_error("Error allocating edl filename memory.");
 				free(line);
 				//			free(list.filename);
 				//			free(list.in);
@@ -428,7 +431,7 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 		memcpy(dst[0]+y*w,(src->data[0])+y*src->linesize[0],w);
 		if (y<ch) {
 #ifdef DEBUG
-			fprintf (stderr,"copy %d bytes to: %x from: %x\n",cw,dst[1]+y*cw,(src->data[1])+y*src->linesize[1]);
+			mjpeg_debug("copy %d bytes to: %x from: %x",cw,dst[1]+y*cw,(src->data[1])+y*src->linesize[1]);
 #endif
 			memcpy(dst[1]+y*cw,(src->data[1])+y*src->linesize[1],cw);
 			memcpy(dst[2]+y*cw,(src->data[2])+y*src->linesize[2],cw);
@@ -444,11 +447,13 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
 	
-	//	fprintf (stderr,"Allocating: %d and %d bytes\n",fs,cfs);
 	
 	m[0] = (uint8_t *)malloc( fs );
 	m[1] = (uint8_t *)malloc( cfs);
 	m[2] = (uint8_t *)malloc( cfs);
+	
+	mjpeg_debug("alloc yuv_data: %x,%x,%x",m[0],m[1],m[2]);
+
 	
 }
 
@@ -632,7 +637,7 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 			}
 		}
 	if(avStream==-1) {
-		fprintf (stderr,"open_av_file: could not find an AV stream\n");
+		mjpeg_error("open_av_file: could not find an AV stream");
 		return -1; // Didn't find a video stream
 	}
 	
@@ -644,13 +649,13 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	// Find the decoder for the video stream
 	*pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
 	if(*pCodec==NULL) {
-		fprintf (stderr,"open_av_file: could not find codec\n");
+		mjpeg_error("open_av_file: could not find codec");
 		return -1; // Codec not found
 	}
 	
 	// Open codec
 	if(avcodec_open(pCodecCtx, *pCodec)<0) {
-		fprintf (stderr,"open_av_file: could not open codec\n");
+		mjpeg_error("open_av_file: could not open codec");
 		return -1; // Could not open codec
 	}
 	
@@ -682,7 +687,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 	
 	if (*convert) {
 		if (*yuv_ss_mode == Y4M_UNKNOWN) {
-			mjpeg_warn ("init_video: Convert to Unknown Chroma Subsampling mode\n");
+			mjpeg_warn("init_video: Convert to Unknown Chroma Subsampling mode\n");
 			print_usage();
 			return -1;	
 		} else {
@@ -722,12 +727,14 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 		}
 	}
 	
-	
-	if (*pFrame != NULL) 	
-		av_free(*pFrame);
+	// I will make the assumption that a previous allocation has the same size frame.
+	// It's a limitation of the output stream, so putting this limit in the allocation
+	// shouldn't matter
+	if (*pFrame == NULL) {	
 		// Allocate video frame
-	*pFrame=avcodec_alloc_frame();
-		
+		*pFrame=avcodec_alloc_frame();
+		mjpeg_debug("avmalloc pFrame: %x",*pFrame);
+	}
 	// Output YUV format details
 	// is there some mjpeg_info functions?
 	mjpeg_info ("YUV Aspect Ratio: %d:%d",yuv_aspect->n,yuv_aspect->d);
@@ -779,7 +786,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	// frameFinished does not mean decoder finished, means that the packet can be freed.
 	
 #ifdef DEBUGPROCESSVIDEO
-	fprintf (stderr,"frameFinished: %d\n",frameFinished);
+	mjpeg_debug("frameFinished: %d",frameFinished);
 #endif
 	
 	// Save the frame to disk
@@ -805,16 +812,19 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			
 			if (img_convert_ctx) {
 				// initialise conversion to different chroma subsampling
-				if (*pFrame444)
-					av_free(*pFrame444);
-				*pFrame444=avcodec_alloc_frame();
+			
+				if (!*pFrame444) {
+					*pFrame444=avcodec_alloc_frame();
+					mjpeg_debug("avmalloc pFrame444: %x",*pFrame444);
+				}
 				numBytes=avpicture_get_size(convert_mode, pCodecCtx->width, pCodecCtx->height);
-				if (*buffer)
-					free(*buffer);
-				*buffer=(uint8_t *)malloc(numBytes);
-				avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);
-				//	fprintf (stderr,"buffer: %x pFrame444: %x\nchromalloc\n",buffer,pFrame444);
 				
+
+				if (*buffer == NULL) {
+					*buffer=(uint8_t *)malloc(numBytes);
+					mjpeg_debug("malloc buffer %x",*buffer);
+				}
+				avpicture_fill((AVPicture *)*pFrame444, *buffer, convert_mode, pCodecCtx->width, pCodecCtx->height);				
 			}
 			
 			y4m_si_set_interlace(streaminfo, *yuv_interlacing);
@@ -914,7 +924,7 @@ int main(int argc, char *argv[])
     AVPacket        packet;
     int             numBytes,numSamples;
 	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
-    uint8_t         *buffer;
+    uint8_t         *buffer = NULL;
 	int16_t		*aBuffer = NULL;
 	char *tc_in = NULL,*tc_out=NULL;
 	
@@ -1006,7 +1016,7 @@ int main(int argc, char *argv[])
 			if (edllist) {
 				// should allow for multiple edits from the one file.
 				
-				fprintf (stderr,"\nrunning EDL entry: %d %s\n",edlcounter,edllist[edlcounter].filename);
+				mjpeg_info("running EDL entry: %d %s",edlcounter,edllist[edlcounter].filename);
 				fprintf (stderr,"in: %s out: %s",edllist[edlcounter].in, edllist[edlcounter].out);
 				
 				//fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
@@ -1068,7 +1078,7 @@ int main(int argc, char *argv[])
 				if (newFile) {
 					stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
 					if (stream == -1) {
-						fprintf (stderr,"Error with video file: %s\n",openfile);
+						mjpeg_error("Error with video file: %s",openfile);
 					}
 					
 					// get the frame rate of the first video stream, if cutting audio.
@@ -1100,7 +1110,10 @@ int main(int argc, char *argv[])
 							samplesFrame  = pCodecCtx->sample_rate * yuv_frame_rate.d / yuv_frame_rate.n ;
 						}
 						if (aBuffer == NULL) {
+
 							aBuffer = (int16_t *) malloc (numBytes);
+							mjpeg_debug("malloc aBuffer: %x",aBuffer);
+
 							// allocate for audio
 						}
 					}
@@ -1122,6 +1135,7 @@ int main(int argc, char *argv[])
 						frameCounter = 0; sampleCounter = 0;
 					}
 				}
+
 #ifdef DEBUG
 				if (audioWrite!=0) {
 					mjpeg_debug ("sample counter: %lld - %lld  (%lld - %lld) spf %d",startFrame,endFrame,startFrame * samplesFrame,endFrame*samplesFrame,samplesFrame);
@@ -1244,39 +1258,52 @@ int main(int argc, char *argv[])
 			
 			// Free the packet that was allocated by av_read_frame
 			//	av_free_packet(&packet);
+			avcodec_close(pCodecCtx);
+			av_close_input_file(pFormatCtx);
+
 		}
 	
 	}
 	
 	if (audioWrite==0) {
 		// Free the YUV frame
+		mjpeg_debug("Freeing pFrame: %x",pFrame);
 		av_free(pFrame);
 	} else {
+		mjpeg_debug("Freeing aBuffer: %x",aBuffer);
 		free (aBuffer);
 	}
 	
 	
 	// Close the codec
-	avcodec_close(pCodecCtx);
+	//avcodec_close(pCodecCtx);
 	
 	// Close the video file
-	av_close_input_file(pFormatCtx);
+	//av_close_input_file(pFormatCtx);
 	
 	
 	if (img_convert_ctx) {
+		mjpeg_debug("Freeing img_convert_ctx: %x",img_convert_ctx);
 		av_free(img_convert_ctx);
+		if (pFrame444 != NULL)
+			av_free(pFrame444);
 	}
 	
-	
+	if(buffer) {
+		mjpeg_debug("Freeing buffer: %x",buffer);
+		free(buffer);
+	}
 	av_free_packet(&packet);
 
-	//END of file loop
+	// END of file loop
 
 	if (audioWrite == 0) {
 
 		y4m_fini_stream_info(&streaminfo);
 		y4m_fini_frame_info(&frameinfo);
 		
+		mjpeg_debug("Freeing yuv_data: %x,%x,%x",yuv_data[0],yuv_data[1],yuv_data[2]);
+
 		free(yuv_data[0]);
 		free(yuv_data[1]);
 		free(yuv_data[2]);
