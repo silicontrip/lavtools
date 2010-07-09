@@ -1,0 +1,21 @@
+<h3>Static image overlay for ffmpeg</h3>
+<p>
+This was my first paid video filter job, to
+add a static image overlay to a video file.
+</P>
+<p>
+This filter handles PNGs with alpha chanels (and any other image format that libavcodec can read).
+The image can be positioned and scaled.  And also has an interval on and off.
+</P>
+<p>
+The filter uses the arguments:
+<pre>
+image_name[:X:Y[:W:H[:on_time:off_time]]]
+or
+config_name.cfg (the .cfg is required)
+</pre>
+</p>
+
+<p>
+the config file is a quick way to store frequently used settings.
+</p>
