@@ -480,7 +480,7 @@ static void print_usage()
 			 "\t -c Force conversion to chroma mode (requires a chroma mode)\n"
 			 "\t -s select stream other than stream 0\n"
 			 "\t -o<outputfile> write to file rather than stdout\n"
-			 "\t -r[[[[[HH]:MM]:SS]:FF]]-[[[[[HH]:MM]:SS]:FF]] playout only these frames\n"
+			 "\t -r [[[HH:]MM:]SS:]FF-[[[HH:]MM:]SS:]FF playout only these frames\n"
 			 "\t -h print this help\n"
 			 );
 }
@@ -992,7 +992,7 @@ int main(int argc, char *argv[])
 	
 	if (rangeString) 
 		if (splitTimecode(&tc_in,&tc_out,rangeString)==-1) {
-			fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
+			fprintf (stderr,"Timecode range, incorrect format. Should be:\n\t[[[hh:]mm:]ss:]ff-[[[hh:]mm:]ss:]ff\n\t[[[hh:]mm:]ss;]ff-[[[hh:]mm:]ss;]ff for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 			exit -1;
 		}
 	
