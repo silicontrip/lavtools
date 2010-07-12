@@ -79,10 +79,13 @@ dsymutil libav2yuv
 #define NTSC "NTSC"
 #define NTSC_WIDE "NTSC_WIDE"
 
+/*
 struct commandlineopts {
 	&yuv_interlacing,&yuv_frame_rate,&yuv_aspect, &yuv_ss_mode,&fdOut,
 	&audioWrite,&search_codec_type,&convert,&stream,avif,&rangeString,&subRange
-
+};
+*/
+ 
 struct edlentry {
 	char *filename;
 	char audio;
@@ -319,7 +322,7 @@ int parseEDL (char *file, struct edlentry **list)
 	
 	fh = fopen(file,"r");
 	if (fh == NULL) {
-		perror ("Opening EDL file");
+		mjpeg_error ("Opening EDL file");
 		return -1;
 	}
 	
@@ -354,7 +357,7 @@ int parseEDL (char *file, struct edlentry **list)
 		//		parse line
 		
 		if (parseEDLline (line, &fn, &ema, &emv,&in,&out) == -1) {
-			fprintf (stderr,"Error in EDL file line: %d: %s\n",count+1,line);
+			mjpeg_error("Error in EDL file line: %d: %s\n",count+1,line);
 		} else {
 			//	fprintf (stderr,"Parsing line: %d\n",count);
 			//	malloc filename
@@ -477,6 +480,7 @@ static void print_usage()
 			 "\t -c Force conversion to chroma mode (requires a chroma mode)\n"
 			 "\t -s select stream other than stream 0\n"
 			 "\t -o<outputfile> write to file rather than stdout\n"
+			 "\t -r[[[[[HH]:MM]:SS]:FF]]-[[[[[HH]:MM]:SS]:FF]] playout only these frames\n"
 			 "\t -h print this help\n"
 			 );
 }
