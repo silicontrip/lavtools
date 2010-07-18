@@ -48,13 +48,38 @@ static void print_usage()
 		);
 }
 
-void search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
+void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo)
+{
+	
+	int x,w,cw,cs;
+	int vss;
+	
+	w = y4m_si_get_plane_width(sinfo,0);
+	cw = y4m_si_get_plane_width(sinfo,1);
+	
+	vss = y4m_si_get_plane_height(sinfo,0) / y4m_si_get_plane_height(sinfo,1);
+	
+	cs = s * cw / w;
+	
+	// could memcpy() do this? 
+	for (x=w; x>=s; x--)
+		*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
+
+	// one day I should start catering for more or less than 3 planes.
+	if (line % vss) {
+		for (x=cw; x>=cs; x--) {
+			*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
+			*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+		}
+	}
+}
+
+int search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
 {
 
 	int w,h;
 	int x1,x2;
 	int max,shift,tot;
-	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 
 	// these two should be more than just warnings
@@ -73,11 +98,13 @@ void search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_s
 		{
 			tot = tot + abs ( *(yuv_data[0]+x2+(line*w)) - *(yuv_data[0]+x2+x1+(line+1*w)));
 		}
-		res[x1]=tot;
+		if (res != NULL)
+			res[x1]=tot;
 		// ok it wasn't max afterall, it was min.
 		if (x1==0) max = tot;
 		if (tot < max) { max = tot; shift = x1;}
 	}
+	return shift;
 }
 
 void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
@@ -110,8 +137,6 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int                read_error_code  = Y4M_OK;
 	int                write_error_code = Y4M_OK ;
 	int                src_frame_counter ;
-	float vy,vu,vv,nvu,nvv;
-	float sin_hue, cos_hue;
 	int x,y,w,h,cw,ch;
 
 	h = y4m_si_get_plane_height(inStrInfo,0);
@@ -125,15 +150,16 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		for (y=0; y<h-1; y++) {
-			search_video(max,search,result,y,yuv_data,inStrInfo);
-			
+			x = search_video(max,search,result,y,yuv_data,inStrInfo);
+			shift_video(x,y,yuv_data,inStrInfo);
+			/* graphing this would be nice
 			printf ("%d",y);
-			
 			for (x=0; x < max; x++)
 				printf (", %d",result[x]);
 			printf("\n");
+			 */
 		}
-	//	write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
+		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
