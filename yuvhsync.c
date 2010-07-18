@@ -54,42 +54,88 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
 	int x,w,cw,cs;
 	int vss;
 	
-	mjpeg_debug("shift_video %d %d",s,line);
+//	mjpeg_debug("shift_video %d %d",s,line);
 	
-	if (s>0) {
+
 		w = y4m_si_get_plane_width(sinfo,0);
 		cw = y4m_si_get_plane_width(sinfo,1);
 		
 		vss = y4m_si_get_plane_height(sinfo,0) / y4m_si_get_plane_height(sinfo,1);
 		
 		cs = s * cw / w;
-		
-		// could memcpy() do this? 
-		for (x=w; x>=s; x--)
-			*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
+	
+	// could memcpy() do this? 
+		if (s>0) {
+			for (x=w; x>=s; x--)
+				*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
 		
 		// one day I should start catering for more or less than 3 planes.
-		if (line % vss) {
-			line /= vss;
-			for (x=cw; x>=cs; x--) {
-				*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
-				*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+			if (line % vss) {
+				line /= vss;
+				for (x=cw; x>=cs; x--) {
+					*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
+					*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+				}
 			}
 		}
-	}
+		if (s<0) {
+			for (x=0; x<=w+s; x++)
+				*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
+			
+			
+			// one day I should start catering for more or less than 3 planes.
+			if (line % vss) {
+				line /= vss;
+				for (x=0; x<=cw; x++) {
+					*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
+					*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+				}
+			}
+			
+		}
+//	mjpeg_debug("exit shift_video %d %d",s,line);
+
 }
 
 int search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
 {
 
+	int w,x1,diff;
+	int max,c=0;
+	
+	w = y4m_si_get_plane_width(sinfo,0);
+	
+	for (x1=0;x1<m;x1++) 
+	{
+		
+		diff = abs(*(yuv_data[0]+x1+(line*w)) - *(yuv_data[0]+x1+1+(line*w)));
+		if (x1==0) max = diff;
+		
+		if (diff > max) {
+			max = diff;
+			c = x1;
+		}
+	//	fprintf(stderr," %d",diff);
+	}
+//	fprintf (stderr,"\n");
+	return s-c;
+}
+
+int search_video_1 (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
+{
+
 	int w,h;
 	int x1,x2;
 	int max,shift,tot;
+	
+	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 
+	
+	mjpeg_debug("search_video %d",line);
 	// these two should be more than just warnings
 	if (s+m > w) {
-		mjpeg_warn("search + shift > width");
+		mjpeg_warn("search %d + shift %d > width %d",s,m,w);
 	}
 	
 	if (line >= h) {
@@ -101,14 +147,16 @@ int search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_st
 		tot = 0;
 		for(x2=0; x2<s;x2++) 
 		{
-			tot = tot + abs ( *(yuv_data[0]+x2+(line*w)) - *(yuv_data[0]+x2+x1+(line+1*w)));
+			tot = tot + abs ( *(yuv_data[0]+x2+x1+(line*w)) - *(yuv_data[0]+x2+((line+1)*w)));
 		}
-		if (res != NULL)
-			res[x1]=tot;
+	
 		// ok it wasn't max afterall, it was min.
 		if (x1==0) max = tot;
 		if (tot < max) { max = tot; shift = x1;}
 	}
+	
+	mjpeg_debug("exit search_video %d",line);
+
 	return shift;
 }
 
@@ -119,14 +167,11 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
 	
-	
 	m[0] = (uint8_t *)malloc( fs );
 	m[1] = (uint8_t *)malloc( cfs);
 	m[2] = (uint8_t *)malloc( cfs);
 	
 	mjpeg_debug("alloc yuv_data: %x,%x,%x",m[0],m[1],m[2]);
-	
-	
 }
 
 
@@ -137,7 +182,7 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3],*yuv_odata[3];	
 	int result[720]; // will change to malloc based on max shift
-
+	int lineresult[720]; // as above but on height
 	int                y_frame_data_size, uv_frame_data_size ;
 	int                read_error_code  = Y4M_OK;
 	int                write_error_code = Y4M_OK ;
@@ -154,16 +199,19 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		for (y=0; y<h-1; y++) {
-			x = search_video(max,search,result,y,yuv_data,inStrInfo);
-			shift_video(x,y,yuv_data,inStrInfo);
+		for (y=0; y<h-1; y++) 
+			lineresult[y] = search_video(max,search,result,y,yuv_data,inStrInfo);
+			
 			/* graphing this would be nice
 			printf ("%d",y);
 			for (x=0; x < max; x++)
 				printf (", %d",result[x]);
 			printf("\n");
 			 */
-		}
+		
+		for (y=0; y<h-1; y++) 
+			shift_video(lineresult[y],y,yuv_data,inStrInfo);
+
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
