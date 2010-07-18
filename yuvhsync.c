@@ -54,22 +54,27 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
 	int x,w,cw,cs;
 	int vss;
 	
-	w = y4m_si_get_plane_width(sinfo,0);
-	cw = y4m_si_get_plane_width(sinfo,1);
+	mjpeg_debug("shift_video %d %d",s,line);
 	
-	vss = y4m_si_get_plane_height(sinfo,0) / y4m_si_get_plane_height(sinfo,1);
-	
-	cs = s * cw / w;
-	
-	// could memcpy() do this? 
-	for (x=w; x>=s; x--)
-		*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
-
-	// one day I should start catering for more or less than 3 planes.
-	if (line % vss) {
-		for (x=cw; x>=cs; x--) {
-			*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
-			*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+	if (s>0) {
+		w = y4m_si_get_plane_width(sinfo,0);
+		cw = y4m_si_get_plane_width(sinfo,1);
+		
+		vss = y4m_si_get_plane_height(sinfo,0) / y4m_si_get_plane_height(sinfo,1);
+		
+		cs = s * cw / w;
+		
+		// could memcpy() do this? 
+		for (x=w; x>=s; x--)
+			*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
+		
+		// one day I should start catering for more or less than 3 planes.
+		if (line % vss) {
+			line /= vss;
+			for (x=cw; x>=cs; x--) {
+				*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
+				*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+			}
 		}
 	}
 }
