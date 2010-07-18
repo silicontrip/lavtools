@@ -21,8 +21,9 @@
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   *
   
-gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvadjust.c -o yuvadjust
-	
+gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvhsync.c -o yuvhsync
+ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils yuvhsync.c -o yuvhsync
+
   */
 
 #include <stdio.h>
@@ -47,22 +48,22 @@ static void print_usage()
 		);
 }
 
-void search (int m, int s, int res[], int line, uint8_t *dst[3],y4m_stream_info_t *sinfo) 
+void search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
 {
 
 	int w,h;
 	int x1,x2;
-	int max,shift;
+	int max,shift,tot;
 	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 
 	// these two should be more than just warnings
 	if (s+m > w) {
-		mjpeg_warning("search + shift > width");
+		mjpeg_warn("search + shift > width");
 	}
 	
 	if (line >= h) {
-		mjpeg_warning("line > height");
+		mjpeg_warn("line > height");
 	}
 	shift = 0;
 	for (x1=0;x1<m;x1++) 
@@ -97,7 +98,7 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 }
 
 
-static void search(  int fdIn , y4m_stream_info_t  *inStrInfo,
+static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int fdOut, y4m_stream_info_t  *outStrInfo,
 	int max,int search)
 {
@@ -106,8 +107,8 @@ static void search(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int result[720]; // will change to malloc based on max shift
 
 	int                y_frame_data_size, uv_frame_data_size ;
-	int                read_error_code ;
-	int                write_error_code ;
+	int                read_error_code  = Y4M_OK;
+	int                write_error_code = Y4M_OK ;
 	int                src_frame_counter ;
 	float vy,vu,vv,nvu,nvv;
 	float sin_hue, cos_hue;
@@ -124,7 +125,7 @@ static void search(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		for (y=0; y<h-1; y++) {
-			search(max,search,y,result,yuv_data,inStrInfo);
+			search_video(max,search,result,y,yuv_data,inStrInfo);
 			
 			printf ("%d",y);
 			
@@ -132,7 +133,7 @@ static void search(  int fdIn , y4m_stream_info_t  *inStrInfo,
 				printf (", %d",result[x]);
 			printf("\n");
 		}
-		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
+	//	write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
@@ -167,9 +168,9 @@ int main (int argc, char *argv[])
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
 	y4m_ratio_t src_frame_rate;
-	const static char *legal_flags = "h:c:C:B:W:b:s:u:v:V:";
+	const static char *legal_flags = "v:m:s:";
 	int max_shift = 0, search = 0;
-	
+	int c;
 
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
     switch (c) {
@@ -218,7 +219,7 @@ int main (int argc, char *argv[])
   /* in that function we do all the important work */
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 
-	adjust( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,search);
+	process( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,search);
 
   y4m_fini_stream_info (&in_streaminfo);
   y4m_fini_stream_info (&out_streaminfo);
