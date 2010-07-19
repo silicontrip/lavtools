@@ -1,6 +1,10 @@
 #include "utilyuv.h"
 
-/* going to start putting my most common functions here. */
+/* going to start putting my most common functions here. 
+ 
+ gcc -I/usr/local/include/mjpegtools -c utilyuv.c
+ 
+*/
 
 // Allocate a uint8_t frame
 int chromalloc(uint8_t *m[3], y4m_stream_info_t *sinfo)
