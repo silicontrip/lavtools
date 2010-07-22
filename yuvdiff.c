@@ -49,33 +49,38 @@ static void print_usage()
          );
 }
 
-static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,int interlacing)
+static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_stream_info_t *outStrInfo ,int interlacing)
 {
   y4m_frame_info_t   in_frame ;
   uint8_t            *yuv_data[3] ;	
   uint8_t            *yuv_odata[3] ;
+	uint8_t            *yuv_wdata[3] ;
+
   uint8_t            *yuv_tdata ;
 
   int                frame_data_size ;
   int                read_error_code ;
   int                write_error_code ;
   int                src_frame_counter ;
-  int w,h,x;
+  int w,h,x,cw,ch;
   int bri=0, bro=0,l=0;
 
   // Allocate memory for the YUV channels
   
-  h = y4m_si_get_height(inStrInfo); 
-  w = y4m_si_get_width(inStrInfo);
-    frame_data_size = h*w;
+	h = y4m_si_get_height(inStrInfo); 
+	w = y4m_si_get_width(inStrInfo);
+	
+	cw = y4m_si_get_plane_width(inStrInfo,1);
+	ch = y4m_si_get_plane_height(inStrInfo,1);
 
-  yuv_data[0] = (uint8_t *)malloc( frame_data_size );
-  yuv_data[1] = (uint8_t *)malloc( frame_data_size >> 2);
-  yuv_data[2] = (uint8_t *)malloc( frame_data_size >> 2);
+	
+	frame_data_size = y4m_si_get_plane_length(inStrInfo,0);
 
-  yuv_odata[0] = (uint8_t *)malloc( frame_data_size );
-  yuv_odata[1] = (uint8_t *)malloc( frame_data_size >> 2);
-  yuv_odata[2] = (uint8_t *)malloc( frame_data_size >> 2);
+	
+	
+	chromalloc(yuv_data,inStrInfo);
+	chromalloc(yuv_odata,inStrInfo);
+	chromalloc(yuv_wdata,inStrInfo);
 
 
   if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2] ||
@@ -87,6 +92,9 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,int interlacing)
 
   src_frame_counter = 0 ;
   y4m_init_frame_info( &in_frame );
+	
+
+	
   read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_odata );
   ++src_frame_counter ;
 
@@ -105,9 +113,20 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,int interlacing)
 				for (x=0; x<w; x++) {
 					bri += abs(yuv_data[0][l+x]-yuv_odata[0][l+x]);
 					bro += abs(yuv_data[0][l+x+w]-yuv_odata[0][l+x+w]);
+					
+					yuv_wdata[0][l+x] = abs(yuv_data[0][l+x]-yuv_odata[0][l+x]);
+					yuv_wdata[0][l+x+w] = abs(yuv_data[0][l+x+w]-yuv_odata[0][l+x+w]);
 				}
 		}
+		// so much for optimizing only luma
+		for (l=0; l<ch; l++) {
+			for (x=0;x<cw;x++){
+				yuv_wdata[1][l*cw+x] = abs (yuv_data[1][l*cw+x] - yuv_odata[1][l*cw+x]);
+				yuv_wdata[2][l*cw+x] = abs (yuv_data[2][l*cw+x] - yuv_odata[2][l*cw+x]);
+			}
+		}
 
+#ifdef DISPLAY
 		if (interlacing == Y4M_ILACE_NONE) {
 			printf ("%d %d\n",src_frame_counter,bri+bro);
 		} else if (interlacing == Y4M_ILACE_TOP_FIRST) {
@@ -117,18 +136,17 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,int interlacing)
 			printf ("%d %d\n",src_frame_counter,bro);
 			printf ("%d.5 %d\n",src_frame_counter,bri);
 		}
+#endif
+		
+		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_wdata );
 
+		
 		++src_frame_counter ;
     
 		yuv_tdata = yuv_odata[0];  yuv_odata[0] = yuv_data[0]; yuv_data[0] = yuv_tdata;
 		yuv_tdata = yuv_odata[1];  yuv_odata[1] = yuv_data[1]; yuv_data[1] = yuv_tdata;
 		yuv_tdata = yuv_odata[2];  yuv_odata[2] = yuv_data[2]; yuv_data[2] = yuv_tdata;
 	
-	
-/*		memcpy(yuv_odata[0], yuv_data[0], frame_data_size);
-		memcpy(yuv_odata[1], yuv_data[1], frame_data_size>>2);
-		memcpy(yuv_odata[2], yuv_data[2], frame_data_size>>2);
-*/	   
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 
@@ -173,8 +191,8 @@ int main (int argc, char *argv[])
 {
 
   int verbose = 4; // LOG_ERROR ;
-  int fdIn = 0 ;
-  y4m_stream_info_t in_streaminfo;
+  int fdIn = 0 , fdOut=1;
+  y4m_stream_info_t in_streaminfo,out_streaminfo;;
 	int src_interlacing = Y4M_UNKNOWN;
   const static char *legal_flags = "I:v:h";
   int c ;
@@ -219,12 +237,18 @@ int main (int argc, char *argv[])
 if (src_interlacing == Y4M_UNKNOWN)
     src_interlacing = y4m_si_get_interlace(&in_streaminfo);
 
-    
+	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
+
+	y4m_write_stream_header(fdOut,&out_streaminfo);
+
+	
   /* in that function we do all the important work */
-  detect( fdIn,&in_streaminfo,src_interlacing);
+  detect( fdIn,fdOut,&in_streaminfo,&out_streaminfo, src_interlacing);
 
   y4m_fini_stream_info (&in_streaminfo);
+	y4m_fini_stream_info (&out_streaminfo);
 
+	
   return 0;
 }
 /*
