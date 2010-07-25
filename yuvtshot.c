@@ -171,6 +171,7 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3][3];	
+	uint8_t				*yuv_tdata[3];
 	int                read_error_code  = Y4M_OK;
 	int                write_error_code = Y4M_OK ;
 	int                src_frame_counter ;
@@ -203,8 +204,27 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 		
 		// nothing to see here, move along, move along
 		// it might be quicker to move the pointers.
-		chromacpy(yuv_data[2],yuv_data[1],inStrInfo);
-		chromacpy(yuv_data[1],yuv_data[0],inStrInfo);
+	//	chromacpy(yuv_data[2],yuv_data[1],inStrInfo);
+	//	chromacpy(yuv_data[1],yuv_data[0],inStrInfo);
+		
+		// as long as there are 3 planes
+		yuv_tdata[0] = yuv_data[2][0];
+		yuv_tdata[1] = yuv_data[2][1];
+		yuv_tdata[2] = yuv_data[2][2];
+		
+		yuv_data[2][0] = yuv_data[1][0];
+		yuv_data[2][1] = yuv_data[1][1];
+		yuv_data[2][2] = yuv_data[1][2];
+		
+		yuv_data[1][0] = yuv_data[0][0];
+		yuv_data[1][1] = yuv_data[0][1];
+		yuv_data[1][2] = yuv_data[0][2];
+		
+		yuv_data[0][0] = yuv_tdata[0];
+		yuv_data[0][1] = yuv_tdata[1];
+		yuv_data[0][2] = yuv_tdata[2];
+
+		
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[0] );
 		++src_frame_counter ;
@@ -212,18 +232,26 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 
 	// still have 1 frame to clean and write.
 	
+	if( read_error_code == Y4M_ERR_EOF ) {
+		chromaset(yuv_data[0],inStrInfo,16,128,128);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2);
+	
+		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );	
+	}
   // Clean-up regardless an error happened or not
 
-y4m_fini_frame_info( &in_frame );
+	y4m_fini_frame_info( &in_frame );
 
-		chromafree( yuv_data[0] );
-		chromafree( yuv_data[1] );
-		chromafree( yuv_data[2] );
+	chromafree( yuv_data[0] );
+	chromafree( yuv_data[1] );
+	chromafree( yuv_data[2] );
 	
-  if( read_error_code != Y4M_ERR_EOF )
-    mjpeg_error_exit1 ("Error reading from input stream!");
-  if( write_error_code != Y4M_OK )
-    mjpeg_error_exit1 ("Error writing output stream!");
+	if( read_error_code != Y4M_ERR_EOF )
+		mjpeg_error_exit1 ("Error reading from input stream!");
+	if( write_error_code != Y4M_OK )
+		mjpeg_error_exit1 ("Error writing output stream!");
 
 }
 
