@@ -49,43 +49,125 @@ static void print_usage()
 		);
 }
 
-void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si)
-{
-
-	int w,h,x,y;
-	int pix,pixa,pixb;
-	int dif,diff,difa,difb;
+int median (int *a,int l) {
 	
-	h = y4m_si_get_plane_height(si,0);
-	w = y4m_si_get_plane_width(si,0);
-
-	for(y=0;y<h;y++) {
-		for (x=0;x<w;x++) {
-			pixa = *(l[0]+x+y*w);
-			pixb = *(n[0]+x+y*w);
-			pix = *(m[0]+x+y*w);
-			
-			diff=abs(pixa-pixb);
-			difa=abs(pixa-pix);
-			difb=abs(pixb-pix);
-			
-			dif = (difa + difb) / 2;
-			
-			if (dif > 32 && diff < 8) {
-				
-				*(m[0]+x+y*w) =  (pixa + pixb) / 2;
-	//			*(m[0]+x+y*w) =  0;
+	int x,y;
+	int min,minp;
+	
+	for(x=0;x<=(l/2);x++){
+		minp=x; min = a[x];
+		for(y=x;y<l;y++)
+			if(a[y]<min) {
+				min=a[y];
+				minp=y;
 			}
-		}
+		a[minp] = a[x];
+		a[x] = min;
 	}
 	
-	//will look at chroma later...
+	min = a[l/2];
+
+	return min;
+}
+
+//how easy is it to make this for all planes
+get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
+{
+
+	int w,h;
+
+	h = y4m_si_get_plane_height(si,plane);
+	w = y4m_si_get_plane_width(si,plane);
+
+	if (x < 0) {x=0;}
+	if (x >= w) {x=w-1;}
+	if (y < 0) {y=0;}
+	if (y >= h) {y=h-1;}
 	
+	return 	*(m[plane]+x+y*w);
+	
+}
+
+void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int t,int t1)
+{
+
+	int w,h,x,y,le;
+	int cw,ch;
+	int pix[7];
+	int dif,diff,difa,difb;
+	
+	h = y4m_si_get_plane_height(si,t1);
+	w = y4m_si_get_plane_width(si,t1);
+
+	ch = y4m_si_get_plane_height(si,t1);
+	cw = y4m_si_get_plane_width(si,t1);
+
+	
+	for(y=0;y<h;y++) {
+		for (x=0;x<w;x++) {
+			
+			// do some case around here.
+			
+			switch (t) {
+				case 0:
+					pix[0] = get_pixel(x,y,t1,l,si);
+					pix[1] = get_pixel(x,y,t1,m,si);
+					pix[2] = get_pixel(x,y,t1,n,si);
+					le=3;
+					break;
+				case 1:
+					pix[0] = get_pixel(x,y,t1,l,si);
+					pix[1] = get_pixel(x-1,y,t1,m,si);
+					pix[2] = get_pixel(x,y,t1,m,si);
+					pix[3] = get_pixel(x+1,y,t1,m,si);
+					pix[4] = get_pixel(x,y,t1,n,si);
+					le=5;
+					break;
+				case 2:
+					pix[0] = get_pixel(x,y,t1,l,si);
+					pix[1] = get_pixel(x,y-2,t1,m,si);
+					pix[2] = get_pixel(x,y,t1,m,si);
+					pix[3] = get_pixel(x,y+2,t1,m,si);
+					pix[4] = get_pixel(x,y,t1,n,si);
+					le=5;
+					break;
+				case 3:
+					pix[0] = get_pixel(x,y,t1,l,si);
+					pix[1] = get_pixel(x-1,y,t1,m,si);
+					pix[2] = get_pixel(x,y-2,t1,m,si); // 2 for interlace
+					pix[3] = get_pixel(x,y,t1,m,si);
+					pix[4] = get_pixel(x,y+2,t1,m,si); // 2 for interlace
+					pix[5] = get_pixel(x+1,y,t1,m,si);
+					pix[6] = get_pixel(x,y,t1,n,si);
+					le=7;
+					break;
+
+			}
+			*(m[t1]+x+y*w) = median(pix,le);
+			
+			/*
+			//simple median filter.
+			if ((pixa < pix && pix < pixb) || (pixb < pix && pix < pixa)) { 
+				;
+			}
+			
+			if ((pixa < pixb && pixb < pix) || (pix < pixb && pixb < pixa)) { 
+				*(m[0]+x+y*w)= pixb;
+			}
+			
+			if ((pix < pixa && pixa < pixb) || (pixb < pixa && pixa < pix)) { 
+				*(m[0]+x+y*w)= pixa;
+			}
+			*/
+
+		}
+	}
+		
 }
 
 static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int fdOut, y4m_stream_info_t  *outStrInfo,
-	int max,int search)
+	int t,int t1)
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3][3];	
@@ -112,8 +194,10 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 
-		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo);
-		
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2);
+
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );
 		y4m_fini_frame_info( &in_frame );
 		
