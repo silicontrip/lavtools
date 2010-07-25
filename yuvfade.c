@@ -159,7 +159,7 @@ w = y4m_si_get_width(inStrInfo);
 int main (int argc, char *argv[])
 {
 
-  int verbose = LOG_ERROR ;
+	int verbose = 1 ;
   int count = 0 ;
   int frames = 0;
   int fdIn = 0 ;

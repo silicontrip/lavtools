@@ -63,8 +63,8 @@ dsymutil libav2yuv
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
 
-#include <ffmpeg/avcodec.h>
-#include <ffmpeg/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 #include <libswscale/swscale.h>
 
 #include <stdio.h>
@@ -914,7 +914,11 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	}
 	
 	if (frameFinished)
+#ifdef HAVE_AV_FREE_PACKET
 		av_free_packet(packet);
+#else
+		av_freep(packet);
+#endif
 	else 
 		mjpeg_warn ("FRAME NOT FINISHED");
 	
@@ -1301,7 +1305,12 @@ int main(int argc, char *argv[])
 		mjpeg_debug("Freeing buffer: %x",buffer);
 		free(buffer);
 	}
-	av_free_packet(&packet);
+#ifdef HAVE_AV_FREE_PACKET
+                av_free_packet(&packet);
+#else
+                av_freep(&packet);
+#endif
+
 
 	// END of file loop
 
