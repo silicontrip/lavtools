@@ -280,12 +280,20 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 
 	int h,m,s,f;
 	y4m_ratio_t fr;
-
+	char df = ':';
+	
 //	fprintf (stderr,"string_tc\n");
 
 	
 	fr = y4m_si_get_framerate (sinfo);
 
+//	fprintf (stderr,"%d/%d int fr %d\n",fr.n,fr.d, fr.n % fr.d);
+
+	
+	if (fr.n % fr.d) {
+		df =';';
+	}
+	
 	h = fr.d * fc / fr.n / 3600;
 	m = (fr.d * fc / fr.n / 60) % 60;
 	s = (fr.d * fc / fr.n) % 60;
@@ -293,7 +301,7 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 	
 	// TODO: need to handle NTSC drop frame
 	
-	sprintf(tc,"TCR*%02d:%02d:%02d:%02d",h,m,s,f);
+	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
 
 }
 
@@ -306,8 +314,6 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 	int ilace;
 	
 	dw = y4m_si_get_plane_width(sinfo,0);
-
-	ilace = 1;
 	
 	for (c=0;c<strlen(time);c++) {
 		
@@ -318,8 +324,7 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 		cpos = c * CHARWIDTH; 
 		//fprintf (stderr,"ft width %d\n",face->glyph->bitmap.width);
 
-		if (r == '*') {
-			// TODO: check that the file IS interlace
+		if (r == '*' && y4m_si_get_interlace(sinfo)) {
 			ilace = 2;
 		} else {
 			ilace = 1;
