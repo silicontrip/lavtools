@@ -294,15 +294,40 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 
 }
 
-void render_string (uint8_t **yuv, FT_Face *fd,y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
+void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
 {
 	char c,r;
-
+    FT_UInt  glyph_index,error;
+	int dw,dx,dy;
+	int cpos,rpos;
+	
+	
 	for (c=0;c<strlen(time);c++) {
 		
 		r=time[c];
 		
-		glyph_index = FT_Get_Char_Index( face, r );
+		glyph_index = FT_Get_Char_Index( face, time[c] );
+		
+		error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
+		if ( error )
+			continue;  /* ignore errors */
+		
+		error = FT_Render_Glyph( face->glyph, FT_RENDER_MODE_NORMAL );
+		if ( error )
+			continue;
+		
+		
+		
+		for (dy=0; dy<CHARHEIGHT;dy++) {
+			for (dx=0; dx<CHARWIDTH;dx++) {
+				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
+				cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
+				yuv[0][(x+dx+cpos)+(y+dy)*dw] = *((uint8_t *)&face->glyph->bitmap+dx+rpos+dy*LINEWIDTH);
+				
+			}
+		}
+		
+		
 		
 	}	
 	
@@ -852,7 +877,7 @@ int main (int argc, char *argv[])
 	}
 	if (mode == MODE_TIMEC) {
 		y4m_write_stream_header(fdOut,&in_streaminfo);
-		timecode(fdIn, &in_streaminfo, fdOut);
+		timecode(fdIn, &in_streaminfo, fdOut,"/Library/Fonts/Andale Mono.ttf");
 	}
 
 	
