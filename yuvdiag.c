@@ -301,6 +301,8 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 	int dw,dx,dy;
 	int cpos,rpos;
 	
+	dw = y4m_si_get_plane_width(sinfo,0);
+
 	
 	for (c=0;c<strlen(time);c++) {
 		
@@ -317,12 +319,13 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 			continue;
 		
 		
-		
+		cpos = c * CHARWIDTH; 
+
 		for (dy=0; dy<CHARHEIGHT;dy++) {
 			for (dx=0; dx<CHARWIDTH;dx++) {
 				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
-				cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
-				yuv[0][(x+dx+cpos)+(y+dy)*dw] = *((uint8_t *)&face->glyph->bitmap+dx+rpos+dy*LINEWIDTH);
+				fprintf (stderr,"ft width %d\n",face->glyph->bitmap->width);
+			//	yuv[0][(x+dx+cpos)+(y+dy)*dw] = face->glyph->bitmap->buffer+dx+dy*face->glyph->bitmap->width;
 				
 			}
 		}
@@ -354,11 +357,10 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 
 //fprintf (stderr,"render_string char: %c\n",r);
 
-	
+		cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
 		for (dy=0; dy<CHARHEIGHT;dy++) {
 			for (dx=0; dx<CHARWIDTH;dx++) {
 				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
-				cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
 				yuv[0][(x+dx+cpos)+(y+dy)*dw] = fd[dx+rpos+dy*LINEWIDTH];
 				
 			}
@@ -401,7 +403,7 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 		mjpeg_error_exit1 ("Error reading font file!");
 	}
 	
-	error = FT_Set_Char_Size( face, 0, 16*64, 300, 300 );
+	// error = FT_Set_Char_Size( face, 0, 16*64, 300, 300 );
 	
 	error = FT_Set_Pixel_Sizes( face,   /* handle to face object */
 							   CHARWIDTH,      /* pixel_width           */
