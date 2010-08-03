@@ -40,6 +40,9 @@ gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -l
 
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
+
 
 #define YUVDI_VERSION "0.5"
 
@@ -220,7 +223,7 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
 }
 
 
-#define CHARWIDTH 14.4
+#define CHARWIDTH 14
 #define CHARHEIGHT 22
 #define LINEWIDTH 1376
 
@@ -291,6 +294,20 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 
 }
 
+void render_string (uint8_t **yuv, FT_Face *fd,y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
+{
+	char c,r;
+
+	for (c=0;c<strlen(time);c++) {
+		
+		r=time[c];
+		
+		glyph_index = FT_Get_Char_Index( face, r );
+		
+	}	
+	
+	
+}
 
 void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
 {
@@ -299,7 +316,7 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 	char c,r;
 	int cpos,rpos;
 
-			dw = y4m_si_get_plane_width(sinfo,0);
+	dw = y4m_si_get_plane_width(sinfo,0);
 
 //fprintf (stderr,"render_string\n");
 
@@ -325,7 +342,7 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 
 }
 
-static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
+static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
@@ -335,11 +352,37 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 	int frameCounter = 0;
 	char time[32];
 	
-	int w,h;
+	int w,h,error;
 
+	FT_Library  library;
+	FT_Face     face;
+	
 //	fprintf (stderr,"timecode\n");
 
-	read_font(&font_data);
+	
+	error = FT_Init_FreeType( &library );
+	if ( error )
+	{
+		mjpeg_error_exit1 ("Couldn't initialise the FT library!");
+	}
+
+	error = FT_New_Face( library, fontname, 0, &face );
+	if ( error == FT_Err_Unknown_File_Format )
+	{
+		mjpeg_error_exit1 ("Unknown Font type!");
+	}
+	else if ( error )
+	{
+		mjpeg_error_exit1 ("Error reading font file!");
+	}
+	
+	error = FT_Set_Char_Size( face, 0, 16*64, 300, 300 );
+	
+	error = FT_Set_Pixel_Sizes( face,   /* handle to face object */
+							   CHARWIDTH,      /* pixel_width           */
+							   CHARHEIGHT );   
+	
+//	read_font(&font_data);
 	
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
@@ -371,7 +414,7 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 			
 			// render string
 		
-			render_string (yuv_data,font_data,inStrInfo,w,h,time);
+			render_string_ft (yuv_data,face,inStrInfo,w,h,time);
 		
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 			frameCounter++;
