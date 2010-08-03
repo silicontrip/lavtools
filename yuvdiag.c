@@ -23,6 +23,7 @@
  *
 gcc -O3 yuvdiag.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvdiag
 gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils yuvdiag.c -o yuvdiag
+gcc -O3 -I/opt/local/include -I/opt/local/include/freetype2 -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils -lfreetype yuvdiag.c -o yuvdiag
  */
 
 #ifdef HAVE_CONFIG_H
@@ -42,6 +43,10 @@ gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -l
 #include "mpegconsts.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+
+#define CHARWIDTH 15
+#define CHARHEIGHT 22
+#define LINEWIDTH 1376
 
 
 #define YUVDI_VERSION "0.5"
@@ -223,9 +228,7 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
 }
 
 
-#define CHARWIDTH 14
-#define CHARHEIGHT 22
-#define LINEWIDTH 1376
+
 
 
 void read_font(uint8_t **d)
@@ -300,32 +303,34 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
     FT_UInt  glyph_index,error;
 	int dw,dx,dy;
 	int cpos,rpos;
+	int ilace;
 	
 	dw = y4m_si_get_plane_width(sinfo,0);
 
+	ilace = 1;
 	
 	for (c=0;c<strlen(time);c++) {
 		
 		r=time[c];
 		
-		glyph_index = FT_Get_Char_Index( face, time[c] );
-		
-		error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
-		if ( error )
-			continue;  /* ignore errors */
-		
-		error = FT_Render_Glyph( face->glyph, FT_RENDER_MODE_NORMAL );
-		if ( error )
-			continue;
-		
+		error = FT_Load_Char( face, r, FT_LOAD_RENDER );
 		
 		cpos = c * CHARWIDTH; 
+		//fprintf (stderr,"ft width %d\n",face->glyph->bitmap.width);
 
-		for (dy=0; dy<CHARHEIGHT;dy++) {
-			for (dx=0; dx<CHARWIDTH;dx++) {
-				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
-				fprintf (stderr,"ft width %d\n",face->glyph->bitmap->width);
-			//	yuv[0][(x+dx+cpos)+(y+dy)*dw] = face->glyph->bitmap->buffer+dx+dy*face->glyph->bitmap->width;
+		if (r == '*') {
+			// TODO: check that the file IS interlace
+			ilace = 2;
+		} else {
+			ilace = 1;
+		}
+		
+		// skip the first line
+		for (dy=0; dy<face->glyph->bitmap.rows;dy+=ilace) {
+			for (dx=0; dx<face->glyph->bitmap.width;dx++) {
+				// fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
+				// skip a line
+				yuv[0][(x+dx+cpos)+(y+dy+1)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
 				
 			}
 		}
@@ -403,11 +408,9 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 		mjpeg_error_exit1 ("Error reading font file!");
 	}
 	
-	// error = FT_Set_Char_Size( face, 0, 16*64, 300, 300 );
+	// error = FT_Set_Char_Size( face, 0, 8*64, 300, 300 );
 	
-	error = FT_Set_Pixel_Sizes( face,   /* handle to face object */
-							   CHARWIDTH,      /* pixel_width           */
-							   CHARHEIGHT );   
+	error = FT_Set_Pixel_Sizes( face, 32, 28 );   
 	
 //	read_font(&font_data);
 	
@@ -425,7 +428,7 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 	w = (w / 2) - (15 * CHARWIDTH / 2);
 	h = h - 24-CHARHEIGHT;
 	
-		fprintf (stderr,"box pos: %d %d\n",w,h);
+	//	fprintf (stderr,"box pos: %d %d\n",w,h);
 
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		
@@ -790,7 +793,9 @@ int main (int argc, char *argv[])
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	int width, mode, c;
-	const static char *legal_flags = "tvyiclh";
+	const static char *legal_flags = "tvyiclhf:";
+	
+	char *fontname;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -820,7 +825,10 @@ int main (int argc, char *argv[])
 				case 't':
 					mode = MODE_TIMEC;
 					break;
-
+			case 'f':
+				fontname = (char *) malloc (strlen(optarg));
+				strcpy(fontname , optarg);
+				break;
 				}
 	}
 	
@@ -879,7 +887,7 @@ int main (int argc, char *argv[])
 	}
 	if (mode == MODE_TIMEC) {
 		y4m_write_stream_header(fdOut,&in_streaminfo);
-		timecode(fdIn, &in_streaminfo, fdOut,"/Library/Fonts/Andale Mono.ttf");
+		timecode(fdIn, &in_streaminfo, fdOut,fontname);
 	}
 
 	
