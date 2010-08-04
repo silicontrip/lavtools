@@ -43,6 +43,8 @@ gcc -O3 -I/opt/local/include -I/opt/local/include/freetype2 -I/usr/local/include
 #include "mpegconsts.h"
 #include <ft2build.h>
 #include FT_FREETYPE_H
+#include FT_GLYPH_H
+
 
 #define CHARWIDTH 15
 #define CHARHEIGHT 22
@@ -281,37 +283,53 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 	int h,m,s,f;
 	y4m_ratio_t fr;
 	char df = ':';
+	int d,n;
 	
 //	fprintf (stderr,"string_tc\n");
 
-	
 	fr = y4m_si_get_framerate (sinfo);
-
-//	fprintf (stderr,"%d/%d int fr %d\n",fr.n,fr.d, fr.n % fr.d);
-
 	
+
+	// TODO: need to handle NTSC drop frame
 	if (fr.n % fr.d) {
+		
+		n = fr.n;
+		
+		// round up to integer frame rate
+		// non drop calculation.
+		fr.n += fr.d - (fr.n % fr.d);
+		
+		
+		// drop calculation.
+		// stick an IF around this make it command line configurable.
+		fc = (fc * fr.n) / n;
 		df =';';
+
 	}
+	
+	// fprintf (stderr,"%d/%d int fr %d\n",fr.n,fr.d, fr.n % fr.d);
+
 	
 	h = fr.d * fc / fr.n / 3600;
 	m = (fr.d * fc / fr.n / 60) % 60;
 	s = (fr.d * fc / fr.n) % 60;
 	f = fc % (fr.n / fr.d);
 	
-	// TODO: need to handle NTSC drop frame
 	
 	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
+//	fprintf (stderr,"%d - %s\n",fc,tc);
 
 }
 
 void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
 {
 	char c,r;
-    FT_UInt  glyph_index,error;
-	int dw,dx,dy;
+    FT_UInt glyph_index,error;
+	FT_Glyph  glyph;
+	int dw,dx,dy,cy;
 	int cpos,rpos;
 	int ilace;
+	
 	
 	dw = y4m_si_get_plane_width(sinfo,0);
 	
@@ -319,24 +337,38 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 		
 		r=time[c];
 		
-		error = FT_Load_Char( face, r, FT_LOAD_RENDER );
+		glyph_index = FT_Get_Char_Index( face, time[c] );
+		error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
+		if ( error )
+			continue;  /* ignore errors */
 		
-		cpos = c * CHARWIDTH; 
+		error = FT_Render_Glyph( face->glyph, FT_RENDER_MODE_NORMAL );
+		if ( error )
+			continue;
+		
+		error = FT_Get_Glyph( face->glyph, &glyph );
+		
+		cpos = c * face->glyph->metrics.horiAdvance/64; 
+		
+		if (r=='T') {
+			// font metric tweaking.
+				black_box(yuv,sinfo,x,y,15 * face->glyph->metrics.horiAdvance/64,face->glyph->metrics.height/64+2);
+				cy =  y + face->glyph->metrics.height/64 + 1;
+		}
 		//fprintf (stderr,"ft width %d\n",face->glyph->bitmap.width);
-
+		
 		if (r == '*' && y4m_si_get_interlace(sinfo)) {
 			ilace = 2;
 		} else {
 			ilace = 1;
 		}
 		
-		// skip the first line
 		for (dy=0; dy<face->glyph->bitmap.rows;dy+=ilace) {
 			for (dx=0; dx<face->glyph->bitmap.width;dx++) {
 				// fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
-				// skip a line
-				yuv[0][(x+dx+cpos)+(y+dy+1)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
-				
+				yuv[0][(x+dx+cpos+face->glyph->metrics.horiBearingX/64)+(cy+dy-face->glyph->metrics.horiBearingY/64)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
+			//	yuv[0][(x+dx+cpos)+(cy+dy-face->glyph->metrics.horiBearingY/64)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
+
 			}
 		}
 		
@@ -445,7 +477,7 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 
 			// draw black box
 			
-			black_box(yuv_data,inStrInfo,w,h,15 * CHARWIDTH,CHARHEIGHT);
+			// black_box(yuv_data,inStrInfo,w,h,15 * CHARWIDTH,CHARHEIGHT);
 			
 			// render string
 		
