@@ -23,6 +23,7 @@
  *
 gcc -O3 yuvdiag.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvdiag
 gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils yuvdiag.c -o yuvdiag
+gcc -O3 -I/opt/local/include -I/opt/local/include/freetype2 -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils -lfreetype yuvdiag.c -o yuvdiag
  */
 
 #ifdef HAVE_CONFIG_H
@@ -40,6 +41,15 @@ gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -l
 
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
+#include <ft2build.h>
+#include FT_FREETYPE_H
+#include FT_GLYPH_H
+
+
+#define CHARWIDTH 15
+#define CHARHEIGHT 22
+#define LINEWIDTH 1376
+
 
 #define YUVDI_VERSION "0.5"
 
@@ -220,9 +230,7 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
 }
 
 
-#define CHARWIDTH 14.4
-#define CHARHEIGHT 22
-#define LINEWIDTH 1376
+
 
 
 void read_font(uint8_t **d)
@@ -274,23 +282,102 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 
 	int h,m,s,f;
 	y4m_ratio_t fr;
-
+	char df = ':';
+	int d,n;
+	
 //	fprintf (stderr,"string_tc\n");
 
-	
 	fr = y4m_si_get_framerate (sinfo);
+	
 
+	// TODO: need to handle NTSC drop frame
+	if (fr.n % fr.d) {
+		
+		n = fr.n;
+		
+		// round up to integer frame rate
+		// non drop calculation.
+		fr.n += fr.d - (fr.n % fr.d);
+		
+		
+		// drop calculation.
+		// stick an IF around this make it command line configurable.
+		fc = (fc * fr.n) / n;
+		df =';';
+
+	}
+	
+	// fprintf (stderr,"%d/%d int fr %d\n",fr.n,fr.d, fr.n % fr.d);
+
+	
 	h = fr.d * fc / fr.n / 3600;
 	m = (fr.d * fc / fr.n / 60) % 60;
 	s = (fr.d * fc / fr.n) % 60;
 	f = fc % (fr.n / fr.d);
 	
-	// TODO: need to handle NTSC drop frame
 	
-	sprintf(tc,"TCR*%02d:%02d:%02d:%02d",h,m,s,f);
+	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
+//	fprintf (stderr,"%d - %s\n",fc,tc);
 
 }
 
+void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
+{
+	char c,r;
+    FT_UInt glyph_index,error;
+	FT_Glyph  glyph;
+	int dw,dx,dy,cy;
+	int cpos,rpos;
+	int ilace;
+	
+	
+	dw = y4m_si_get_plane_width(sinfo,0);
+	
+	for (c=0;c<strlen(time);c++) {
+		
+		r=time[c];
+		
+		glyph_index = FT_Get_Char_Index( face, time[c] );
+		error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
+		if ( error )
+			continue;  /* ignore errors */
+		
+		error = FT_Render_Glyph( face->glyph, FT_RENDER_MODE_NORMAL );
+		if ( error )
+			continue;
+		
+		error = FT_Get_Glyph( face->glyph, &glyph );
+		
+		cpos = c * face->glyph->metrics.horiAdvance/64; 
+		
+		if (r=='T') {
+			// font metric tweaking.
+				black_box(yuv,sinfo,x,y,15 * face->glyph->metrics.horiAdvance/64,face->glyph->metrics.height/64+2);
+				cy =  y + face->glyph->metrics.height/64 + 1;
+		}
+		//fprintf (stderr,"ft width %d\n",face->glyph->bitmap.width);
+		
+		if (r == '*' && y4m_si_get_interlace(sinfo)) {
+			ilace = 2;
+		} else {
+			ilace = 1;
+		}
+		
+		for (dy=0; dy<face->glyph->bitmap.rows;dy+=ilace) {
+			for (dx=0; dx<face->glyph->bitmap.width;dx++) {
+				// fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
+				yuv[0][(x+dx+cpos+face->glyph->metrics.horiBearingX/64)+(cy+dy-face->glyph->metrics.horiBearingY/64)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
+			//	yuv[0][(x+dx+cpos)+(cy+dy-face->glyph->metrics.horiBearingY/64)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
+
+			}
+		}
+		
+		
+		
+	}	
+	
+	
+}
 
 void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,int y,char *time) 
 {
@@ -299,7 +386,7 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 	char c,r;
 	int cpos,rpos;
 
-			dw = y4m_si_get_plane_width(sinfo,0);
+	dw = y4m_si_get_plane_width(sinfo,0);
 
 //fprintf (stderr,"render_string\n");
 
@@ -312,11 +399,10 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 
 //fprintf (stderr,"render_string char: %c\n",r);
 
-	
+		cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
 		for (dy=0; dy<CHARHEIGHT;dy++) {
 			for (dx=0; dx<CHARWIDTH;dx++) {
 				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
-				cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
 				yuv[0][(x+dx+cpos)+(y+dy)*dw] = fd[dx+rpos+dy*LINEWIDTH];
 				
 			}
@@ -325,7 +411,7 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 
 }
 
-static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
+static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
@@ -335,11 +421,35 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 	int frameCounter = 0;
 	char time[32];
 	
-	int w,h;
+	int w,h,error;
 
+	FT_Library  library;
+	FT_Face     face;
+	
 //	fprintf (stderr,"timecode\n");
 
-	read_font(&font_data);
+	
+	error = FT_Init_FreeType( &library );
+	if ( error )
+	{
+		mjpeg_error_exit1 ("Couldn't initialise the FT library!");
+	}
+
+	error = FT_New_Face( library, fontname, 0, &face );
+	if ( error == FT_Err_Unknown_File_Format )
+	{
+		mjpeg_error_exit1 ("Unknown Font type!");
+	}
+	else if ( error )
+	{
+		mjpeg_error_exit1 ("Error reading font file!");
+	}
+	
+	// error = FT_Set_Char_Size( face, 0, 8*64, 300, 300 );
+	
+	error = FT_Set_Pixel_Sizes( face, 32, 28 );   
+	
+//	read_font(&font_data);
 	
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
@@ -355,7 +465,7 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 	w = (w / 2) - (15 * CHARWIDTH / 2);
 	h = h - 24-CHARHEIGHT;
 	
-		fprintf (stderr,"box pos: %d %d\n",w,h);
+	//	fprintf (stderr,"box pos: %d %d\n",w,h);
 
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		
@@ -367,11 +477,11 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 
 			// draw black box
 			
-			black_box(yuv_data,inStrInfo,w,h,15 * CHARWIDTH,CHARHEIGHT);
+			// black_box(yuv_data,inStrInfo,w,h,15 * CHARWIDTH,CHARHEIGHT);
 			
 			// render string
 		
-			render_string (yuv_data,font_data,inStrInfo,w,h,time);
+			render_string_ft (yuv_data,face,inStrInfo,w,h,time);
 		
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 			frameCounter++;
@@ -720,7 +830,9 @@ int main (int argc, char *argv[])
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	int width, mode, c;
-	const static char *legal_flags = "tvyiclh";
+	const static char *legal_flags = "tvyiclhf:";
+	
+	char *fontname;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -750,7 +862,10 @@ int main (int argc, char *argv[])
 				case 't':
 					mode = MODE_TIMEC;
 					break;
-
+			case 'f':
+				fontname = (char *) malloc (strlen(optarg));
+				strcpy(fontname , optarg);
+				break;
 				}
 	}
 	
@@ -809,7 +924,7 @@ int main (int argc, char *argv[])
 	}
 	if (mode == MODE_TIMEC) {
 		y4m_write_stream_header(fdOut,&in_streaminfo);
-		timecode(fdIn, &in_streaminfo, fdOut);
+		timecode(fdIn, &in_streaminfo, fdOut,fontname);
 	}
 
 	

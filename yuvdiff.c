@@ -114,15 +114,15 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 					bri += abs(yuv_data[0][l+x]-yuv_odata[0][l+x]);
 					bro += abs(yuv_data[0][l+x+w]-yuv_odata[0][l+x+w]);
 					
-					yuv_wdata[0][l+x] = abs(yuv_data[0][l+x]-yuv_odata[0][l+x]);
-					yuv_wdata[0][l+x+w] = abs(yuv_data[0][l+x+w]-yuv_odata[0][l+x+w]);
+					yuv_wdata[0][l+x] = (yuv_data[0][l+x]-yuv_odata[0][l+x]) + 128 ;
+					yuv_wdata[0][l+x+w] = (yuv_data[0][l+x+w]-yuv_odata[0][l+x+w]) + 128;
 				}
 		}
 		// so much for optimizing only luma
 		for (l=0; l<ch; l++) {
 			for (x=0;x<cw;x++){
-				yuv_wdata[1][l*cw+x] = abs (yuv_data[1][l*cw+x] - yuv_odata[1][l*cw+x]);
-				yuv_wdata[2][l*cw+x] = abs (yuv_data[2][l*cw+x] - yuv_odata[2][l*cw+x]);
+				yuv_wdata[1][l*cw+x] = (yuv_data[1][l*cw+x] - yuv_odata[1][l*cw+x]) + 128;
+				yuv_wdata[2][l*cw+x] =  (yuv_data[2][l*cw+x] - yuv_odata[2][l*cw+x]) +128;
 			}
 		}
 
