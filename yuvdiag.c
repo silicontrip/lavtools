@@ -299,7 +299,6 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 		// non drop calculation.
 		fr.n += fr.d - (fr.n % fr.d);
 		
-		
 		// drop calculation.
 		// stick an IF around this make it command line configurable.
 		fc = (fc * fr.n) / n;

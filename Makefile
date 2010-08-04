@@ -9,10 +9,10 @@ yuvtshot: yuvtshot.o utilyuv.o
 yuvdiff: yuvdiff.o utilyuv.o
 
 libav2yuv: libav2yuv.c
-	gcc -lavcodec -lavformat -lavutil $LDFLAGS $CFLAGS -o libav2yuv
+	gcc -lavcodec -lavformat -lavutil $(LDFLAGS) $(CFLAGS) -o libav2yuv
 
 libav-bitrate: libav-bitrate.c
-	gcc -lavcodec -lavformat -lavutil $LDFLAGS $CFLAGS -o libav-bitrate
+	gcc -lavcodec -lavformat -lavutil $(LDFLAGS) $(CFLAGS) -o libav-bitrate
 
 libavmux: libavmux.c
-	gcc -lavcodec -lavformat -lavutil $LDFLAGS $CFLAGS -o libavmux
+	gcc -lavcodec -lavformat -lavutil $(LDFLAGS) $(CFLAGS) -o libavmux
