@@ -12,8 +12,8 @@
 //gcc -O3 -I/usr/local/include/ffmpeg -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libavmux.c -o libavmux
 //
 
-#include <avcodec.h>
-#include <avformat.h>
+#include <ffmpeg/avcodec.h>
+#include <ffmpeg/avformat.h>
 
 #include <stdio.h>
 #include <string.h>
@@ -79,7 +79,7 @@ int mux_files (char *outname, char **inname, int len, char *format) {
 	pFormatCtx = (AVFormatContext **) malloc (sizeof(AVFormatContext *) * len);
 
 
-// Need to re order the streams so that the video is added first
+// TODO: Need to re order the streams so that the video is added first
 // otherwise crash ensues...
 
 	for (i =1; i < len; i++) {
@@ -94,20 +94,39 @@ int mux_files (char *outname, char **inname, int len, char *format) {
 		
 		if(pFormatCtx[i]->streams[0]->codec->codec_type==CODEC_TYPE_VIDEO)
 		{
+			
+			fprintf (stderr,"Video FR: %d/%d\n",pFormatCtx[i]->streams[0]->codec ->time_base.num , pFormatCtx[i]->streams[0]->codec ->time_base.den);
+
+			
 			video_st = av_new_stream(oc,0);
+
+			
 			if (!video_st) {
 				fprintf(stderr, "Could not alloc stream\n");
 				return -1;
 			}
 			video = i;
 			video_st->codec = pFormatCtx[i]->streams[0]->codec;
-			if(!strcmp(oc->oformat->name, "mp4") || !strcmp(oc->oformat->name, "mov") || !strcmp(oc->oformat->name, "3gp"))
+			video_st->codec->time_base.num = 1; // pFormatCtx[i]->streams[0]->codec ->time_base.num;
+			video_st->codec->time_base.den = 25; // pFormatCtx[i]->streams[0]->codec ->time_base.den;
+	//		video_st->codec->codec_id = pFormatCtx[i]->streams[0]->codec->codec_id;
+			
+			fprintf (stderr,"Video codec FR %d/%d\n", video_st->codec->time_base.num , video_st->codec->time_base.den);
+
+			
+			
+		//	if(!strcmp(oc->oformat->name, "mp4") || !strcmp(oc->oformat->name, "mov") || !strcmp(oc->oformat->name, "3gp"))
+			if(oc->oformat->flags & AVFMT_GLOBALHEADER)
 				video_st->codec->flags |= CODEC_FLAG_GLOBAL_HEADER;
 			// fprintf (stderr,"video codec: %s\n",oc->streams[0]->codec->codec->name);
 			fprintf (stderr,"video format: %s\n",pFormatCtx[i]->iformat->name);
+			
+			
 
 		} else if (pFormatCtx[i]->streams[0]->codec->codec_type==CODEC_TYPE_AUDIO) {
-			audio_st = av_new_stream(oc,1);
+			audio_st = av_new_stream(oc,1);			
+		//	audio_st = add_audio_stream(oc,pFormatCtx[i]->streams[0]->codec);
+
 			if (!audio_st) {
 				fprintf(stderr, "Could not alloc stream\n");
 				return -1;
@@ -120,6 +139,8 @@ int mux_files (char *outname, char **inname, int len, char *format) {
 
 		}
 	}
+	
+	// Need to set correct frame rate
 	
 	if (av_set_parameters(oc, NULL) < 0) {
         fprintf(stderr, "Invalid output format parameters\n");
@@ -182,7 +203,9 @@ fprintf (stderr,"Video file: %d Audio File: %d\n",video,audio);
 			//	packet.pts = audio_st->pts.val;
 			//	packet.dts = audio_st->cur_dts;
 				
-				av_write_frame(oc, &packet);
+				av_interleaved_write_frame(oc, &packet);
+
+//				av_write_frame(oc, &packet);
 				av_free_packet(&packet);
 			
         } else {
@@ -203,7 +226,14 @@ fprintf (stderr,"Video file: %d Audio File: %d\n",video,audio);
 
 			//fprintf (stderr,"write video...\n");
 
-				av_write_frame(oc, &packet);
+			// a
+			
+//			packet.pts= av_rescale_q(c->coded_frame->pts, c->time_base, st->time_base);
+
+			
+				//av_write_frame(oc, &packet);
+				av_interleaved_write_frame(oc, &packet);
+
 				av_free_packet(&packet);
 
         }
@@ -303,7 +333,7 @@ int main(int argc, char *argv[])
 {
 
     int i;   
-	int mode = 0;
+	int mode = MODE_DEMUX;
 	char *containername = NULL;
 	char *outname;
 
@@ -312,6 +342,7 @@ int main(int argc, char *argv[])
 	const static char *legal_flags = "F:o:h?";
 
 	while ((i = getopt (argc, argv, legal_flags)) != -1) {
+		fprintf (stderr,"checking opt: %c\n",i);
 		switch (i) {
 			case 'o':
 				outname = (char *) malloc (strlen(optarg)+1);
@@ -336,6 +367,8 @@ int main(int argc, char *argv[])
 
 	
 	if ((argc != 2 && mode==MODE_DEMUX) || (argc<2 && mode==MODE_MUX)) {
+		fprintf (stderr,"argc = %d mode = %d\n",argc,mode);
+
           print_usage (argv);
           return 0 ;
 	}
