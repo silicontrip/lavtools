@@ -43,9 +43,14 @@ ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils utily
 static void print_usage() 
 {
   fprintf (stderr,
-	   "usage: yuvadjust -t <thresh>\n"
+	   "usage: yuvtshot -m <mode>\n"
 		"\n"
 	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
+		   "\t -m modes:\n\t 0: forward and backward pixels\n"
+		   "\t 1: forward, backward, left and right pixels\n"
+		   "\t 2: forward, backward, interlace up and down pixels\n"
+		   "\t 3: forward, backward, left, right interlace up and down pixels\n"
+			"\t 4: forward, backward up and down pixels\n"
 		);
 }
 
@@ -141,6 +146,15 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 					pix[6] = get_pixel(x,y,t1,n,si);
 					le=7;
 					break;
+				case 4:
+					pix[0] = get_pixel(x,y,t1,l,si);
+					pix[1] = get_pixel(x,y-1,t1,m,si);
+					pix[2] = get_pixel(x,y,t1,m,si);
+					pix[3] = get_pixel(x,y+1,t1,m,si);
+					pix[4] = get_pixel(x,y,t1,n,si);
+					le=5;
+					break;
+					
 
 			}
 			*(m[t1]+x+y*w) = median(pix,le);
