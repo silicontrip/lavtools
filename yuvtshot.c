@@ -38,6 +38,12 @@ ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils utily
 #include "mpegconsts.h"
 #include "utilyuv.h"
 
+
+typedef uint8_t pixelvalue;
+#define PIX_SORT(a,b) { if ((a)>(b)) PIX_SWAP((a),(b)); } 
+#define PIX_SWAP(a,b) { pixelvalue temp=(a);(a)=(b);(b)=temp; } 
+
+
 #define YUVRFPS_VERSION "0.3"
 
 static void print_usage() 
@@ -54,25 +60,71 @@ static void print_usage()
 		);
 }
 
-int median (int *a,int l) {
-	
-	int x,y;
-	int min,minp;
-	
-	for(x=0;x<=(l/2);x++){
-		minp=x; min = a[x];
-		for(y=x;y<l;y++)
-			if(a[y]<min) {
-				min=a[y];
-				minp=y;
-			}
-		a[minp] = a[x];
-		a[x] = min;
-	}
-	
-	min = a[l/2];
+int median (int *p,int l) {
 
-	return min;
+	switch (l) {
+		case 3:
+			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[0],p[1]) ; 
+			return(p[1]) ; 
+			break;
+		case 5:
+			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[3],p[4]) ; PIX_SORT(p[0],p[3]) ; 
+			PIX_SORT(p[1],p[4]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[2],p[3]) ; 
+			PIX_SORT(p[1],p[2]) ; return(p[2]) ; 
+			break;
+		case 7:
+			PIX_SORT(p[0], p[5]) ; PIX_SORT(p[0], p[3]) ; PIX_SORT(p[1], p[6]) ; 
+			PIX_SORT(p[2], p[4]) ; PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[5]) ; 
+			PIX_SORT(p[2], p[6]) ; PIX_SORT(p[2], p[3]) ; PIX_SORT(p[3], p[6]) ; 
+			PIX_SORT(p[4], p[5]) ; PIX_SORT(p[1], p[4]) ; PIX_SORT(p[1], p[3]) ; 
+			PIX_SORT(p[3], p[4]) ; return (p[3]) ; 
+			break;
+		case 9:
+			PIX_SORT(p[1], p[2]) ; PIX_SORT(p[4], p[5]) ; PIX_SORT(p[7], p[8]) ; 
+			PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[4]) ; PIX_SORT(p[6], p[7]) ; 
+			PIX_SORT(p[1], p[2]) ; PIX_SORT(p[4], p[5]) ; PIX_SORT(p[7], p[8]) ; 
+			PIX_SORT(p[0], p[3]) ; PIX_SORT(p[5], p[8]) ; PIX_SORT(p[4], p[7]) ; 
+			PIX_SORT(p[3], p[6]) ; PIX_SORT(p[1], p[4]) ; PIX_SORT(p[2], p[5]) ; 
+			PIX_SORT(p[4], p[7]) ; PIX_SORT(p[4], p[2]) ; PIX_SORT(p[6], p[4]) ; 
+			PIX_SORT(p[4], p[2]) ; return(p[4]) ; 
+			break;
+		case 25:
+			PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[4]) ; PIX_SORT(p[2], p[4]) ; 
+			PIX_SORT(p[2], p[3]) ; PIX_SORT(p[6], p[7]) ; PIX_SORT(p[5], p[7]) ; 
+			PIX_SORT(p[5], p[6]) ; PIX_SORT(p[9], p[10]) ; PIX_SORT(p[8], p[10]) ; 
+			PIX_SORT(p[8], p[9]) ; PIX_SORT(p[12], p[13]) ; PIX_SORT(p[11], p[13]) ; 
+			PIX_SORT(p[11], p[12]) ; PIX_SORT(p[15], p[16]) ; PIX_SORT(p[14], p[16]) ; 
+			PIX_SORT(p[14], p[15]) ; PIX_SORT(p[18], p[19]) ; PIX_SORT(p[17], p[19]) ; 
+			PIX_SORT(p[17], p[18]) ; PIX_SORT(p[21], p[22]) ; PIX_SORT(p[20], p[22]) ; 
+			PIX_SORT(p[20], p[21]) ; PIX_SORT(p[23], p[24]) ; PIX_SORT(p[2], p[5]) ; 
+			PIX_SORT(p[3], p[6]) ; PIX_SORT(p[0], p[6]) ; PIX_SORT(p[0], p[3]) ; 
+			PIX_SORT(p[4], p[7]) ; PIX_SORT(p[1], p[7]) ; PIX_SORT(p[1], p[4]) ;
+			PIX_SORT(p[11], p[14]) ; PIX_SORT(p[8], p[14]) ; PIX_SORT(p[8], p[11]) ; 
+			PIX_SORT(p[12], p[15]) ; PIX_SORT(p[9], p[15]) ; PIX_SORT(p[9], p[12]) ; 
+			PIX_SORT(p[13], p[16]) ; PIX_SORT(p[10], p[16]) ; PIX_SORT(p[10], p[13]) ; 
+			PIX_SORT(p[20], p[23]) ; PIX_SORT(p[17], p[23]) ; PIX_SORT(p[17], p[20]) ; 
+			PIX_SORT(p[21], p[24]) ; PIX_SORT(p[18], p[24]) ; PIX_SORT(p[18], p[21]) ; 
+			PIX_SORT(p[19], p[22]) ; PIX_SORT(p[8], p[17]) ; PIX_SORT(p[9], p[18]) ; 
+			PIX_SORT(p[0], p[18]) ; PIX_SORT(p[0], p[9]) ; PIX_SORT(p[10], p[19]) ; 
+			PIX_SORT(p[1], p[19]) ; PIX_SORT(p[1], p[10]) ; PIX_SORT(p[11], p[20]) ; 
+			PIX_SORT(p[2], p[20]) ; PIX_SORT(p[2], p[11]) ; PIX_SORT(p[12], p[21]) ; 
+			PIX_SORT(p[3], p[21]) ; PIX_SORT(p[3], p[12]) ; PIX_SORT(p[13], p[22]) ; 
+			PIX_SORT(p[4], p[22]) ; PIX_SORT(p[4], p[13]) ; PIX_SORT(p[14], p[23]) ; 
+			PIX_SORT(p[5], p[23]) ; PIX_SORT(p[5], p[14]) ; PIX_SORT(p[15], p[24]) ; 
+			PIX_SORT(p[6], p[24]) ; PIX_SORT(p[6], p[15]) ; PIX_SORT(p[7], p[16]) ; 
+			PIX_SORT(p[7], p[19]) ; PIX_SORT(p[13], p[21]) ; PIX_SORT(p[15], p[23]) ; 
+			PIX_SORT(p[7], p[13]) ; PIX_SORT(p[7], p[15]) ; PIX_SORT(p[1], p[9]) ; 
+			PIX_SORT(p[3], p[11]) ; PIX_SORT(p[5], p[17]) ; PIX_SORT(p[11], p[17]) ; 
+			PIX_SORT(p[9], p[17]) ; PIX_SORT(p[4], p[10]) ; PIX_SORT(p[6], p[12]) ; 
+			PIX_SORT(p[7], p[14]) ; PIX_SORT(p[4], p[6]) ; PIX_SORT(p[4], p[7]) ; 
+			PIX_SORT(p[12], p[14]) ; PIX_SORT(p[10], p[14]) ; PIX_SORT(p[6], p[7]) ; 
+			PIX_SORT(p[10], p[12]) ; PIX_SORT(p[6], p[10]) ; PIX_SORT(p[6], p[17]) ; 
+			PIX_SORT(p[12], p[17]) ; PIX_SORT(p[7], p[17]) ; PIX_SORT(p[7], p[10]) ; 
+			PIX_SORT(p[12], p[18]) ; PIX_SORT(p[7], p[12]) ; PIX_SORT(p[10], p[18]) ; 
+			PIX_SORT(p[12], p[20]) ; PIX_SORT(p[10], p[20]) ; PIX_SORT(p[10], p[12]) ; 
+			return (p[12]); 
+			break;
+	}
 }
 
 //how easy is it to make this for all planes
