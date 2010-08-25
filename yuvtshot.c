@@ -49,14 +49,14 @@ typedef uint8_t pixelvalue;
 static void print_usage() 
 {
   fprintf (stderr,
-	   "usage: yuvtshot -m <mode>\n"
-		"\n"
-	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
-		   "\t -m modes:\n\t 0: forward and backward pixels\n"
-		   "\t 1: forward, backward, left and right pixels\n"
-		   "\t 2: forward, backward, interlace up and down pixels\n"
-		   "\t 3: forward, backward, left, right interlace up and down pixels\n"
-			"\t 4: forward, backward up and down pixels\n"
+		   "usage: yuvtshot -m <mode>\n"
+		   "\n"
+		   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
+		   "\t -m modes:\n\t OR'd flags together\n"
+		   "\t 1: forward and backward pixels\n"
+		   "\t 2: left and right pixels\n"
+		   "\t 4: noninterlace up and down pixels\n"
+		   "\t 8: interlace up and down pixels\n"
 		);
 }
 
@@ -124,6 +124,9 @@ int median (int *p,int l) {
 			PIX_SORT(p[12], p[20]) ; PIX_SORT(p[10], p[20]) ; PIX_SORT(p[10], p[12]) ; 
 			return (p[12]); 
 			break;
+		default:
+			fprintf (stderr,"unssuported number of pixels (%d)\n",l);
+			break;
 	}
 }
 
@@ -165,50 +168,26 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 			
 			// do some case around here.
 			
-			switch (t) {
-				case 0:
-					pix[0] = get_pixel(x,y,t1,l,si);
-					pix[1] = get_pixel(x,y,t1,m,si);
-					pix[2] = get_pixel(x,y,t1,n,si);
-					le=3;
-					break;
-				case 1:
-					pix[0] = get_pixel(x,y,t1,l,si);
-					pix[1] = get_pixel(x-1,y,t1,m,si);
-					pix[2] = get_pixel(x,y,t1,m,si);
-					pix[3] = get_pixel(x+1,y,t1,m,si);
-					pix[4] = get_pixel(x,y,t1,n,si);
-					le=5;
-					break;
-				case 2:
-					pix[0] = get_pixel(x,y,t1,l,si);
-					pix[1] = get_pixel(x,y-2,t1,m,si);
-					pix[2] = get_pixel(x,y,t1,m,si);
-					pix[3] = get_pixel(x,y+2,t1,m,si);
-					pix[4] = get_pixel(x,y,t1,n,si);
-					le=5;
-					break;
-				case 3:
-					pix[0] = get_pixel(x,y,t1,l,si);
-					pix[1] = get_pixel(x-1,y,t1,m,si);
-					pix[2] = get_pixel(x,y-2,t1,m,si); // 2 for interlace
-					pix[3] = get_pixel(x,y,t1,m,si);
-					pix[4] = get_pixel(x,y+2,t1,m,si); // 2 for interlace
-					pix[5] = get_pixel(x+1,y,t1,m,si);
-					pix[6] = get_pixel(x,y,t1,n,si);
-					le=7;
-					break;
-				case 4:
-					pix[0] = get_pixel(x,y,t1,l,si);
-					pix[1] = get_pixel(x,y-1,t1,m,si);
-					pix[2] = get_pixel(x,y,t1,m,si);
-					pix[3] = get_pixel(x,y+1,t1,m,si);
-					pix[4] = get_pixel(x,y,t1,n,si);
-					le=5;
-					break;
-					
-
+			le=1;
+			pix[0] = get_pixel(x,y,t1,m,si);
+			
+			if (t & 1) {
+					pix[le++] = get_pixel(x,y,t1,l,si);
+					pix[le++] = get_pixel(x,y,t1,n,si);
 			}
+			if (t & 2) {
+					pix[le++] = get_pixel(x-1,y,t1,m,si);
+					pix[le++] = get_pixel(x+1,y,t1,m,si);
+			}
+			if (t & 4) {
+					pix[le++] = get_pixel(x,y-1,t1,m,si);
+					pix[le++] = get_pixel(x,y+1,t1,m,si);
+			}
+			if (t & 8) {
+				pix[le++] = get_pixel(x,y-2,t1,m,si);
+				pix[le++] = get_pixel(x,y+2,t1,m,si);
+			}
+			//fprintf (stderr,"length : %d\n",le);
 			*(m[t1]+x+y*w) = median(pix,le);
 			
 			/*
@@ -379,8 +358,8 @@ int main (int argc, char *argv[])
 	
 
   // Information output
-  mjpeg_info ("yuvadjust (version " YUVRFPS_VERSION ") is a simple luma and chroma adjustments for yuv streams");
-  mjpeg_info ("yuvadjust -? for help");
+  mjpeg_info ("yuvtshot (version " YUVRFPS_VERSION ") is a temporal shot noise remover");
+  mjpeg_info ("yuvtshot -? for help");
 
   /* in that function we do all the important work */
 	y4m_write_stream_header(fdOut,&out_streaminfo);
