@@ -49,9 +49,11 @@ typedef uint8_t pixelvalue;
 static void print_usage() 
 {
   fprintf (stderr,
-		   "usage: yuvtshot -m <mode>\n"
+		   "usage: yuvtshot -m <mode> -v <level> -c -y\n"
 		   "\n"
 		   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
+		   "\t -c process chroma only\n"
+		   "\t -y process luma only\n"
 		   "\t -m modes:\n\t OR'd flags together\n"
 		   "\t 1: forward and backward pixels\n"
 		   "\t 2: left and right pixels\n"
@@ -240,10 +242,13 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 
-		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0);
-		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1);
-		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2);
-
+		if (t1 & 2) {
+			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0);
+		}
+		if (t1 & 1) {
+			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1);
+			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2);
+		}
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );
 		y4m_fini_frame_info( &in_frame );
 		
@@ -313,8 +318,9 @@ int main (int argc, char *argv[])
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
 	y4m_ratio_t src_frame_rate;
-	const static char *legal_flags = "v:m:s:";
+	const static char *legal_flags = "v:m:s:cy";
 	int max_shift = 0, search = 0;
+	int cl=3;
 	int c;
 
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
@@ -330,6 +336,13 @@ int main (int argc, char *argv[])
 	case 's':
 		search = atof(optarg);
 		break;
+	case 'c':
+		cl=1;
+		break;
+		case 'y':
+			cl=2;
+			break;
+			
 	case '?':
           print_usage (argv);
           return 0 ;
@@ -364,7 +377,7 @@ int main (int argc, char *argv[])
   /* in that function we do all the important work */
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 
-	process( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,search);
+	process( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,cl);
 
   y4m_fini_stream_info (&in_streaminfo);
   y4m_fini_stream_info (&out_streaminfo);
