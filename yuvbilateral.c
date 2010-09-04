@@ -164,7 +164,7 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 	int height,width,height2,width2;
 	
 	height=y4m_si_get_plane_height(si,0);
-	width=y4m_si_get_plane_height(si,0);
+	width=y4m_si_get_plane_width(si,0);
 
 	// I'll assume that the chroma subsampling is the same for both u and v channels
 	height2=y4m_si_get_plane_height(si,1);
