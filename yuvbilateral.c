@@ -44,7 +44,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 
 #define VERSION "0.1"
 
-#define PRECISION 63336 // 16 bit fixed point
+#define PRECISION 256
 
 struct parameters {
 
@@ -109,6 +109,7 @@ static void filterinitialize () {
 	for ( x = -center; x < -center + kernelSize; x++) {
 		for ( y = -center; y < -center + kernelSize; y++) {
 			this.kernelD[x + center + (y + center) * kernelSize] = gauss(this.sigmaD, x, y);
+			//fprintf(stderr,"x: %d y: %d = %d\n",x,y,this.kernelD[x + center + (y + center) * kernelSize]);
 		}
 	}
 	
@@ -129,8 +130,8 @@ static void filterinitialize () {
 
 static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
 
-	int sum =0;
-	int totalWeight = 0;
+	unsigned int sum =0;
+	unsigned int totalWeight = 0;
 	int weight;
 	int m,n;
 	
@@ -144,9 +145,6 @@ static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
 			if (m>=0 && n>=0 && m < w && n < h) {
 				int intensityKernelPos = p[m + n * w];
 				
-				//fprintf (stderr,"coord %d %d  -- %d %d\n",m,n,i,j);
-				//fprintf (stderr,"examine memory %d\n",(i-m + this.kernelRadius) + (j-n + this.kernelRadius) * (this.kernelRadius*2));
-				
 				weight = this.kernelD[(i-m + this.kernelRadius) + (j-n + this.kernelRadius) * (this.kernelRadius*2)] * similarity(intensityKernelPos,intensityCenter);
 				totalWeight += weight;
 				sum += (weight * intensityKernelPos);
@@ -155,6 +153,7 @@ static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
 	}
 	
 	o[j * w + i] = (sum / totalWeight);
+	//o[j * w + i] = intensityCenter;
 }
 
 
@@ -169,23 +168,25 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 
 	// I'll assume that the chroma subsampling is the same for both u and v channels
 	height2=y4m_si_get_plane_height(si,1);
-	width2=y4m_si_get_plane_height(si,1);
+	width2=y4m_si_get_plane_width(si,1);
 
 	
 	for (y=0; y < height; y++) {
 		for (x=0; x < width; x++) {
 			
 			filterpixel(m[0],n[0],x,y,width,height);
+			
 			if (x<width2 && y<height2) {
 				filterpixel(m[1],n[1],x,y,width2,height2);
 				filterpixel(m[2],n[2],x,y,width2,height2);
 			}
+			 
 		}
 	}
 	
 }
 
-static void filter(int fdIn, y4m_stream_info_t  *inStrInfo )
+static void filter(int fdIn, int fdOut, y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
@@ -216,7 +217,7 @@ static void filter(int fdIn, y4m_stream_info_t  *inStrInfo )
 		if (read_error_code == Y4M_OK) {
 			
 			filterframe(yuv_odata,yuv_data,inStrInfo);
-			
+			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
 		
 		y4m_fini_frame_info( &in_frame );
@@ -309,9 +310,10 @@ int main (int argc, char *argv[])
     
 	/* in that function we do all the important work */
 	filterinitialize ();
-	filter(fdIn, &in_streaminfo);
-	//filteruninitialize();
+	y4m_write_stream_header(fdOut,&in_streaminfo);
+	filter(fdIn,fdOut, &in_streaminfo);
 	y4m_fini_stream_info (&in_streaminfo);
+	//filteruninitialize();
 	
 	return 0;
 }
