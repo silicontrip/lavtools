@@ -40,7 +40,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
-#include "utilyuv.c"
+#include "utilyuv.h"
 
 #define VERSION "0.1"
 
@@ -88,6 +88,7 @@ unsigned int similarity(int p, int s) {
 static void filterinitialize () {
 
 	int kernelSize, center;
+	int x,y,i;
 	
 	this.kernelRadius = this.sigmaD>this.sigmaR?this.sigmaD * 2:this.sigmaR * 2;
 	this.kernelRadius = this.kernelRadius / PRECISION;
@@ -105,8 +106,8 @@ static void filterinitialize () {
 	}
 		
 	
-	for (int x = -center; x < -center + kernelSize; x++) {
-		for (int y = -center; y < -center + kernelSize; y++) {
+	for ( x = -center; x < -center + kernelSize; x++) {
+		for ( y = -center; y < -center + kernelSize; y++) {
 			this.kernelD[x + center + (y + center) * kernelSize] = gauss(this.sigmaD, x, y);
 		}
 	}
@@ -119,7 +120,7 @@ static void filterinitialize () {
 	
 	// precomute all possible similarity values for
 	// performance reasons
-	for (int i = 0; i < 256; i++) {
+	for ( i = 0; i < 256; i++) {
 		this.gaussSimilarity[i] = exp(-((i) / (1.0 * this.twoSigmaRSquared/PRECISION))) * PRECISION;
 	}
 	
@@ -131,17 +132,22 @@ static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
 	int sum =0;
 	int totalWeight = 0;
 	int weight;
+	int m,n;
 	
-	uint8_t centre = p[j * w + i];
-	int nMax = i + g_runtime.kernelRadius;
-	int mMax = j + g_runtime.kernelRadius;
+	uint8_t intensityCenter = p[j * w + i];
+	int mMax = i + this.kernelRadius;
+	int nMax = j + this.kernelRadius;
 	
-	for (int m = i-g_runtime.kernelRadius; m < mMax; m++) {
-		for (int n = j-g_runtime.kernelRadius; n < nMax; n++) {
+	for ( m = i-this.kernelRadius; m < mMax; m++) {
+		for ( n = j-this.kernelRadius; n < nMax; n++) {
 			
 			if (m>=0 && n>=0 && m < w && n < h) {
 				int intensityKernelPos = p[m + n * w];
-				weight = kernelD[i-m + kernelRadius][j-n + kernelRadius] * similarity(intensityKernelPos,intensityCenter);
+				
+				//fprintf (stderr,"coord %d %d  -- %d %d\n",m,n,i,j);
+				//fprintf (stderr,"examine memory %d\n",(i-m + this.kernelRadius) + (j-n + this.kernelRadius) * (this.kernelRadius*2));
+				
+				weight = this.kernelD[(i-m + this.kernelRadius) + (j-n + this.kernelRadius) * (this.kernelRadius*2)] * similarity(intensityKernelPos,intensityCenter);
 				totalWeight += weight;
 				sum += (weight * intensityKernelPos);
 			}
@@ -152,7 +158,7 @@ static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
 }
 
 
-static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t si)
+static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 {
 	
 	int x,y;
@@ -209,7 +215,7 @@ static void filter(int fdIn, y4m_stream_info_t  *inStrInfo )
 		// do work
 		if (read_error_code == Y4M_OK) {
 			
-			framefilter(yuv_odata,yuv_data,inStrInfo);
+			filterframe(yuv_odata,yuv_data,inStrInfo);
 			
 		}
 		
