@@ -1,8 +1,7 @@
 /*
  *  generic.c
  *    Mark Heath <mjpeg0 at silicontrip.org>
- *  converts interlaced source material into progressive by halving 
- *  the vertical resolution and doubling the frame rate.
+ *  http://silicontrip.net/~mark/lavtools/
  *
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
@@ -21,14 +20,12 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
-gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  -o yuvdeinterlace
+gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
 #ifdef HAVE_CONFIG_H
 #include "config.h"
 #endif
-
-
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -40,87 +37,17 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  -o yuvdeinterlace
 
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
+#include "utilyuv.c"
 
-#define YUVDE_VERSION "0.1"
+#define VERSION "0.1"
 
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuvdeinterlace [-v] [-It|b] [-h]\n"
-			 "yuvdeinterlace  deinterlaces source material by\n"
-			 "doubling the frame rate and doubling the scanlines.\n"
-			 "\n"
-			 "\t -I force interlace mode\n"
+			 "usage: yuv\n"
 			);
 }
 
-// Allocate a uint8_t frame
-int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	m[0] = (uint8_t *)malloc( fs );
-	m[1] = (uint8_t *)malloc( cfs);
-	m[2] = (uint8_t *)malloc( cfs);
-	
-	if( !m[0] || !m[1] || !m[2]) {
-		return -1;
-	} else {
-		return 0;
-	}
-	
-}
-
-//Copy a uint8_t frame
-int chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	memcpy (m[0],n[0],fs);
-	memcpy (m[1],n[1],cfs);
-	memcpy (m[2],n[2],cfs);
-	
-}
-
-// set a solid colour for a uint8_t frame
-set_colour(uint8_t *m[], y4m_stream_info_t  *sinfo, int y, int u, int v )
-{
-
-        int fs,cfs;
-        
-        fs = y4m_si_get_plane_length(sinfo,0);
-        cfs = y4m_si_get_plane_length(sinfo,1);
-
-		memset (m[0],y,fs);
-		memset (m[1],u,cfs);
-		memset (m[2],v,cfs);
-
-}
-
-
-// returns the opposite field ordering
-int invert_order(int f)
-{
-	switch (f) {
-			
-		case Y4M_ILACE_TOP_FIRST:
-			return Y4M_ILACE_BOTTOM_FIRST;
-		case Y4M_ILACE_BOTTOM_FIRST:
-			return Y4M_ILACE_TOP_FIRST;
-		case Y4M_ILACE_NONE:
-			return Y4M_ILACE_NONE;
-		default:
-			return Y4M_UNKNOWN;
-	}
-}
 static void detect(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
