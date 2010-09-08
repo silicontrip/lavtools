@@ -60,6 +60,7 @@ struct parameters {
 	
 	unsigned int twoSigmaRSquared;
 	
+	int direction;
 	
 };
 
@@ -82,7 +83,11 @@ unsigned int gauss (unsigned int sigma, int x, int y) {
 unsigned int similarity(int p, int s) {
 	// this equals: Math.exp(-(( Math.abs(p-s)) /  2 * this.sigmaR * this.sigmaR));
 	// but is precomputed to improve performance
-	return this.gaussSimilarity[abs(p-s)];
+	if (this.direction == 0) 
+		return this.gaussSimilarity[abs(p-s)];
+	
+	return this.gaussSimilarity[255-abs(p-s)];
+
 }
 
 static void filterinitialize () {
@@ -151,9 +156,10 @@ static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
 			}
 		}
 	}
-	
+	if (totalWeight > 0 )
 	o[j * w + i] = (sum / totalWeight);
-	//o[j * w + i] = intensityCenter;
+	else
+	o[j * w + i] = intensityCenter;
 }
 
 
@@ -250,12 +256,13 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "v:hr:d:";
+	const static char *legal_flags = "v:hr:d:i";
 	
 	float sigma;
 	
 	this.sigmaR = 0;
 	this.sigmaD = 0;
+	this.direction = 0;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -277,6 +284,9 @@ int main (int argc, char *argv[])
 			case 'd':
 				sigma = atof(optarg);
 				this.sigmaD = sigma * PRECISION;
+				break;
+			case 'i':
+				this.direction = 1;
 				break;
 				
 		}

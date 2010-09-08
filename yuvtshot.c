@@ -54,7 +54,7 @@ static void print_usage()
 		   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 		   "\t -c process chroma only\n"
 		   "\t -y process luma only\n"
-		   "\t -m modes:\n\t OR'd flags together\n"
+		   "\t -m modes: OR'd flags together\n"
 		   "\t 1: forward and backward pixels\n"
 		   "\t 2: left and right pixels\n"
 		   "\t 4: noninterlace up and down pixels\n"

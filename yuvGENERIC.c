@@ -48,7 +48,43 @@ static void print_usage()
 			);
 }
 
-static void detect(  int fdIn  , y4m_stream_info_t  *inStrInfo )
+static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
+
+	o[i+j*w] = p[i+j*w];
+	
+}
+
+static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
+{
+	
+	int x,y;
+	int height,width,height2,width2;
+	
+	height=y4m_si_get_plane_height(si,0);
+	width=y4m_si_get_plane_width(si,0);
+	
+	// I'll assume that the chroma subsampling is the same for both u and v channels
+	height2=y4m_si_get_plane_height(si,1);
+	width2=y4m_si_get_plane_width(si,1);
+	
+	
+	for (y=0; y < height; y++) {
+		for (x=0; x < width; x++) {
+			
+			filterpixel(m[0],n[0],x,y,width,height);
+			
+			if (x<width2 && y<height2) {
+				filterpixel(m[1],n[1],x,y,width2,height2);
+				filterpixel(m[2],n[2],x,y,width2,height2);
+			}
+			
+		}
+	}
+	
+}
+
+
+static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
@@ -71,7 +107,8 @@ static void detect(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			
+			filterframe(yuv_odata,yuv_data,inStrInfo);
+			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
 		
 		y4m_fini_frame_info( &in_frame );
@@ -169,7 +206,7 @@ int main (int argc, char *argv[])
 	
     
 	/* in that function we do all the important work */
-	detect(fdIn, &in_streaminfo);
+	filter(fdIn, &in_streaminfo);
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	
