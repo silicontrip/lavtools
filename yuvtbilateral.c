@@ -41,7 +41,7 @@
 
 #define VERSION "0.1"
 
-#define PRECISION 512
+#define PRECISION 1024
 
 struct parameters {
 	
@@ -149,7 +149,7 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 	int weight;
 	int z;
 	
-	uint8_t intensityCenter = p[this.kernelSize/2-1][chan][j * w + i];
+	uint8_t intensityCenter = p[(this.kernelSize-1)/2][chan][j * w + i];
 	
 	for ( z = 0; z < this.kernelSize; z++) {
 		
