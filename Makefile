@@ -11,6 +11,8 @@ yuvdiff: yuvdiff.o utilyuv.o
 
 yuvbilateral: yuvbilateral.o utilyuv.o
 
+yuvtbilateral: yuvtbilateral.o utilyuv.o
+
 libav2yuv: libav2yuv.c
 	gcc -lavcodec -lavformat -lavutil $(LDFLAGS) $(CFLAGS) -o libav2yuv $<
 
