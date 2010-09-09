@@ -913,12 +913,20 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		
 	}
 	
-	if (frameFinished)
+	if (frameFinished) {
+		// I'm getting reports of double frees, not sure if I should free the packet here. 
+		// Or am I leaking memory?
+		
+		/*
+		 mjpeg_warn("freeing packet: %x",packet);
+
 #ifdef HAVE_AV_FREE_PACKET
 		av_free_packet(packet);
 #else
 		av_freep(packet);
 #endif
+		 */
+	}
 	else 
 		mjpeg_warn ("FRAME NOT FINISHED");
 	
@@ -1305,6 +1313,8 @@ int main(int argc, char *argv[])
 		mjpeg_debug("Freeing buffer: %x",buffer);
 		free(buffer);
 	}
+	mjpeg_warn("Freeing av_packet");
+
 #ifdef HAVE_AV_FREE_PACKET
                 av_free_packet(&packet);
 #else
