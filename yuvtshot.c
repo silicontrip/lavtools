@@ -1,6 +1,6 @@
 /*
   *  yuvyshot.c
-  * attempts to remove temporal shot noise.
+  * attempts to remove temporal impulse noise.
   *
   *  modified from yuvhsync.c by
   *  Copyright (C) 2010 Mark Heath
@@ -52,6 +52,7 @@ static void print_usage()
 		   "usage: yuvtshot -m <mode> -v <level> -c -y\n"
 		   "\n"
 		   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
+		   "\t -a process all pixels. Do not adaptively select noise pixels\n"
 		   "\t -c process chroma only\n"
 		   "\t -y process luma only\n"
 		   "\t -m modes: OR'd flags together\n"
@@ -133,7 +134,7 @@ int median (int *p,int l) {
 }
 
 //how easy is it to make this for all planes
-get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
+uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 {
 
 	int w,h;
@@ -150,7 +151,35 @@ get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 	
 }
 
-void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int t,int t1)
+#define MEANSIZE 5
+int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
+{
+	
+	int i,j;
+	
+	int tpix = 0,apix;
+	int cpix;
+	int l,m;
+	
+	l=y+MEANSIZE/2;
+	m=x+MEANSIZE/2;
+	
+	cpix = get_pixel(x,y,plane,n,si);
+	
+	for (j=y-MEANSIZE/2;j<=l;j++) {
+		for (i=x-MEANSIZE/2;i<=m;i++) {
+			tpixy += get_pixel(i,j,plane,n,si);
+		}
+	}
+
+	apix = tpix / 25;
+	// need standard deviation.
+	// and a sigma threshhold
+	
+	return (abs(cpix-apix)>10); // temporary threshold.
+	
+}
+void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int t,int t1, int adp)
 {
 
 	int w,h,x,y,le;
@@ -168,32 +197,36 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 	for(y=0;y<h;y++) {
 		for (x=0;x<w;x++) {
 			
-			// do some case around here.
 			
-			le=1;
-			pix[0] = get_pixel(x,y,t1,m,si);
-			
-			if (t & 1) {
+			if (adp || mean_check(m,si,x,y,t1)) {
+				// do some case around here.
+				
+				le=1;
+				pix[0] = get_pixel(x,y,t1,m,si);
+				
+				if (t & 1) {
 					pix[le++] = get_pixel(x,y,t1,l,si);
 					pix[le++] = get_pixel(x,y,t1,n,si);
-			}
-			if (t & 2) {
+				}
+				if (t & 2) {
 					pix[le++] = get_pixel(x-1,y,t1,m,si);
 					pix[le++] = get_pixel(x+1,y,t1,m,si);
-			}
-			if (t & 4) {
+				}
+				if (t & 4) {
 					pix[le++] = get_pixel(x,y-1,t1,m,si);
 					pix[le++] = get_pixel(x,y+1,t1,m,si);
+				}
+				if (t & 8) {
+					pix[le++] = get_pixel(x,y-2,t1,m,si);
+					pix[le++] = get_pixel(x,y+2,t1,m,si);
+				}
+				//fprintf (stderr,"length : %d\n",le);
+				*(m[t1]+x+y*w) = median(pix,le);
+			} else {
+				*(m[t1]+x+y*w) =  get_pixel(x,y,t1,m,si);
 			}
-			if (t & 8) {
-				pix[le++] = get_pixel(x,y-2,t1,m,si);
-				pix[le++] = get_pixel(x,y+2,t1,m,si);
-			}
-			//fprintf (stderr,"length : %d\n",le);
-			*(m[t1]+x+y*w) = median(pix,le);
-			
 			/*
-			//simple median filter.
+			 //simple median filter.
 			if ((pixa < pix && pix < pixb) || (pixb < pix && pix < pixa)) { 
 				;
 			}
@@ -214,7 +247,7 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 
 static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int fdOut, y4m_stream_info_t  *outStrInfo,
-	int t,int t1)
+	int t,int t1,int adp)
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3][3];	
@@ -243,11 +276,11 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 
 		if (t1 & 2) {
-			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0);
+			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0,adp);
 		}
 		if (t1 & 1) {
-			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1);
-			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2);
+			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1,adp);
+			clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2,adp);
 		}
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );
 		y4m_fini_frame_info( &in_frame );
@@ -321,35 +354,37 @@ int main (int argc, char *argv[])
 	const static char *legal_flags = "v:m:s:cy";
 	int max_shift = 0, search = 0;
 	int cl=3;
-	int c;
+	int c,adp;
 
-  while ((c = getopt (argc, argv, legal_flags)) != -1) {
-    switch (c) {
-      case 'v':
-        verbose = atoi (optarg);
-        if (verbose < 0 || verbose > 2)
-          mjpeg_error_exit1 ("Verbose level must be [0..2]");
-        break;
-    case 'm':
-	    max_shift = atof(optarg);
-		break;
-	case 's':
-		search = atof(optarg);
-		break;
-	case 'c':
-		cl=1;
-		break;
-		case 'y':
-			cl=2;
-			break;
-			
-	case '?':
-          print_usage (argv);
-          return 0 ;
-          break;
-    }
-  }
-  
+	while ((c = getopt (argc, argv, legal_flags)) != -1) {
+		switch (c) {
+			case 'v':
+				verbose = atoi (optarg);
+				if (verbose < 0 || verbose > 2)
+					mjpeg_error_exit1 ("Verbose level must be [0..2]");
+				break;
+			case 'm':
+				max_shift = atof(optarg);
+				break;
+			case 's':
+				search = atof(optarg);
+				break;
+			case 'c':
+				cl=1;
+				break;
+			case 'y':
+				cl=2;
+				break;
+			case 'a':
+				adp = 1;
+				break
+			case '?':
+				print_usage (argv);
+				return 0 ;
+				break;
+		}
+	}
+	
   
   // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
@@ -377,7 +412,7 @@ int main (int argc, char *argv[])
   /* in that function we do all the important work */
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 
-	process( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,cl);
+	process( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,cl,adp);
 
   y4m_fini_stream_info (&in_streaminfo);
   y4m_fini_stream_info (&out_streaminfo);
