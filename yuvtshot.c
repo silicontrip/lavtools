@@ -168,7 +168,7 @@ int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
 	
 	for (j=y-MEANSIZE/2;j<=l;j++) {
 		for (i=x-MEANSIZE/2;i<=m;i++) {
-			tpixy += get_pixel(i,j,plane,n,si);
+			tpix += get_pixel(i,j,plane,n,si);
 		}
 	}
 
@@ -317,9 +317,9 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	if( read_error_code == Y4M_ERR_EOF ) {
 		chromaset(yuv_data[0],inStrInfo,16,128,128);
-		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0);
-		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1);
-		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0,adp);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1,adp);
+		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2,adp);
 	
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );	
 	}
@@ -351,7 +351,7 @@ int main (int argc, char *argv[])
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
 	y4m_ratio_t src_frame_rate;
-	const static char *legal_flags = "v:m:s:cy";
+	const static char *legal_flags = "v:m:s:cya";
 	int max_shift = 0, search = 0;
 	int cl=3;
 	int c,adp;
@@ -377,7 +377,7 @@ int main (int argc, char *argv[])
 				break;
 			case 'a':
 				adp = 1;
-				break
+				break;
 			case '?':
 				print_usage (argv);
 				return 0 ;
