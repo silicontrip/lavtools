@@ -156,27 +156,37 @@ int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
 {
 	
 	int i,j;
-	
+	int pix[MEANSIZE][MEANSIZE];
 	int tpix = 0,apix;
-	int cpix;
+	int cpix,sdpix=0;
 	int l,m;
+	float fapix,fsdpix;
 	
-	l=y+MEANSIZE/2;
-	m=x+MEANSIZE/2;
+	l=y-MEANSIZE/2;
+	m=x-MEANSIZE/2;
 	
 	cpix = get_pixel(x,y,plane,n,si);
 	
-	for (j=y-MEANSIZE/2;j<=l;j++) {
-		for (i=x-MEANSIZE/2;i<=m;i++) {
-			tpix += get_pixel(i,j,plane,n,si);
+	for (j=0;j<MEANSIZE;j++) {
+		for (i=0;i<MEANSIZE;i++) {
+			apix=get_pixel(i+m,j+l,plane,n,si);
+			tpix += apix;
+			pix[i][j]=apix;
 		}
 	}
 
-	apix = tpix / 25;
+	fapix = 1.0 * tpix / 25;
+	for (j=0;j<MEANSIZE;j++) {
+		for (i=0;i<MEANSIZE;i++) {
+			fsdpix += (pix[i][j]-fapix)*(pix[i][j]-fapix);
+		}
+	}
+	fsdpix = sqrt(1.0 *fsdpix/25);
+	
 	// need standard deviation.
 	// and a sigma threshhold
 	
-	return (abs(cpix-apix)>10); // temporary threshold.
+	return (abs(cpix-apix)>(fsdpix*2)); // 2 sd threshold.
 	
 }
 void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int t,int t1, int adp)
