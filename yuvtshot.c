@@ -385,7 +385,10 @@ int main (int argc, char *argv[])
 		}
 	}
 	
-  
+	if (max_shift==0) {
+		print_usage();
+		mjpeg_error_exit1("no Mode selected");
+	}
   // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
 
