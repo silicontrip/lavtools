@@ -151,42 +151,55 @@ uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 	
 }
 
-#define MEANSIZE 5
+#define MEANXSIZE 3
+#define MEANYSIZE 5
+
+#define PRECISION 512
 int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
 {
 	
-	int i,j;
-	int pix[MEANSIZE][MEANSIZE];
+	int i=0,j;
+	int pix[MEANXSIZE][MEANYSIZE];
 	int tpix = 0,apix;
 	int cpix,sdpix=0;
-	int l,m;
-	float fapix,fsdpix;
+	int l,m,count=0;
+	float fapix,fsdpix=0;
 	
-	l=y-MEANSIZE/2;
-	m=x-MEANSIZE/2;
+	l=y-MEANYSIZE-1;
+	m=x-MEANXSIZE/2;
 	
 	cpix = get_pixel(x,y,plane,n,si);
 	
-	for (j=0;j<MEANSIZE;j++) {
-		for (i=0;i<MEANSIZE;i++) {
-			apix=get_pixel(i+m,j+l,plane,n,si);
+	// get the interlace lines on the same field.
+	for (j=0;j<MEANYSIZE;j++) {
+		for (i=0;i<MEANXSIZE;i++) {
+			apix=get_pixel(i+m,(j*2)+l,plane,n,si);
 			tpix += apix;
 			pix[i][j]=apix;
+			count++;  // I keep changing the MEANSIZE and gathering algorithm but forget to change the divisor.  This should take care of that oversight.
 		}
 	}
 
-	fapix = 1.0 * tpix / 25;
-	for (j=0;j<MEANSIZE;j++) {
-		for (i=0;i<MEANSIZE;i++) {
-			fsdpix += (pix[i][j]-fapix)*(pix[i][j]-fapix);
+	apix = PRECISION * tpix / count;
+	fapix = 1.0 * tpix / count;
+	for (j=0;j<MEANYSIZE;j++) {
+		for (i=0;i<MEANXSIZE;i++) {
+		//	sdpix += (PRECISION*pix[i][j]-apix)*(PRECISION*pix[i][j]-apix);
+			fsdpix += (pix[i][j]-fapix) * (pix[i][j]-fapix);
 		}
 	}
-	fsdpix = sqrt(1.0 *fsdpix/25);
+
+	//fprintf(stderr,"int: %f float %f\n",sdpix/PRECISION,fsdpix);
+	
+//	fsdpix = sqrt(sdpix/count/PRECISION);
+	fsdpix = sqrt(fsdpix/count);
 	
 	// need standard deviation.
 	// and a sigma threshhold
 	
-	return (abs(cpix-apix)>(fsdpix*2)); // 2 sd threshold.
+// fprintf (stderr,"sdpix %d diff: %d  2sd %f\n",sdpix,abs(cpix-(apix/PRECISION)),(fsdpix*2));
+	
+	return (abs(cpix-fapix)>(fsdpix*2)); // 2 sd threshold.
 	
 }
 void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int t,int t1, int adp)
@@ -364,7 +377,7 @@ int main (int argc, char *argv[])
 	const static char *legal_flags = "v:m:s:cya";
 	int max_shift = 0, search = 0;
 	int cl=3;
-	int c,adp;
+	int c,adp=0;
 
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
