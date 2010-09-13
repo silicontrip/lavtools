@@ -152,7 +152,7 @@ uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 }
 
 #define MEANXSIZE 3
-#define MEANYSIZE 5
+#define MEANYSIZE 7
 
 #define PRECISION 512
 int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
