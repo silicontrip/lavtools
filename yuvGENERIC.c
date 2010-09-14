@@ -37,7 +37,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
-#include "utilyuv.c"
+#include "utilyuv.h"
 
 #define VERSION "0.1"
 
@@ -142,7 +142,7 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "I:vnich";
+	const static char *legal_flags = "hv:";
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -156,31 +156,6 @@ int main (int argc, char *argv[])
 				case '?':
 				print_usage (argv);
 				return 0 ;
-				break;
-				case 'I':
-				switch (optarg[0]) {
-					case 't':  yuv_interlacing = Y4M_ILACE_TOP_FIRST;  break;
-					case 'b':  yuv_interlacing = Y4M_ILACE_BOTTOM_FIRST;  break;
-					default:
-						mjpeg_error("Unknown value for interlace: '%c'", optarg[0]);
-						return -1;
-						break;
-				}
-				break;
-				case 't':
-				top_field = 1 ;
-				break;
-				case 'b':
-				bottom_field = 1;
-				break;
-				case 'c':
-				pro_chroma = 1;
-				break;
-				case 'n':
-				double_height = 0;
-				break;
-				case 'i':
-				ilace = 1;
 				break;
 		}
 	}
@@ -205,9 +180,9 @@ int main (int argc, char *argv[])
 	mjpeg_info ("yuvcropdetect -h for help");
 	
     
+	y4m_write_stream_header(fdOut,&in_streaminfo);
 	/* in that function we do all the important work */
 	filter(fdIn, &in_streaminfo);
-	
 	y4m_fini_stream_info (&in_streaminfo);
 	
 	return 0;
