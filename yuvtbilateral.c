@@ -92,7 +92,7 @@ unsigned int similarity(int p, int s) {
 
 static void filterinitialize () {
 	
-	int center;
+	// int center;
 	int x,y,i;
 	
 	this.kernelRadius = this.sigmaD>this.sigmaR?this.sigmaD * 2:this.sigmaR * 2;
@@ -101,7 +101,7 @@ static void filterinitialize () {
 	this.twoSigmaRSquared = (2 * (1.0 *this.sigmaR/PRECISION)  * (1.0 *this.sigmaR/PRECISION)) * PRECISION;
 	
 	this.kernelSize = this.kernelRadius * 2 + 1;
-	center = (this.kernelSize - 1) / 2;
+	// center = (this.kernelSize - 1) / 2;
 	
 	
 	this.kernelD = (unsigned int*) malloc( sizeof (unsigned int) * this.kernelSize );
@@ -110,16 +110,16 @@ static void filterinitialize () {
 		mjpeg_error_exit1("Cannot allocate memory for filter kernel");
 	}
 	
-	fprintf(stderr,"size %d, radius %d center %d\n",this.kernelSize,this.kernelRadius,center);
+fprintf(stderr,"size %d, radius %d \n",this.kernelSize,this.kernelRadius);
 
-	x = -center;
+	// x = -center;
 	//fprintf (stderr,"x %d < %d\n",x,this.kernelSize - center);
 
 	
 	for ( x=0; x < this.kernelSize ; x++) {
 	//	fprintf (stderr,"x %d\n",x);
-		this.kernelD[x ] = gauss(this.sigmaD, x-center, 0);
-	//	fprintf(stderr,"x: %d  = %d\n",x,this.kernelD[x]);
+		this.kernelD[x] = gauss(this.sigmaD, x-this.kernelRadius, 0);
+	fprintf(stderr,"x: %d  = %d\n",x,this.kernelD[x]);
 	}
 	
 	// fprintf (stderr,"gauss Similarity malloc\n",i);
@@ -149,7 +149,7 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 	int weight;
 	int z;
 	
-	uint8_t intensityCenter = p[(this.kernelSize-1)/2][chan][j * w + i];
+	uint8_t intensityCenter = p[this.kernelRadius][chan][j * w + i];
 	
 	for ( z = 0; z < this.kernelSize; z++) {
 		
@@ -207,7 +207,7 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 	uint8_t				*yuv_odata[3];
 	int                read_error_code ;
 	int                write_error_code ;
-	int c;
+	int c,d;
 	
 	// Allocate memory for the YUV channels
 	
@@ -245,7 +245,9 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		chromacpy(yuv_data[c-1],yuv_data[c],inStrInfo);
 	}
 	
-	for(c=0;c<this.kernelRadius;c++) {
+	for(d=1;d<this.kernelRadius;d++) {
+		y4m_fini_frame_info( &in_frame );
+		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[this.kernelSize-1] );
 		// shuffle
 		// should use pointers...

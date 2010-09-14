@@ -788,8 +788,12 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	
 	//	mjpeg_debug ("decode video");
 	
+#ifdef HAVE_AVCODEC_DECODE_VIDEO2
+	avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+#else
 	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
-	//avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+#endif
+	//
 	// Did we get a video frame?
 	// frameFinished does not mean decoder finished, means that the packet can be freed.
 	
@@ -916,16 +920,19 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	if (frameFinished) {
 		// I'm getting reports of double frees, not sure if I should free the packet here. 
 		// Or am I leaking memory?
+		// OK I'm leaking memory. So wtf do I do
 		
 		/*
 		 mjpeg_warn("freeing packet: %x",packet);
-
+		 */
 #ifdef HAVE_AV_FREE_PACKET
+		//mjpeg_warn ("using av_free_packet");
 		av_free_packet(packet);
 #else
+		//mjpeg_warn ("using av_freep");
 		av_freep(packet);
 #endif
-		 */
+		 
 	}
 	else 
 		mjpeg_warn ("FRAME NOT FINISHED");
@@ -1222,8 +1229,12 @@ int main(int argc, char *argv[])
 							
 						} else {
 							// decode Audio
+#ifdef HAVE_AVCODEC_DECODE_AUDIO3
+							avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
+#else
 							avcodec_decode_audio2(pCodecCtx, aBuffer, &numBytes, packet.data, packet.size);
-							//avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
+#endif
+							//
 							
 							// TODO: write a wave or aiff file. 
 							
@@ -1313,7 +1324,7 @@ int main(int argc, char *argv[])
 		mjpeg_debug("Freeing buffer: %x",buffer);
 		free(buffer);
 	}
-	mjpeg_warn("Freeing av_packet");
+	mjpeg_debug("Freeing av_packet");
 
 #ifdef HAVE_AV_FREE_PACKET
                 av_free_packet(&packet);
