@@ -110,7 +110,7 @@ static void filterinitialize () {
 		mjpeg_error_exit1("Cannot allocate memory for filter kernel");
 	}
 	
-fprintf(stderr,"size %d, radius %d \n",this.kernelSize,this.kernelRadius);
+// fprintf(stderr,"size %d, radius %d \n",this.kernelSize,this.kernelRadius);
 
 	// x = -center;
 	//fprintf (stderr,"x %d < %d\n",x,this.kernelSize - center);
@@ -119,7 +119,7 @@ fprintf(stderr,"size %d, radius %d \n",this.kernelSize,this.kernelRadius);
 	for ( x=0; x < this.kernelSize ; x++) {
 	//	fprintf (stderr,"x %d\n",x);
 		this.kernelD[x] = gauss(this.sigmaD, x-this.kernelRadius, 0);
-	fprintf(stderr,"x: %d  = %d\n",x,this.kernelD[x]);
+	//fprintf(stderr,"x: %d  = %d\n",x,this.kernelD[x]);
 	}
 	
 	// fprintf (stderr,"gauss Similarity malloc\n",i);
