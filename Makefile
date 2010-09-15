@@ -1,11 +1,14 @@
 
-OPT_FLAG=-g
-#OPT_FLAG=-O3
+#OPT_FLAG=-g
+OPT_FLAG=-O3
+CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3
 LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib
 CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include
-FFMPEG_FLAGS=-lswscale -lavcodec -lavformat -lavutil
+FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 
-all: libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop yuvdeinterlace yuvdiag yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater
+
+
+all: libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop yuvdeinterlace yuvdiag yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvtshot yuvbilateral yuvtbilateral yuvCIFilter
 
 
 yuvtshot: yuvtshot.o utilyuv.o
