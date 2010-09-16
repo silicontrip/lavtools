@@ -98,6 +98,26 @@ void chromafree(uint8_t *m[3])
 	
 }
 
+// Get a pixel, with bounds checking.
+//how easy is it to make this for all planes
+uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
+{
+	
+	int w,h;
+	
+	h = y4m_si_get_plane_height(si,plane);
+	w = y4m_si_get_plane_width(si,plane);
+	
+	if (x < 0) {x=0;}
+	if (x >= w) {x=w-1;}
+	if (y < 0) {y=0;}
+	if (y >= h) {y=h-1;}
+	
+	return 	*(m[plane]+x+y*w);
+	
+}
+
+
 int parse_interlacing(char *str)
 {
 	if (str[0] != '\0' && str[1] == '\0')
@@ -144,3 +164,46 @@ int gcd(int a, int b)
 		return gcd(b, a % b);
 }
 
+int xchroma (int x, y4m_stream_info_t *si)
+{
+	int cwr;
+	cwr = y4m_si_get_plane_width(si,0) / y4m_si_get_plane_width(si,1);
+	
+	if ( cwr == 1 ) {
+		xcwr = x;
+	} else if ( cwr == 2) {
+		xcwr = x >> 1;
+	} else if (cwr == 4) {
+		xcwr = x >> 2;
+	} else {
+		xcwr = x / cwr;
+	}
+	
+	return xcwr;
+	
+}
+
+int ychroma(int y, y4m_stream_info_t *si)
+{
+	
+	int chr;
+	chr=y4m_si_get_plane_height(si,0) / y4m_si_get_plane_height(si,1);
+
+	
+	if (chr == 1) {	
+		ychr = y;
+	} else if (chr == 2) {
+		if (y4m_si_get_interlace(si) == Y4M_ILACE_NONE) {
+			ychr = y >> 1;
+		} else {
+			ychr = ((y >> 2) << 1) + (y%2);
+		}
+	} else if (chr == 4) {
+		// I have no idea how a /4 interlace chroma would work.
+		ychr = y >> 2;
+	} else {	
+		ychr = y / chr;		
+	}
+	
+	return ychr;
+}

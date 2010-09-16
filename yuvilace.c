@@ -89,15 +89,17 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int                write_error_code ;
 	int                src_frame_counter ;
 	int l=0,f=0,x,y,w,h;
+	int cw,ch;
 	int points = 512,window=128;
-	double max,min,*rdata = NULL, *idata = NULL;
-	fftw_plan rplan, iplan;
+	double *crdata,*cidata,*rdata = NULL, *idata = NULL;
+	fftw_plan rplan, crplan;
 	
 	// Allocate memory for the YUV channels
 	w = y4m_si_get_width(inStrInfo);
 	h =  y4m_si_get_height(inStrInfo);
-	frame_data_size = h *w;
-	
+	cw = y4m_si_get_plane_width(inStrInfo,1);
+	ch = y4m_si_get_plane_height(inStrInfo,1);
+
 	// should check for allocation errors here.
 	
 	chromalloc(yuv_data,inStrInfo);
@@ -111,6 +113,9 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	rdata = (double *)fftw_malloc(w * h * sizeof(double));
 	idata = (double *)fftw_malloc(w * h * sizeof(double));
 	
+	crdata = (double *)fftw_malloc(w * h * sizeof(double));
+	cidata = (double *)fftw_malloc(w * h * sizeof(double));
+
 	// should check for malloc errors
 	if( !rdata || !idata ) 
 		mjpeg_error_exit1 ("Could'nt allocate memory for the fft data!");  
@@ -122,6 +127,8 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	mjpeg_info("Measuring fftw plan. please wait");
 	
 	rplan = fftw_plan_r2r_2d(h,w, rdata, idata, FFTW_R2HC, FFTW_R2HC, FFTW_MEASURE); 
+	crplan = fftw_plan_r2r_2d(ch,cw, crdata, cidata, FFTW_R2HC, FFTW_R2HC, FFTW_MEASURE); 
+	
 	mjpeg_info("Measuring done");
 	
 	if (rplan==NULL)
@@ -151,14 +158,39 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 			}
 		}
 		
-			fftw_execute(rplan);
-			
+		fftw_execute(rplan);
 		
 		for (x=0; x<w; x++) {
 			for (y=0; y<h; y++) {
 				yuv_odata[0][y*w+x] = abs(idata[y*w+x])/16;
-
-				//rdata[y*w+x] = yuv_data[0][y*w+x];
+			}
+		}
+		
+		for (x=0; x<cw; x++) {
+			for (y=0; y<ch; y++) {
+				crdata[y*cw+x] = yuv_data[1][y*cw+x];
+			}
+		}
+		
+		fftw_execute(crplan);
+		
+		for (x=0; x<cw; x++) {
+			for (y=0; y<ch; y++) {
+				yuv_odata[1][y*cw+x] = abs(cidata[y*cw+x])/16 + 127;
+			}
+		}
+		
+		for (x=0; x<cw; x++) {
+			for (y=0; y<ch; y++) {
+				crdata[y*cw+x] = yuv_data[2][y*cw+x];
+			}
+		}
+		
+		fftw_execute(crplan);
+		
+		for (x=0; x<cw; x++) {
+			for (y=0; y<ch; y++) {
+				yuv_odata[2][y*cw+x] = abs(cidata[y*cw+x])/16 + 127;
 			}
 		}
 		
