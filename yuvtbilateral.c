@@ -148,12 +148,14 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 	unsigned int totalWeight = 0;
 	int weight;
 	int z;
+	int pixel_loc;
 	
-	uint8_t intensityCenter = p[this.kernelRadius][chan][j * w + i];
+	pixel_loc = j * w + i;
+	uint8_t intensityCenter = p[this.kernelRadius][chan][pixel_loc];
 	
 	for ( z = 0; z < this.kernelSize; z++) {
 		
-		int intensityKernelPos = p[z][chan][i + j * w];
+		int intensityKernelPos = p[z][chan][pixel_loc];
 		
 		//fprintf (stderr,"kernel D %d. kp %d cen %d\n",this.kernelD[z],intensityKernelPos,intensityCenter);
 		
@@ -164,9 +166,9 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 	}
 //	fprintf(stderr,"total %d\n",totalWeight);
 	if (totalWeight > 0 )
-		o[chan][i+j*w] = sum / totalWeight;
+		o[chan][pixel_loc] = sum / totalWeight;
 	else
-		o[chan][i+j*w] = intensityCenter;
+		o[chan][pixel_loc] = intensityCenter;
 	
 }
 

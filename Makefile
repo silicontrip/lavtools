@@ -6,10 +6,10 @@ LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib
 CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 
+TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop yuvdeinterlace yuvdiag yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral yuvtbilateral yuvCIFilter
 
 
-all: libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop yuvdeinterlace yuvdiag yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral yuvtbilateral yuvCIFilter
-
+all: $(TARGETS)
 
 yuvtshot: yuvtshot.o utilyuv.o
 
@@ -33,3 +33,6 @@ libav-bitrate: libav-bitrate.c
 
 libavmux: libavmux.c
 	gcc $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $<
+
+clean:
+	 rm *.o $(TARGETS)

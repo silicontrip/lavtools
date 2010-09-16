@@ -240,20 +240,6 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 			} else {
 				*(m[t1]+x+y*w) =  get_pixel(x,y,t1,m,si);
 			}
-			/*
-			 //simple median filter.
-			if ((pixa < pix && pix < pixb) || (pixb < pix && pix < pixa)) { 
-				;
-			}
-			
-			if ((pixa < pixb && pixb < pix) || (pix < pixb && pixb < pixa)) { 
-				*(m[0]+x+y*w)= pixb;
-			}
-			
-			if ((pix < pixa && pixa < pixb) || (pixb < pixa && pixa < pix)) { 
-				*(m[0]+x+y*w)= pixa;
-			}
-			*/
 
 		}
 	}
