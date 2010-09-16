@@ -1,7 +1,7 @@
 
-#OPT_FLAG=-g
-OPT_FLAG=-O3 -ftree-vectorize
-CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3
+OPT_FLAG=-g
+#OPT_FLAG=-O3 -ftree-vectorize
+CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3 -DHAVE_AV_FREE_PACKET
 LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib
 CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
