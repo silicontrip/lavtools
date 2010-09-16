@@ -69,15 +69,11 @@ int median (int *p,int l) {
 		case 3:
 			
 			// not sure if this is a quicker algorithm
-			if (p[1] < p[0] && p[0] < p[2]) return p[0];
-			if (p[2] < p[0] && p[0] < p[1]) return p[0];
-
-			if (p[0] < p[1] && p[1] < p[2]) return p[1];
-			if (p[2] < p[1] && p[1] < p[0]) return p[1];
-
-			if (p[0] < p[2] && p[2] < p[1]) return p[2];
-			if (p[1] < p[2] && p[2] < p[0]) return p[2];
+			if ((p[1] <= p[0] && p[0] <= p[2])||(p[2] <= p[0] && p[0] <= p[1])) return p[0];
+			if ((p[0] <= p[1] && p[1] <= p[2])||(p[2] <= p[1] && p[1] <= p[0])) return p[1];
+			if ((p[0] <= p[2] && p[2] <= p[1])||(p[1] <= p[2] && p[2] <= p[0])) return p[2];
 			
+			fprintf (stderr,"should not get here!! logic error p0 %d p1 %d p2 %d\n",p[0],p[1],p[2]);
 			
 			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[0],p[1]) ; 
 			return(p[1]) ; 
@@ -239,7 +235,8 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 					pix[le++] = get_pixel(x,y+2,t1,m,si);
 				}
 				//fprintf (stderr,"length : %d\n",le);
-				*(m[t1]+x+y*w) = median(pix,le);
+				//*(m[t1]+x+y*w) = median(pix,le);
+				set_pixel(median(pix,le),x,y,t1,m,si);
 			} else {
 				*(m[t1]+x+y*w) =  get_pixel(x,y,t1,m,si);
 			}

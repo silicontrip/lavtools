@@ -100,20 +100,25 @@ void chromafree(uint8_t *m[3])
 
 // Get a pixel, with bounds checking.
 //how easy is it to make this for all planes
-uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
+uint8_t get_pixel(register int x, register int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 {
 	
-	int w,h;
+	int w,h,off;
+	uint8_t *p;
 	
 	h = y4m_si_get_plane_height(si,plane);
 	w = y4m_si_get_plane_width(si,plane);
 	
-	if (x < 0) {x=0;}
-	if (x >= w) {x=w-1;}
-	if (y < 0) {y=0;}
-	if (y >= h) {y=h-1;}
+	// my poor attempt to optimise for speed.
+	p=m[plane]+x;
+	off= y * w;
 	
-	return 	*(m[plane]+x+y*w);
+	if (x < 0) {x=0; p=m[plane];}
+	if (x >= w) {x=w-1; p=m[plane]+x;}
+	if (y < 0) {y=0; off=0;}
+	if (y >= h) {y=h-1; off= y * w;}
+	
+	return 	*(p+off);
 	
 }
 
