@@ -117,6 +117,21 @@ uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 	
 }
 
+void set_pixel(uint8_t val,int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
+{
+
+		
+		int w,h;
+		
+		h = y4m_si_get_plane_height(si,plane);
+		w = y4m_si_get_plane_width(si,plane);
+		
+		if (x >= 0 && x < w && y >= 0 && y < h) {
+			*(m[plane]+x+y*w) = val;
+		}
+}
+	
+	
 
 int parse_interlacing(char *str)
 {
@@ -166,7 +181,7 @@ int gcd(int a, int b)
 
 int xchroma (int x, y4m_stream_info_t *si)
 {
-	int cwr;
+	int cwr,xcwr;
 	cwr = y4m_si_get_plane_width(si,0) / y4m_si_get_plane_width(si,1);
 	
 	if ( cwr == 1 ) {
@@ -186,7 +201,7 @@ int xchroma (int x, y4m_stream_info_t *si)
 int ychroma(int y, y4m_stream_info_t *si)
 {
 	
-	int chr;
+	int chr,ychr;
 	chr=y4m_si_get_plane_height(si,0) / y4m_si_get_plane_height(si,1);
 
 	

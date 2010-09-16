@@ -67,6 +67,18 @@ int median (int *p,int l) {
 
 	switch (l) {
 		case 3:
+			
+			// not sure if this is a quicker algorithm
+			if (p[1] < p[0] && p[0] < p[2]) return p[0];
+			if (p[2] < p[0] && p[0] < p[1]) return p[0];
+
+			if (p[0] < p[1] && p[1] < p[2]) return p[1];
+			if (p[2] < p[1] && p[1] < p[0]) return p[1];
+
+			if (p[0] < p[2] && p[2] < p[1]) return p[2];
+			if (p[1] < p[2] && p[2] < p[0]) return p[2];
+			
+			
 			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[0],p[1]) ; 
 			return(p[1]) ; 
 			break;

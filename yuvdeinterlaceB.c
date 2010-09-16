@@ -86,7 +86,8 @@ static void print_usage()
 			 );
 }
 
-
+// this is the worker detect function, 
+// this is where all the tuning needs to go.
 int int_detect (int x, int y,uint8_t *m[3],y4m_stream_info_t  *si) {
 	
 	uint8_t luma[PIXELS];
@@ -155,32 +156,14 @@ int int_detect (int x, int y,uint8_t *m[3],y4m_stream_info_t  *si) {
 	}
 	
 	return 0;
-	
-	
-	// trial and error
-	// c is the high frequency amount, so above a threshold it should trigger
-	// however b is the "edge" amount which can cause large c values.
-	//return (c>128 && c > (b<<2));
-	
-	return (c>12 && c > (b<<2));
 }
 
 static void mark_deint_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *si)
 {
-	
-	int w,h,cw,ch,cwr,chr;
-	
-	h = fd->plane_height_luma; 
-	w = fd->plane_width_luma;
-	ch = fd->plane_height_chroma; 
-	cw = fd->plane_width_chroma;
-	
-	cwr = y4m_si_get_plane_width(si,0)/y4m_si_get_plane_width(si,1);
-	chr = y4m_si_get_plane_height(si,0)/y4m_si_get_plane_height(si,1);
-	
-	m[0][x+y*w] = 128;
-	m[1][x/cwr+y/chr*cw] = 128;
-	m[2][x/cwr+y/chr*cw] = 192;
+		
+	set_pixel(128,x,y,0,m,si);
+	set_pixel(128,xchroma(x,si),ychroma(y,si),1,m,si);
+	set_pixel(192,xchroma(x,si),ychroma(y,si),2,m,si);
 	
 }
 
@@ -372,33 +355,11 @@ static void merge_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensi
 }
 
 // copies an interlace frame to two half height fields.
-static void copy_fields (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dimensions *fd ) {
+static void copy_fields (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si ) {
 	
-	int h,ch;
-	int w,cw;
-	
-	int y;
-	
-	h = fd->plane_height_luma; // this is the target height
-	w = fd->plane_width_luma;
-	
-	cw = fd->plane_width_chroma;
-	ch = fd->plane_height_chroma;
-	
-	
-	for (y=0; y<h; y++) {
-		
-		memcpy(&m[0][y*w],&n[0][(y<<1)*w],w);
-		memcpy(&l[0][y*w],&n[0][((y<<1)+1)*w],w);
-		
-		if (y<ch) {					
-			memcpy(&m[1][y*cw],&n[1][(y<<1)*cw],cw);
-			memcpy(&l[1][y*cw],&n[1][((y<<1)+1)*cw],cw);
-			memcpy(&m[2][y*cw],&n[2][(y<<1)*cw],cw);
-			memcpy(&l[2][y*cw],&n[2][((y<<1)+1)*cw],cw);
-		}
-		
-	}
+	copyfield(l,n,si,Y4M_ILACE_BOTTOM_FIRST);
+	copyfield(m,n,si,Y4M_ILACE_TOP_FIRST);
+
 }
 
 

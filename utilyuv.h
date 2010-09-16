@@ -19,6 +19,7 @@ void copyfield(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo, int which);
 // set a solid colour for a uint8_t frame
 void chromaset(uint8_t *m[3], y4m_stream_info_t  *sinfo, int y, int u, int v );
 uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si);
+void set_pixel(uint8_t val,int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si);
 
 void chromafree(uint8_t *m[3]);
 
