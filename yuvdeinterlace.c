@@ -151,6 +151,40 @@ int invert_order(int f)
 	}
 }
 
+int int_detect2 (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
+	
+	uint8_t luma[PIXELS];
+	int hp = PIXELS/2;
+	int i,w,h;
+	int hfd=0 ,lfd=0;
+	
+	int mean=0;
+	
+	// mjpeg_warn("int_detect");
+		
+	w = fd->plane_width_luma;
+	h = fd->plane_height_luma; 
+	
+	// Unroll this loop
+	// read the pixels above and below the target pixel.
+	for(i=y-hp; i<y+PIXELS-hp;i++)
+		if ((i<0)||(i>=h)) {
+			luma[i+hp-y]=128;
+			mean += 128;
+		} else {
+			luma[i+hp-y] = m[0][i*w+x];
+			mean += m[0][i*w+x];
+		}
+	
+	mean = (mean+2) / 4;
+	
+	// for something with a definable PIXELS this sure uses hard coded 4 values...
+	if (luma[0] < mean && luma[1] > mean && luma[2] < mean && luma[3] > mean) return 1;
+	if (luma[1] < mean && luma[0] > mean && luma[3] < mean && luma[2] > mean) return 1;
+
+	return 0;
+	
+}
 int int_detect (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	
 	uint8_t luma[PIXELS];
@@ -169,11 +203,11 @@ int int_detect (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	
 	// Unroll this loop
 	// read the pixels above and below the target pixel.
-	for(i=0; i<PIXELS;i++)
-		if ((y+i-hp<0)||(y+i-hp>=h))
-			luma[i]=128;
+	for(i=y-hp; i<y+PIXELS-hp;i++)
+		if ((i<0)||(i>=h))
+			luma[i+hp-y]=128;
 		else
-			luma[i] = m[0][(y+i-hp)*w+x];
+			luma[i+hp-y] = m[0][i*w+x];
 	
 	// perform a 4 point DFT
 	// taking only the components we need
@@ -586,25 +620,25 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 	full = getFullframe();
 	
 	for (x=0; x<w; x++) {
-		for (y=0; y<h; y+=2) {
+		for (y=0; y<h; y++) {
 			// is interpolation required
 			// there may be a more efficient way to de-interlace a full frame
-			if (full != 0 || int_detect(x,y,n,fd) || int_detect(x,y+1,n,fd)) {
+			if (full != 0 || int_detect2(x,y,n,fd) || int_detect2(x,y+1,n,fd)) {
 				
 				switch (mark) {
 					case 1:
 						mark_deint_pixels(x,y,l,n,fd);
-						mark_deint_pixels(x,y+1,l,n,fd);
+						//mark_deint_pixels(x,y+1,l,n,fd);
 						break;
 					case 3:
 						merge_pixels(x,y,l,n,fd);
-						merge_pixels(x,y+1,l,n,fd);
+//						merge_pixels(x,y+1,l,n,fd);
 						break;
 					default:
 						deint_pixels(x,y,l,n,fd);
-						deint_pixels(x,y+2,l,n,fd);
+//deint_pixels(x,y+2,l,n,fd);
 						deint_pixels(x,y+1,m,n,fd);
-						deint_pixels(x,y+3,m,n,fd);
+//						deint_pixels(x,y+3,m,n,fd);
 						break;
 				}
 			}
