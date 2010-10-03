@@ -275,11 +275,11 @@ int calc_per_fc (int sc, int sld, int sln, int dc, int dld, int dln, int il)
 
 	if (se < ss) {
 	// this is probably more fatal than warning
-		fprintf (stderr,"WARNING: Source end is before start\n");
+		mjpeg_warn ("Source end is before start\n");
 	}
 	if (de < ds) {
 	// this is probably more fatal than warning
-		fprintf (stderr,"WARNING: Destination end is before start\n");
+		mjpeg_warn ("Destination end is before start\n");
 	}
 
 //	fprintf (stderr,"per = src: %d-%d dst: %d-%d\n",ss,se,ds,de);
@@ -475,12 +475,12 @@ static void resample(  int fdIn
 
 	g = gcd (sc,dc);
 	if (g > 1) {
-		fprintf (stderr,"Reducing loop by %d\n",g);
+		mjpeg_info ("Reducing loop by %d\n",g);
 		sc /= g;
 		dc /= g;
 	}
 	
-	fprintf (stderr,"integer frame loop: src: %d dst: %d\n",sc,dc);
+	mjpeg_debug ("integer frame loop: src: %d dst: %d\n",sc,dc);
 	
 	
 	if (interlaced != Y4M_ILACE_NONE) 
@@ -541,7 +541,7 @@ static void resample(  int fdIn
 		//		fprintf (stderr,"writing frame %d (%d) %d               \n",src_frame_counter,src_iframe_counter, dst_frame_counter);
 				intise(yuv_odata,yuv_fdata,inStrInfo);
 				write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-				mjpeg_info( "Writing source frame %d at dest frame %d", src_frame_counter,dst_frame_counter );
+				mjpeg_debug( "Writing source frame %d at dest frame %d", src_frame_counter,dst_frame_counter );
 		//		fprintf (stderr,"WRITING FRAME %d %g %g\n", dst_frame_counter,nper,iper);
 
 				black(yuv_fdata,inStrInfo);
