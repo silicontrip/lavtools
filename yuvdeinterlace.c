@@ -153,10 +153,9 @@ int invert_order(int f)
 
 int int_detect2 (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	
-	uint8_t luma[PIXELS];
-	int hp = PIXELS/2;
-	int i,w,h;
-	int hfd=0 ,lfd=0;
+	uint8_t luma[4];
+	int i,w,h,t;
+	int m1,m2,m3,m4;
 	
 	int mean=0;
 	
@@ -165,24 +164,43 @@ int int_detect2 (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	w = fd->plane_width_luma;
 	h = fd->plane_height_luma; 
 	
+	t = y -2 ;
+	
 	// Unroll this loop
 	// read the pixels above and below the target pixel.
-	for(i=y-hp; i<y+PIXELS-hp;i++)
-		if ((i<0)||(i>=h)) {
-			luma[i+hp-y]=128;
-			mean += 128;
+	for(i=0; i<PIXELS;i++)
+		if ((i+t<0)||(i+t>=h)) {
+			luma[i]=128;
+		//	mean += 128;
 		} else {
-			luma[i+hp-y] = m[0][i*w+x];
-			mean += m[0][i*w+x];
+			luma[i] = m[0][(i+t)*w+x];
+		//	mean += m[0][i*w+x];
 		}
 	
-	mean = (mean+2) / 4;
-	
-	// for something with a definable PIXELS this sure uses hard coded 4 values...
-	if (luma[0] < mean && luma[1] > mean && luma[2] < mean && luma[3] > mean) return 1;
-	if (luma[1] < mean && luma[0] > mean && luma[3] < mean && luma[2] > mean) return 1;
+	m1 = luma[0]>luma[2]?luma[0]:luma[2];
+	m2 = luma[0]>luma[2]?luma[2]:luma[0];
+	m3 = luma[1]>luma[3]?luma[1]:luma[3];
+	m4 = luma[1]>luma[3]?luma[3]:luma[1];
 
-	return 0;
+	
+
+	// why is this +2 ?
+	// mean = (mean+2) / 4;
+	
+	//	mean /= 4;
+	
+	i=0;
+	// for something with a definable PIXELS this sure uses hard coded 4 values...
+	//if (luma[0] < mean && luma[1] > mean && luma[2] < mean && luma[3] > mean) i=1;
+	//if (luma[1] < mean && luma[0] > mean && luma[3] < mean && luma[2] > mean) i=1;
+
+	if (m1<m4 || m2>m3) i=1;
+	
+	// I don't really want to print out every luma
+	
+	//fprintf (stderr,"%d: %d,%d,%d,%d\n",i,luma[0],luma[1],luma[2],luma[3]);
+	
+	return i;
 	
 }
 int int_detect (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
@@ -620,10 +638,10 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 	full = getFullframe();
 	
 	for (x=0; x<w; x++) {
-		for (y=0; y<h; y++) {
+		for (y=0; y<h; y+=2) {
 			// is interpolation required
 			// there may be a more efficient way to de-interlace a full frame
-			if (full != 0 || int_detect2(x,y,n,fd) || int_detect2(x,y+1,n,fd)) {
+			if (full != 0 || int_detect2(x,y,n,fd) ) {
 				
 				switch (mark) {
 					case 1:

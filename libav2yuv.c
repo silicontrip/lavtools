@@ -1174,7 +1174,7 @@ int main(int argc, char *argv[])
 				while(av_read_frame(pFormatCtx, &packet)>=0 && !finishedit)
 				{
 					
-					 fprintf (stderr,"inside loop until nothing left\n");
+					// fprintf (stderr,"inside loop until nothing left\n");
 					
 					
 					// Is this a packet from the desired stream?

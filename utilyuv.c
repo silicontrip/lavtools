@@ -6,6 +6,15 @@
  
  */
 
+struct y4m_stream_info_cache {
+	int h;
+	int w;
+	int cw;
+	int ch;
+};
+
+ struct y4m_stream_info_cache sic;
+
 // Allocate a uint8_t frame
 int chromalloc(uint8_t *m[3], y4m_stream_info_t *sinfo)
 {
@@ -14,6 +23,13 @@ int chromalloc(uint8_t *m[3], y4m_stream_info_t *sinfo)
 	
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
+	
+	// I'm gonna cheat and use this as an initialisation function.
+	
+	sic.h = y4m_si_get_plane_height(sinfo,0);
+	sic.w = y4m_si_get_plane_width(sinfo,0);
+	sic.ch = y4m_si_get_plane_height(sinfo,1);
+	sic.cw = y4m_si_get_plane_width(sinfo,1);
 	
 	m[0] = (uint8_t *)malloc( fs );
 	m[1] = (uint8_t *)malloc( cfs);
@@ -106,8 +122,21 @@ uint8_t get_pixel(register int x, register int y, int plane, uint8_t *m[3],y4m_s
 	int w,h,off;
 	uint8_t *p;
 	
+	/*
 	h = y4m_si_get_plane_height(si,plane);
 	w = y4m_si_get_plane_width(si,plane);
+	*/
+	
+	//  the y4m_si_get_plane functions are eating large amounts of CPU.
+	
+	if ( plane == 0) {
+		h = sic.h;
+		w = sic.w;
+	} else {
+		h = sic.ch;
+		w = sic.cw;
+	}
+	
 	
 	// my poor attempt to optimise for speed.
 	p=m[plane]+x;

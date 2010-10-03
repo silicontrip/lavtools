@@ -831,7 +831,7 @@ int main (int argc, char *argv[])
 	int width, mode, c;
 	const static char *legal_flags = "tvyiclhf:";
 	
-	char *fontname;
+	char *fontname=NULL;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -922,6 +922,10 @@ int main (int argc, char *argv[])
 		acc_hist(fdIn, &in_streaminfo, fdOut, &out_streaminfo);
 	}
 	if (mode == MODE_TIMEC) {
+		
+		if (fontname==NULL) 
+			mjpeg_error_exit1("no font specified");
+		
 		y4m_write_stream_header(fdOut,&in_streaminfo);
 		timecode(fdIn, &in_streaminfo, fdOut,fontname);
 	}
