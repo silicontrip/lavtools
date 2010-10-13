@@ -44,6 +44,15 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include FT_GLYPH_H
 
 
+struct subtitle {
+	
+	//in frame counts
+	int on;
+	int off;
+//	char *text;
+	char text[256]; // for testing
+};
+	
 #define VERSION "0.1"
 
 static void print_usage() 
@@ -84,14 +93,15 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 }
 
 
-static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
+static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
 	int                read_error_code ;
 	int                write_error_code ;
-	FT_Library  library;
-	FT_Face     face;
+	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
+	FT_UInt       glyph_index;
+	int           pen_x, pen_y, n;	
 	int framecounter=0;
 	
 	// Allocate memory for the YUV channels
@@ -103,10 +113,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	
 	write_error_code = Y4M_OK ;
 	
-	read_error_code = FT_Init_FreeType(&library);
-	if (read_error_code) 
-		mjpeg_error_exit1("Cannot initialise the freetype library");
-	
+#TODO: configurable font file
 	read_error_code = FT_New_Face( library,
 						"/Library/Fonts/Arial Unicode.ttf",
 						0,
@@ -120,6 +127,11 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 		mjpeg_error_exit1("Error reading the font file");
 	}
 	
+#TODO: configurable pixel height
+	error = FT_Set_Pixel_Sizes(
+							   face,   /* handle to face object */
+							   0,      /* pixel_width           */
+							   16 );   /* pixel_height          */
 	
 	
 	y4m_init_frame_info( &in_frame );
@@ -129,7 +141,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_data,inStrInfo,);
+			filterframe(yuv_data,inStrInfo,face,);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
 		
@@ -164,7 +176,15 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "hv:";
+	const static char *legal_flags = "hv:f:";
+	FT_Library  library;
+	FT_Face     face;
+	
+	if (FT_Init_FreeType(&library)) 
+		mjpeg_error_exit1("Cannot initialise the freetype library");
+	
+	
+	
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -173,6 +193,20 @@ int main (int argc, char *argv[])
 				if (verbose < 0 || verbose > 2)
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
+			case 'f':
+				c = FT_New_Face( library,
+											  optarg,
+											  0,
+											  &face );
+				if ( c == FT_Err_Unknown_File_Format )
+				{
+					mjpeg_error_exit1("Do not recognise the font file");
+				}
+				else if ( c )
+				{
+					mjpeg_error_exit1("Error reading the font file");
+				}
+				
 				
 				case 'h':
 				case '?':
