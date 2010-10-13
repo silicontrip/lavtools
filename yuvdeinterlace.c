@@ -151,6 +151,35 @@ int invert_order(int f)
 	}
 }
 
+int_detect3 (int x, int y,uint8_t *m[3],frame_dimensions *fd)
+{
+	uint8_t luma[4];
+	int i,t,w,h;
+	
+	w = fd->plane_width_luma;
+	h = fd->plane_height_luma; 
+
+	
+	// 3 pixel detection
+	t=y-1;
+	
+	for(i=0; i<3;i++)
+		if ((i+t<0)||(i+t>=h)) {
+			luma[i]=128;
+			//	mean += 128;
+		} else {
+			luma[i] = m[0][(i+t)*w+x];
+			//	mean += m[0][i*w+x];
+		}
+	
+	i=0;
+	if (luma[0] < luma[1] && luma[2] < luma[1]) i=1;
+	if (luma[0] > luma[1] && luma[2] > luma[1]) i=1;
+
+	return i;
+	
+}
+	
 int int_detect2 (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	
 	uint8_t luma[4];
@@ -168,7 +197,7 @@ int int_detect2 (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	
 	// Unroll this loop
 	// read the pixels above and below the target pixel.
-	for(i=0; i<PIXELS;i++)
+	for(i=0; i<4;i++)
 		if ((i+t<0)||(i+t>=h)) {
 			luma[i]=128;
 		//	mean += 128;
@@ -641,7 +670,7 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 		for (y=0; y<h; y+=2) {
 			// is interpolation required
 			// there may be a more efficient way to de-interlace a full frame
-			if (full != 0 || int_detect2(x,y,n,fd) ) {
+			if (full != 0 || int_detect3(x,y,n,fd) ) {
 				
 				switch (mark) {
 					case 1:
