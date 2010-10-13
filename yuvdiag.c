@@ -146,7 +146,7 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h)
 
 
 
-
+// deprecated function to read pre-rendered fixed width font
 void read_font(uint8_t **d)
 {
 	
