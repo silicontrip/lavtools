@@ -53,11 +53,6 @@ static void print_usage()
 			);
 }
 
-static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
-
-	o[i+j*w] = p[i+j*w];
-	
-}
 
 static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 {
@@ -95,6 +90,9 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	uint8_t            *yuv_data[3] ;
 	int                read_error_code ;
 	int                write_error_code ;
+	FT_Library  library;
+	FT_Face     face;
+	int framecounter=0;
 	
 	// Allocate memory for the YUV channels
 	
@@ -105,14 +103,33 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	
 	write_error_code = Y4M_OK ;
 	
+	read_error_code = FT_Init_FreeType(&library);
+	if (read_error_code) 
+		mjpeg_error_exit1("Cannot initialise the freetype library");
+	
+	read_error_code = FT_New_Face( library,
+						"/Library/Fonts/Arial Unicode.ttf",
+						0,
+						&face );
+	if ( read_error_code == FT_Err_Unknown_File_Format )
+	{
+		mjpeg_error_exit1("Do not recognise the font file");
+	}
+	else if ( read_error_code )
+	{
+		mjpeg_error_exit1("Error reading the font file");
+	}
+	
+	
+	
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
+	framecounter++;
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_odata,yuv_data,inStrInfo);
+			filterframe(yuv_data,inStrInfo,);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
 		
