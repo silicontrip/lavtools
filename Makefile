@@ -4,12 +4,12 @@ CC=gcc
 OPT_FLAG=-O3 -ftree-vectorize
 FREETYPEFLAGS=-lfreetype
 COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
-CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3 -DHAVE_AV_FREE_PACKET
-#CODECFLAGS=-DHAVE_AV_FREE_PACKET
+#CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3 -DHAVE_AV_FREE_PACKET
+CODECFLAGS=-DHAVE_AV_FREE_PACKET
 LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib utilyuv.o
 CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/opt/local/include/freetype2
-FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
-#FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
+#FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
+FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
 
 
 TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
@@ -29,7 +29,10 @@ yuvbilateral: yuvbilateral.o utilyuv.o
 
 yuvtbilateral: yuvtbilateral.o utilyuv.o
 
-yuvdiag: yuvdiag.o
+yuvsubtitle: yuvsubtitle.o utilyuv.o
+	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle $<
+
+yuvdiag: yuvdiag.o utilyuv.o
 	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag $<
 
 yuvCIFilter: yuvCIFilter.o

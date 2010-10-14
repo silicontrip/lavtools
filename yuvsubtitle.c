@@ -44,10 +44,6 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include FT_GLYPH_H
 
 
-struct subhead {
-	int entries;
-	struct subtitle subs[];
-};
 
 struct subtitle {
 	
@@ -57,7 +53,13 @@ struct subtitle {
 //	char *text;
 	char text[256]; // for testing
 };
-	
+
+struct subhead {
+	int entries;
+	struct subtitle subs[];
+};
+
+
 #define VERSION "0.1"
 
 static void print_usage() 
@@ -68,32 +70,11 @@ static void print_usage()
 }
 
 
-static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
+static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, char * text )
 {
+
 	
-	int x,y;
-	int height,width,height2,width2;
-	
-	height=y4m_si_get_plane_height(si,0);
-	width=y4m_si_get_plane_width(si,0);
-	
-	// I'll assume that the chroma subsampling is the same for both u and v channels
-	height2=y4m_si_get_plane_height(si,1);
-	width2=y4m_si_get_plane_width(si,1);
-	
-	
-	for (y=0; y < height; y++) {
-		for (x=0; x < width; x++) {
-			
-			filterpixel(m[0],n[0],x,y,width,height);
-			
-			if (x<width2 && y<height2) {
-				filterpixel(m[1],n[1],x,y,width2,height2);
-				filterpixel(m[2],n[2],x,y,width2,height2);
-			}
-			
-		}
-	}
+	fprintf (stderr,"text: %s\n",text);
 	
 }
 
@@ -113,7 +94,7 @@ char * get_sub (struct subhead s, int fc) {
 }
 
 
-static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs )
+static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
@@ -169,14 +150,17 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face
 void read_subs(struct subhead s) 
 {
 
+	struct subtitle *sub;
 	s.entries =1 ;
 
-// how to identify the number of entries?
-	s.subs = (struct subtitle) malloc(sizeof(struct subtitle));
+	sub = &s.subs[0];
 	
-	s.on = 0;
-	s.off = 150;
-	strcpy(s.text,"This is a test string.");
+// how to identify the number of entries?
+	sub = (struct subtitle *) malloc(sizeof(struct subtitle));
+	
+	s.subs[0].on = 0;
+	s.subs[0].off = 150;
+	strcpy(s.subs[0].text,"This is a test string.");
 	
 	
 }
@@ -268,7 +252,7 @@ int main (int argc, char *argv[])
 	read_subs(subs);
 	
 	/* in that function we do all the important work */
-	filter(fdIn, &in_streaminfo,face,subs);
+	filter(fdIn, fdOut, &in_streaminfo,face,subs);
 	y4m_fini_stream_info (&in_streaminfo);
 	
 	return 0;
