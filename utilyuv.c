@@ -165,7 +165,23 @@ void set_pixel(uint8_t val,int x, int y, int plane, uint8_t *m[3],y4m_stream_inf
 		}
 }
 	
-	
+
+// Mix two colours, percent is 0-255
+uint8_t mix (uint8_t c1, uint8_t c2, uint8_t per, int y) {
+	return ((c1 - y) * (255 - per) + (c2 - y) * per) / 255 + y; 
+
+}
+
+uint8_t luma_mix (uint8_t c1, uint8_t c2, uint8_t per) {
+	return mix(c1,c2,per,16); 
+}
+
+uint8_t chroma_mix (uint8_t c1, uint8_t c2, uint8_t per) {
+	return mix(c1,c2,per,128); 
+}
+
+
+
 
 int parse_interlacing(char *str)
 {

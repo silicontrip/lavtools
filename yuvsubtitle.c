@@ -70,27 +70,101 @@ static void print_usage()
 }
 
 
-static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, char * text )
-{
+int ftwidth (FT_Face face, char * text) {
+
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
 	FT_UInt       glyph_index;
-	int           pen_x, pen_y, n,x,y;	
-	int error;
+	int           pen_x, pen_y,n;
+	
+	
+	pen_x = 0;
+	for ( n = 0; n < strlen(text); n++ ) {
+		FT_Load_Char( face, text[n], FT_LOAD_RENDER );
+		/* ignore errors */
+		pen_x += slot->advance.x;
+		pen_y += slot->advance.y; /* not useful for now */
+	}
+	
+	return pen_x;
+	
+}
+
+void draw_bitmap (FT_Bitmap*  bitmap, int x, int y, uint8_t *m[3], y4m_stream_info_t *si,  uint8_t yc, uint8_t uc, uint8_t vc )
+{
+	
 	FT_Int  i, j, p, q;
+	uint8_t bri, piy,piu,piv;
 	FT_Int  x_max;
 	FT_Int  y_max;
-	int width,height;
-	uint8_t bri;
-	
-	mjpeg_debug ("text: %s\n",text);
+
+	int width,height,cx,cy;
 
 	width = y4m_si_get_plane_width(si,0);
 	height = y4m_si_get_plane_height(si,0);
 	
+	x_max = x + bitmap->width;
+	y_max = y + bitmap->rows;
+
+	
+	for ( i = x, p = 0; i < x_max; i++, p++ )
+	{
+		for ( j = y, q = 0; j < y_max; j++, q++ )
+		{
+			if ( i >= width || j >= height )
+				continue;
+			
+			// configurable colour
+			bri  = bitmap->buffer[q * bitmap->width + p];
+			
+			piy = luma_mix(get_pixel (i,j,0,m,si),yc,bri);
+			
+			cx = xchroma(i,si);
+			cy = ychroma(j,si);
+			
+			piu = chroma_mix(get_pixel (cx,cy,1,m,si),uc,bri);
+			piv = chroma_mix(get_pixel (cx,cy,2,m,si),vc,bri);
+			
+			set_pixel(piy,i,j,0,m,si);
+			set_pixel(piu,cx,cy,1,m,si);
+			set_pixel(piv,cx,cy,2,m,si);
+			
+			
+		}
+	}		
+}				  
+
+
+static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, char * text,
+						 int pen_y, int yc, int uc, int vc )
+{
+	
+	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
+	FT_UInt       glyph_index;
+	int           pen_x,  n,x,y;	
+	int error;
+	int twidth;
+	uint8_t bri;
+	uint8_t piy,piu,piv;
+	int cx,cy;
+	int width;
+	
+	mjpeg_debug ("text: %s\n",text);
+
+	
 	// configurable start location.
-	pen_x = 64;
-	pen_y = 300;
+	width = y4m_si_get_plane_width(si,0);
+
+	twidth = ftwidth(face,text);
+	twidth = twidth >> 6;
+	
+	pen_x =  width / 2 - twidth / 2;
+	if (pen_x < 0) {
+		mjpeg_warn("text larger than screen width");
+		pen_x = 0;
+	}
+	
+	
 	
 	for ( n = 0; n < strlen(text); n++ )
 	{
@@ -100,31 +174,35 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 			continue;  /* ignore errors */
 		
 		/* now, draw to our target surface */
-		/*
-		my_draw_bitmap( &slot->bitmap,
-					   pen_x + slot->bitmap_left,
-					   pen_y - slot->bitmap_top );
-		*/
 		
-		x = pen_x + slot->bitmap_left;
-		y = pen_y - slot->bitmap_top;
+		draw_bitmap( &slot->bitmap,
+					pen_x + slot->bitmap_left + 1,
+					pen_y - slot->bitmap_top + 1, 
+					m,si,16,128,128 );
 		
-		x_max = x + slot->bitmap.width;
-		y_max = y + slot->bitmap.rows;
+		draw_bitmap( &slot->bitmap,
+					pen_x + slot->bitmap_left - 1,
+					pen_y - slot->bitmap_top - 1, 
+					m,si,16,128,128 );
+
+		draw_bitmap( &slot->bitmap,
+					pen_x + slot->bitmap_left + 1,
+					pen_y - slot->bitmap_top - 1, 
+					m,si,16,128,128 );
+		
+		draw_bitmap( &slot->bitmap,
+					pen_x + slot->bitmap_left - 1,
+					pen_y - slot->bitmap_top + 1, 
+					m,si,16,128,128 );
 
 		
-		for ( i = x, p = 0; i < x_max; i++, p++ )
-		{
-			for ( j = y, q = 0; j < y_max; j++, q++ )
-			{
-				if ( i >= width || j >= height )
-					continue;
 				
-				// configurable colour
-				bri  = slot->bitmap.buffer[q * slot->bitmap.width + p];
-				m[0][i + j * width]  =  (m[0][i + j * width] *  (255 - bri) + bri * 255 ) / 255;
-			}
-		}		
+		
+		
+		draw_bitmap( &slot->bitmap,
+					pen_x + slot->bitmap_left,
+					pen_y - slot->bitmap_top,
+					m,si,yc,uc,vc );
 		
 		/* increment pen position */
 		pen_x += slot->advance.x >> 6;
@@ -151,7 +229,8 @@ char * get_sub (struct subhead s, int fc) {
 }
 
 
-static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs )
+static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs, 
+				   int pen_y, int yc, int uc, int vc )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
@@ -182,7 +261,7 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 			
 			text=get_sub(subs,framecounter);
 			if (text != '\0') { 
-				filterframe(yuv_data,inStrInfo,face,text);
+				filterframe(yuv_data,inStrInfo,face,text,pen_y,yc,uc,vc);
 			}
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 		}
@@ -209,7 +288,7 @@ void read_subs(struct subhead *s)
 {
 
 	struct subtitle *sub;
-	s->entries=4 ;
+	s->entries=5 ;
 	
 	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
 	
@@ -222,7 +301,7 @@ void read_subs(struct subhead *s)
 	s->subs[1].off = 170;
 	strcpy(s->subs[1].text,"That was never a condition of our arrangment.");
 
-	s->subs[2].on = 180;
+	s->subs[2].on = 170;
 	s->subs[2].off = 220;
 	strcpy(s->subs[2].text,"Nor was giving Han to this bounty hunter.");
 	
@@ -230,7 +309,10 @@ void read_subs(struct subhead *s)
 	s->subs[3].off = 350;
 	strcpy(s->subs[3].text,"I have altered the Deal. Pray I don't alter it any further.");
 	
-	
+	s->subs[4].on = 368;
+	s->subs[4].off = 434;
+	strcpy(s->subs[4].text,"This deal is getting worse all the time.");
+
 }
 
 // *************************************************************************************
@@ -247,16 +329,26 @@ int main (int argc, char *argv[])
 	y4m_ratio_t frame_rate;
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height=16;
-	int c ;
-	const static char *legal_flags = "hv:f:s:";
+	int c, pen_y;
+	const static char *legal_flags = "hv:f:s:y:c:";
 	FT_Library  library;
 	FT_Face     face;
 	struct subhead subs;
 	
+	int yc,uc,vc;
+	
 	if (FT_Init_FreeType(&library)) 
 		mjpeg_error_exit1("Cannot initialise the freetype library");
 	
+	// defaults
+	pen_y = -1;
 
+	// default text colour
+	yc = 235;
+	uc = 128;
+	vc = 128;
+	
+	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -280,6 +372,12 @@ int main (int argc, char *argv[])
 				break;
 			case 's':
 				height = atoi(optarg);
+				break;
+			case 'y':
+				pen_y = atoi(optarg);
+				break;
+			case 'c':
+				sscanf (optarg,"%d,%d,%d",&yc,&uc,&vc);
 				break;
 			case 'h':
 			case '?':
@@ -313,6 +411,10 @@ int main (int argc, char *argv[])
 	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
 	// mjpeg_info ("yuvcropdetect -h for help");
 	
+	if (pen_y==-1) {
+		pen_y = y4m_si_get_plane_height(&in_streaminfo,0) - 48;
+	}
+	
     
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 	
@@ -320,7 +422,7 @@ int main (int argc, char *argv[])
 	read_subs(&subs);
 	
 	/* in that function we do all the important work */
-	filter(fdIn, fdOut, &in_streaminfo,face,subs);
+	filter(fdIn, fdOut, &in_streaminfo,face,subs,pen_y,yc,uc,vc);
 	y4m_fini_stream_info (&in_streaminfo);
 	
 	

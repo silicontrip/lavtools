@@ -21,6 +21,10 @@ void chromaset(uint8_t *m[3], y4m_stream_info_t  *sinfo, int y, int u, int v );
 uint8_t get_pixel(int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si);
 void set_pixel(uint8_t val,int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si);
 
+uint8_t mix (uint8_t c1, uint8_t c2, uint8_t per, int y);
+uint8_t luma_mix (uint8_t c1, uint8_t c2, uint8_t per);
+uint8_t chroma_mix (uint8_t c1, uint8_t c2, uint8_t per);
+
 void chromafree(uint8_t *m[3]);
 
 
