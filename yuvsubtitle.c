@@ -98,6 +98,21 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 }
 
 
+char * get_sub (struct subhead s, int fc) {
+
+	int n;
+	
+	for (n=0; n < s.entries; n++){
+	
+		if (s.subs[n].on <= fc && s.subs[n].off >= fc) 
+			return s.subs[n].text;
+		
+	}
+	return '\0';
+	
+}
+
+
 static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs )
 {
 	y4m_frame_info_t   in_frame ;
