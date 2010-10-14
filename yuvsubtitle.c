@@ -175,11 +175,16 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 		
 		/* now, draw to our target surface */
 		
+		for (cx=-1; cx < 3; cx ++) 
+			for (cy =-1; cy<3; cy++) {
+		
 		draw_bitmap( &slot->bitmap,
-					pen_x + slot->bitmap_left + 1,
-					pen_y - slot->bitmap_top + 1, 
+					pen_x + slot->bitmap_left + cx,
+					pen_y - slot->bitmap_top + cy, 
 					m,si,16,128,128 );
 		
+			}
+		/*
 		draw_bitmap( &slot->bitmap,
 					pen_x + slot->bitmap_left - 1,
 					pen_y - slot->bitmap_top - 1, 
@@ -194,7 +199,7 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 					pen_x + slot->bitmap_left - 1,
 					pen_y - slot->bitmap_top + 1, 
 					m,si,16,128,128 );
-
+		 */
 		
 				
 		
@@ -284,6 +289,7 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	
 }
 
+/*
 void read_subs_t(struct subhead *s) 
 {
 
@@ -312,7 +318,7 @@ void read_subs_t(struct subhead *s)
 	strcpy(s->subs[4].text,"This deal is getting worse all the time.");
 
 }
-
+*/
 int edlcount (FILE *file, int *maxline, int *lines)
 {
 	
