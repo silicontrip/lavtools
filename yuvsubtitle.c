@@ -72,9 +72,58 @@ static void print_usage()
 
 static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, char * text )
 {
-
 	
-	mjpeg_info ("text: %s\n",text);
+	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
+	FT_UInt       glyph_index;
+	int           pen_x, pen_y, n;	
+	int error;
+	FT_Int  i, j, p, q;
+	FT_Int  x_max ;
+	FT_Int  y_max;
+	int width,height;
+	
+	mjpeg_debug ("text: %s\n",text);
+
+	width = y4m_si_get_plane_width(si,0);
+	height = y4m_si_get_plane_height(si,0);
+	
+	// configurable start location.
+	pen_x = 100;
+	pen_y = 300;
+	
+	for ( n = 0; n < strlen(text); n++ )
+	{
+		/* load glyph image into the slot (erase previous one) */
+		error = FT_Load_Char( face, text[n], FT_LOAD_RENDER );
+		if ( error )
+			continue;  /* ignore errors */
+		
+		/* now, draw to our target surface */
+		/*
+		my_draw_bitmap( &slot->bitmap,
+					   pen_x + slot->bitmap_left,
+					   pen_y - slot->bitmap_top );
+		*/
+		
+		x_max = pen_x + slot->bitmap.width;
+		y_max = pen_y + slot->bitmap.rows;
+
+		
+		for ( i = pen_x, p = 0; i < x_max; i++, p++ )
+		{
+			for ( j = pen_y, q = 0; j < y_max; j++, q++ )
+			{
+				if ( i >= width || j >= height )
+					continue;
+				
+				m[0][i + j * width] |= slot->bitmap.buffer[q * slot->bitmap.width + p];
+			}
+		}		
+		
+		/* increment pen position */
+		pen_x += slot->advance.x >> 6;
+		pen_y += slot->advance.y >> 6; /* not useful for now */
+	}
 	
 }
 
@@ -102,9 +151,6 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	uint8_t            *yuv_data[3] ;
 	int                read_error_code ;
 	int                write_error_code ;
-	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
-	FT_UInt       glyph_index;
-	int           pen_x, pen_y, n;	
 	int framecounter=0;
 	char *text;
 	
@@ -157,18 +203,30 @@ void read_subs(struct subhead *s)
 {
 
 	struct subtitle *sub;
-	s->entries=1 ;
+	s->entries=4 ;
 
 	//sub =;
 	
 	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
 	
-// how to identify the number of entries?
+	// how to identify the number of entries?
 	// s->subs[0] =  malloc(sizeof(struct subtitle));
 	
-	s->subs[0].on = 0;
-	s->subs[0].off = 150;
-	strcpy(s->subs[0].text,"This is a test string.");
+	s->subs[0].on = 10;
+	s->subs[0].off = 100;
+	strcpy(s->subs[0].text,"Leah and the Wookie must never again leave this city.");
+
+	s->subs[1].on = 100;
+	s->subs[1].off = 170;
+	strcpy(s->subs[1].text,"That was never a condition of our arrangment.");
+
+	s->subs[2].on = 180;
+	s->subs[2].off = 220;
+	strcpy(s->subs[2].text,"Nor was giving Han to this bounty hunter.");
+	
+	s->subs[3].on = 230;
+	s->subs[3].off = 350;
+	strcpy(s->subs[3].text,"I have altered the Deal. Pray I don't alter it any further.");
 	
 	
 }
@@ -179,7 +237,7 @@ void read_subs(struct subhead *s)
 int main (int argc, char *argv[])
 {
 	
-	int verbose = 4; // LOG_ERROR ;
+	int verbose = 1; 
 	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
@@ -188,7 +246,7 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height=16;
 	int c ;
-	const static char *legal_flags = "hv:f:";
+	const static char *legal_flags = "hv:f:s:";
 	FT_Library  library;
 	FT_Face     face;
 	struct subhead subs;
