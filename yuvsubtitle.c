@@ -44,6 +44,11 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include FT_GLYPH_H
 
 
+struct subhead {
+	int entries;
+	struct subtitle subs[];
+};
+
 struct subtitle {
 	
 	//in frame counts
@@ -93,7 +98,7 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 }
 
 
-static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face )
+static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
@@ -103,6 +108,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face
 	FT_UInt       glyph_index;
 	int           pen_x, pen_y, n;	
 	int framecounter=0;
+	char *text;
 	
 	// Allocate memory for the YUV channels
 	
@@ -112,27 +118,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face
 	/* Initialize counters */
 	
 	write_error_code = Y4M_OK ;
-	
-#TODO: configurable font file
-	read_error_code = FT_New_Face( library,
-						"/Library/Fonts/Arial Unicode.ttf",
-						0,
-						&face );
-	if ( read_error_code == FT_Err_Unknown_File_Format )
-	{
-		mjpeg_error_exit1("Do not recognise the font file");
-	}
-	else if ( read_error_code )
-	{
-		mjpeg_error_exit1("Error reading the font file");
-	}
-	
-#TODO: configurable pixel height
-	error = FT_Set_Pixel_Sizes(
-							   face,   /* handle to face object */
-							   0,      /* pixel_width           */
-							   16 );   /* pixel_height          */
-	
+		
 	
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
@@ -141,8 +127,12 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_data,inStrInfo,face,);
-			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
+			
+			text=get_sub(subs,framecounter);
+			if (text != '\0') { 
+				filterframe(yuv_data,inStrInfo,face,text);
+			}
+			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 		}
 		
 		y4m_fini_frame_info( &in_frame );
@@ -161,6 +151,21 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, FT_Face     face
 	
 }
 
+void read_subs(struct subhead s) 
+{
+
+	s.entries =1 ;
+
+// how to identify the number of entries?
+	s.subs = (struct subtitle) malloc(sizeof(struct subtitle));
+	
+	s.on = 0;
+	s.off = 150;
+	strcpy(s.text,"This is a test string.");
+	
+	
+}
+
 // *************************************************************************************
 // MAIN
 // *************************************************************************************
@@ -174,18 +179,17 @@ int main (int argc, char *argv[])
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	y4m_ratio_t frame_rate;
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	int height=16;
 	int c ;
 	const static char *legal_flags = "hv:f:";
 	FT_Library  library;
 	FT_Face     face;
+	struct subhead subs;
 	
 	if (FT_Init_FreeType(&library)) 
 		mjpeg_error_exit1("Cannot initialise the freetype library");
 	
-	
-	
-	
+
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -195,9 +199,9 @@ int main (int argc, char *argv[])
 				break;
 			case 'f':
 				c = FT_New_Face( library,
-											  optarg,
-											  0,
-											  &face );
+								optarg,
+								0,
+								&face );
 				if ( c == FT_Err_Unknown_File_Format )
 				{
 					mjpeg_error_exit1("Do not recognise the font file");
@@ -206,15 +210,22 @@ int main (int argc, char *argv[])
 				{
 					mjpeg_error_exit1("Error reading the font file");
 				}
-				
-				
-				case 'h':
-				case '?':
+				break;
+			case 's':
+				height = atoi(optarg);
+				break;
+			case 'h':
+			case '?':
 				print_usage (argv);
 				return 0 ;
 				break;
 		}
 	}
+	
+	FT_Set_Pixel_Sizes( face,		/* handle to face object */
+						0,			/* pixel_width           */
+						height );   /* pixel_height          */
+	
 	
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
@@ -231,14 +242,18 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuv (version " VERSION ") is a general deinterlace/interlace utility for yuv streams");
+	mjpeg_info ("yuvsubtitle (version " VERSION ") is a subtitle rendering utility for yuv streams");
 	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
 	// mjpeg_info ("yuvcropdetect -h for help");
 	
     
 	y4m_write_stream_header(fdOut,&in_streaminfo);
+	
+	// read the subtitle file
+	read_subs(subs);
+	
 	/* in that function we do all the important work */
-	filter(fdIn, &in_streaminfo);
+	filter(fdIn, &in_streaminfo,face,subs);
 	y4m_fini_stream_info (&in_streaminfo);
 	
 	return 0;
