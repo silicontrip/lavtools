@@ -75,12 +75,13 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
 	FT_UInt       glyph_index;
-	int           pen_x, pen_y, n;	
+	int           pen_x, pen_y, n,x,y;	
 	int error;
 	FT_Int  i, j, p, q;
-	FT_Int  x_max ;
+	FT_Int  x_max;
 	FT_Int  y_max;
 	int width,height;
+	uint8_t bri;
 	
 	mjpeg_debug ("text: %s\n",text);
 
@@ -88,7 +89,7 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 	height = y4m_si_get_plane_height(si,0);
 	
 	// configurable start location.
-	pen_x = 100;
+	pen_x = 64;
 	pen_y = 300;
 	
 	for ( n = 0; n < strlen(text); n++ )
@@ -105,18 +106,23 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 					   pen_y - slot->bitmap_top );
 		*/
 		
-		x_max = pen_x + slot->bitmap.width;
-		y_max = pen_y + slot->bitmap.rows;
+		x = pen_x + slot->bitmap_left;
+		y = pen_y - slot->bitmap_top;
+		
+		x_max = x + slot->bitmap.width;
+		y_max = y + slot->bitmap.rows;
 
 		
-		for ( i = pen_x, p = 0; i < x_max; i++, p++ )
+		for ( i = x, p = 0; i < x_max; i++, p++ )
 		{
-			for ( j = pen_y, q = 0; j < y_max; j++, q++ )
+			for ( j = y, q = 0; j < y_max; j++, q++ )
 			{
 				if ( i >= width || j >= height )
 					continue;
 				
-				m[0][i + j * width] |= slot->bitmap.buffer[q * slot->bitmap.width + p];
+				// configurable colour
+				bri  = slot->bitmap.buffer[q * slot->bitmap.width + p];
+				m[0][i + j * width]  =  (m[0][i + j * width] *  (255 - bri) + bri * 255 ) / 255;
 			}
 		}		
 		
@@ -204,13 +210,9 @@ void read_subs(struct subhead *s)
 
 	struct subtitle *sub;
 	s->entries=4 ;
-
-	//sub =;
 	
 	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
 	
-	// how to identify the number of entries?
-	// s->subs[0] =  malloc(sizeof(struct subtitle));
 	
 	s->subs[0].on = 10;
 	s->subs[0].off = 100;
@@ -320,6 +322,11 @@ int main (int argc, char *argv[])
 	/* in that function we do all the important work */
 	filter(fdIn, fdOut, &in_streaminfo,face,subs);
 	y4m_fini_stream_info (&in_streaminfo);
+	
+	
+	FT_Done_Face    ( face );
+	FT_Done_FreeType( library );
+
 	
 	return 0;
 }
