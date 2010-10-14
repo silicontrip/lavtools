@@ -56,7 +56,7 @@ struct subtitle {
 
 struct subhead {
 	int entries;
-	struct subtitle subs[];
+	struct subtitle *subs;
 };
 
 
@@ -74,7 +74,7 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 {
 
 	
-	fprintf (stderr,"text: %s\n",text);
+	mjpeg_info ("text: %s\n",text);
 	
 }
 
@@ -82,9 +82,11 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 char * get_sub (struct subhead s, int fc) {
 
 	int n;
-	
+	// mjpeg_info("entries: %d ", s.entries);
 	for (n=0; n < s.entries; n++){
 	
+		// mjpeg_info ("checking %d - %d",s.subs[n].on,  s.subs[n].off);
+		
 		if (s.subs[n].on <= fc && s.subs[n].off >= fc) 
 			return s.subs[n].text;
 		
@@ -122,6 +124,8 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		
 		// do work
+
+	//	mjpeg_info("frame: %d",framecounter);
 		if (read_error_code == Y4M_OK) {
 			
 			text=get_sub(subs,framecounter);
@@ -134,6 +138,8 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+		framecounter++;
+
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
@@ -147,20 +153,22 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	
 }
 
-void read_subs(struct subhead s) 
+void read_subs(struct subhead *s) 
 {
 
 	struct subtitle *sub;
-	s.entries =1 ;
+	s->entries=1 ;
 
-	sub = &s.subs[0];
+	//sub =;
+	
+	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
 	
 // how to identify the number of entries?
-	sub = (struct subtitle *) malloc(sizeof(struct subtitle));
+	// s->subs[0] =  malloc(sizeof(struct subtitle));
 	
-	s.subs[0].on = 0;
-	s.subs[0].off = 150;
-	strcpy(s.subs[0].text,"This is a test string.");
+	s->subs[0].on = 0;
+	s->subs[0].off = 150;
+	strcpy(s->subs[0].text,"This is a test string.");
 	
 	
 }
@@ -249,7 +257,7 @@ int main (int argc, char *argv[])
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 	
 	// read the subtitle file
-	read_subs(subs);
+	read_subs(&subs);
 	
 	/* in that function we do all the important work */
 	filter(fdIn, fdOut, &in_streaminfo,face,subs);
