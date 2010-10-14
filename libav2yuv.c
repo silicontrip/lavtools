@@ -144,7 +144,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	if ( 1.0 * frn / frd == 30000.0 / 1001.0) {
 		
 		// or is this a : ?
-		if (tc[codes[6].rm_so] == ';') {
+		if (tc[codes[6].rm_so] == ':') {
 			fprintf (stderr,"parser: NTSC Drop Code\n");
 			frn = 30;
 			frd = 1;

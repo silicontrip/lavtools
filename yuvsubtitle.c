@@ -284,14 +284,12 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	
 }
 
-void read_subs(struct subhead *s) 
+void read_subs_t(struct subhead *s) 
 {
 
-	struct subtitle *sub;
 	s->entries=5 ;
 	
 	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
-	
 	
 	s->subs[0].on = 10;
 	s->subs[0].off = 100;
@@ -315,6 +313,84 @@ void read_subs(struct subhead *s)
 
 }
 
+int edlcount (FILE *file, int *maxline, int *lines)
+{
+	
+	int c;
+	int max=0;
+	int count=0;
+	
+	*maxline=0;
+	*lines=0;
+	
+	
+	flockfile(file); // for optimising the single character reads
+	while (!feof(file)){
+		c = getc_unlocked(file);
+		count++;
+		if (c==10) {
+			(*lines)++;
+			if (count > *maxline) {
+				*maxline = count;
+				count=0;
+			}
+		}
+	}
+	funlockfile(file);
+	rewind(file);
+	
+}
+
+
+int read_subs (struct subhead *s, char *filename) {
+
+	FILE *fn;
+	char *line;
+	int maxline,lines,count=0,c;
+	char *p;
+
+	fn = fopen(filename,"r");
+	if (fn == NULL) {
+		mjpeg_error_exit1("Cannot open subtitle file");
+	}
+	
+	edlcount(fn,&maxline,&lines);
+
+	s->entries=lines ;
+	
+	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
+	
+	line = (char *)malloc(maxline);
+	if (line == NULL) {
+		mjpeg_error("Error allocating line memory");
+		fclose (fn);
+		return -1;
+	}
+	
+	
+	while (fgets(line,maxline,fn) != NULL) {
+	
+		sscanf(line,"%d,%d",&s->subs[count].on,&s->subs[count].off);
+		for (c=0; c < strlen(line); c++) {
+			if (line[c] == ',') {
+				p=&line[c+1];
+			}
+		}
+			strcpy(s->subs[count].text, p);
+		for (c=0; c < strlen(s->subs[count].text); c++) {
+			if (s->subs[count].text[c] < 32) {
+				s->subs[count].text[c]=0;		
+			}
+		}
+		
+		count++;
+	}
+	
+	free (line);
+	
+}
+
+
 // *************************************************************************************
 // MAIN
 // *************************************************************************************
@@ -330,11 +406,11 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height=16;
 	int c, pen_y;
-	const static char *legal_flags = "hv:f:s:y:c:";
+	const static char *legal_flags = "hv:f:s:y:c:u:";
 	FT_Library  library;
 	FT_Face     face;
 	struct subhead subs;
-	
+	char * subname = NULL;
 	int yc,uc,vc;
 	
 	if (FT_Init_FreeType(&library)) 
@@ -379,6 +455,10 @@ int main (int argc, char *argv[])
 			case 'c':
 				sscanf (optarg,"%d,%d,%d",&yc,&uc,&vc);
 				break;
+			case 'u':
+				subname = malloc(strlen(optarg));
+				strcpy(subname,optarg);
+				break;
 			case 'h':
 			case '?':
 				print_usage (argv);
@@ -418,11 +498,16 @@ int main (int argc, char *argv[])
     
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 	
+	if (subname != NULL) {
 	// read the subtitle file
-	read_subs(&subs);
-	
+		read_subs(&subs,subname);
+		filter(fdIn, fdOut, &in_streaminfo,face,subs,pen_y,yc,uc,vc);
+		free (subname);
+		free (&subs);
+	} else {
+		mjpeg_error_exit1("No subtitle filename specified");
+	}
 	/* in that function we do all the important work */
-	filter(fdIn, fdOut, &in_streaminfo,face,subs,pen_y,yc,uc,vc);
 	y4m_fini_stream_info (&in_streaminfo);
 	
 	
