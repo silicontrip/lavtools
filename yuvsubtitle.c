@@ -200,10 +200,12 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 		}	
 		
 		if (sp == 10) {
+			
+			//TODO: get correct vertical spacing.
 			FT_Load_Char( face, sp, FT_LOAD_RENDER );
 
 			pen_x =  width / 2 - twidth / 2;
-			pen_y += slot->bitmap_top; /* not useful for now */
+			pen_y += slot->bitmap_top;
 
 		} else {
 			
@@ -545,16 +547,22 @@ int main (int argc, char *argv[])
 	// read the subtitle file
 		read_subs(&subs,subname);
 		filter(fdIn, fdOut, &in_streaminfo,face,subs,pen_y,yc,uc,vc);
+		mjpeg_debug ("free subname");
 		free (subname);
-		free (&subs);
+		mjpeg_debug ("free subs");
+
+		free (subs.subs);
 	} else {
 		mjpeg_error_exit1("No subtitle filename specified");
 	}
 	/* in that function we do all the important work */
 	y4m_fini_stream_info (&in_streaminfo);
 	
-	
+	mjpeg_debug ("done face");
+
 	FT_Done_Face    ( face );
+	mjpeg_debug ("done freetype");
+
 	FT_Done_FreeType( library );
 
 	
