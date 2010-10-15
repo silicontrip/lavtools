@@ -75,17 +75,35 @@ int ftwidth (FT_Face face, char * text) {
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
 	FT_UInt       glyph_index;
-	int           pen_x, pen_y,n;
+	int           pen_x, pen_y,n,max;
+	char special[5];
+	int sp;
 	
-	
-	pen_x = 0;
+	pen_x = 0; max = 0;
 	for ( n = 0; n < strlen(text); n++ ) {
-		FT_Load_Char( face, text[n], FT_LOAD_RENDER );
-		/* ignore errors */
-		pen_x += slot->advance.x;
-		pen_y += slot->advance.y; /* not useful for now */
+		sp = text[n];
+		if (sp == '%') {
+			strncpy(special,&text[n+1],4);
+			special[4] = '\0';
+			n+=4;
+			sscanf(special,"%x",&sp);
+			
+			
+		}	
+		
+		if (sp == 10) {
+			if (pen_x>max) max=pen_x;
+			pen_x = 0;
+		} else {
+		
+			FT_Load_Char( face, sp, FT_LOAD_RENDER );
+		
+			/* ignore errors */
+			pen_x += slot->advance.x;
+			pen_y += slot->advance.y; /* not useful for now */
+		}
 	}
-	
+	if (max > pen_x) pen_x = max;
 	return pen_x;
 	
 }
@@ -148,6 +166,8 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 	uint8_t piy,piu,piv;
 	int cx,cy;
 	int width;
+	char special[5];
+	int sp;
 	
 	mjpeg_debug ("text: %s\n",text);
 
@@ -169,49 +189,64 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 	for ( n = 0; n < strlen(text); n++ )
 	{
 		/* load glyph image into the slot (erase previous one) */
-		error = FT_Load_Char( face, text[n], FT_LOAD_RENDER );
-		if ( error )
-			continue;  /* ignore errors */
 		
+		// try for a uri style special characters
+		sp = text[n];
+		if (sp == '%') {
+			strncpy(special,&text[n+1],4);
+			special[4] = '\0';
+			n+=4;
+			sscanf(special,"%x",&sp);
+		}	
+		
+		if (sp == 10) {
+			pen_x =  width / 2 - twidth / 2;
+			pen_y += slot->advance.y >> 6; /* not useful for now */
+
+		} else {
+			
+			FT_Load_Char( face, sp, FT_LOAD_RENDER );
+			
+			for (cx=-1; cx < 3; cx ++) 
+				for (cy =-1; cy<3; cy++) {
+					
+					draw_bitmap( &slot->bitmap,
+								pen_x + slot->bitmap_left + cx,
+								pen_y - slot->bitmap_top + cy, 
+								m,si,16,128,128 );
+					
+				}
+			/*
+			 draw_bitmap( &slot->bitmap,
+			 pen_x + slot->bitmap_left - 1,
+			 pen_y - slot->bitmap_top - 1, 
+			 m,si,16,128,128 );
+			 
+			 draw_bitmap( &slot->bitmap,
+			 pen_x + slot->bitmap_left + 1,
+			 pen_y - slot->bitmap_top - 1, 
+			 m,si,16,128,128 );
+			 
+			 draw_bitmap( &slot->bitmap,
+			 pen_x + slot->bitmap_left - 1,
+			 pen_y - slot->bitmap_top + 1, 
+			 m,si,16,128,128 );
+			 */
+			
+			
+			
+			
+			draw_bitmap( &slot->bitmap,
+						pen_x + slot->bitmap_left,
+						pen_y - slot->bitmap_top,
+						m,si,yc,uc,vc );
+			
+			/* increment pen position */
+			pen_x += slot->advance.x >> 6;
+			pen_y += slot->advance.y >> 6; /* not useful for now */
+		}
 		/* now, draw to our target surface */
 		
-		for (cx=-1; cx < 3; cx ++) 
-			for (cy =-1; cy<3; cy++) {
-		
-		draw_bitmap( &slot->bitmap,
-					pen_x + slot->bitmap_left + cx,
-					pen_y - slot->bitmap_top + cy, 
-					m,si,16,128,128 );
-		
-			}
-		/*
-		draw_bitmap( &slot->bitmap,
-					pen_x + slot->bitmap_left - 1,
-					pen_y - slot->bitmap_top - 1, 
-					m,si,16,128,128 );
-
-		draw_bitmap( &slot->bitmap,
-					pen_x + slot->bitmap_left + 1,
-					pen_y - slot->bitmap_top - 1, 
-					m,si,16,128,128 );
-		
-		draw_bitmap( &slot->bitmap,
-					pen_x + slot->bitmap_left - 1,
-					pen_y - slot->bitmap_top + 1, 
-					m,si,16,128,128 );
-		 */
-		
-				
-		
-		
-		draw_bitmap( &slot->bitmap,
-					pen_x + slot->bitmap_left,
-					pen_y - slot->bitmap_top,
-					m,si,yc,uc,vc );
-		
-		/* increment pen position */
-		pen_x += slot->advance.x >> 6;
-		pen_y += slot->advance.y >> 6; /* not useful for now */
 	}
 	
 }
