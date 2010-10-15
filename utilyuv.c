@@ -295,15 +295,17 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 			if ( fabs(29.97 - (1.0 * fr.n / fr.d )) < 0.001){
 				// TODO: this only works for 29.97
 				totalMinutes = 60 * h + m;
+				fr.n += fr.d - (fr.n % fr.d);
 				// 2 skipped frames per minute, excluding the 10 minute divisible ones.
-				return sec * (fr.n / fr.d + 1) - 2 * (totalMinutes - totalMinutes / 10);
+				return sec * fr.n / fr.d - 2 * (totalMinutes - totalMinutes / 10);
 			} else {
 				mjpeg_warn ("Unknown drop frame frame rate: %d/%d",fr.n,fr.d);
 			}
 		} else {
 			// non drop frame
 			// round up to the next highest frame rate, time code doesn't represent real time.
-			return sec * (fr.n / fr.d + 1);
+			fr.n += fr.d - (fr.n % fr.d);
+			return sec * fr.n / fr.d;
 		}
 	} else {
 		//  integer frame rates
@@ -311,3 +313,50 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 	}
 	
 }
+
+void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f, int fc, int *df ) 
+{
+	
+	y4m_ratio_t fr;
+	int d,n,ofc;
+	int smpted, smptem;
+	//	fprintf (stderr,"string_tc\n");
+	
+	fr = y4m_si_get_framerate (si);
+		
+	if (fr.n % fr.d) {
+		
+		n = fr.n;
+		
+		// round up to integer frame rate
+		// non drop calculation.
+		fr.n += fr.d - (fr.n % fr.d);
+		
+		if (df) {
+		// drop calculation.
+
+			if ( fabs(29.97 - (1.0 * n / fr.d )) < 0.001){
+				// the correct SMPTE algorithm for 29.97
+				smpted = fc / 17982;
+				smptem = fc % 17982;
+				fc +=  18*smpted + 2*((smptem - 2) / 1798);
+			} else {
+				// this algorithm is not the correct SMPTE algorithm. 
+				// but is more generic
+				fc = (fc * fr.n) / n;
+			}
+
+			
+		}
+	} else {
+		*df = 0;
+	}
+	
+	
+	*h = fr.d * fc / fr.n / 3600;
+	*m = (fr.d * fc / fr.n / 60) % 60;
+	*s = (fr.d * fc / fr.n) % 60;
+	*f = fc % (fr.n / fr.d);
+	
+}
+
