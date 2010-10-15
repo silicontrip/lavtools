@@ -1,0 +1,21 @@
+Frame number from 29.97 frame/s drop frame timecode
+
+totalMinutes = 60 * hours + minutes
+frameNumber  = 108000 * hours + 1800 * minutes
+                 + 30 * seconds + frames
+                  - 2 * (totalMinutes - totalMinutes div 10)
+
+where div means integer division with no remainder.
+
+29.97 frame/s drop frame timecode from frame number
+
+D = frameNumber div 17982
+M = frameNumber mod 17982
+frameNumber +=  18*D + 2*((M - 2) div 1798) 
+(If -2 div 1798 doesn't return 0, you'll have to special-case M = 0 or 1.)
+frames  =    frameNumber mod 30
+seconds =   (frameNumber div 30) mod 60
+minutes =  ((frameNumber div 30) div 60) mod 60
+hours   = (((frameNumber div 30) div 60) div 60) mod 24
+where mod means the remainder after integer division.
+

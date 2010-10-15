@@ -13,7 +13,14 @@ struct y4m_stream_info_cache {
 	int ch;
 };
 
- struct y4m_stream_info_cache sic;
+struct y4m_stream_info_cache sic;
+
+struct colour {
+	uint8_t y;
+	uint8_t u;
+	uint8_t v;
+};
+
 
 // Allocate a uint8_t frame
 int chromalloc(uint8_t *m[3], y4m_stream_info_t *sinfo)
@@ -127,7 +134,7 @@ uint8_t get_pixel(register int x, register int y, int plane, uint8_t *m[3],y4m_s
 	w = y4m_si_get_plane_width(si,plane);
 	*/
 	
-	//  the y4m_si_get_plane functions are eating large amounts of CPU.
+	//  the y4m_si_get_plane functions are eating large amounts of CPU on PPC machines.
 	
 	if ( plane == 0) {
 		h = sic.h;
@@ -271,4 +278,32 @@ int ychroma(int y, y4m_stream_info_t *si)
 	}
 	
 	return ychr;
+}
+
+int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int df) 
+{
+
+	int sec;
+	int dropFrames,timeBase,totalMinutes;
+	y4m_ratio_t fr;
+	
+	fr = y4m_si_get_framerate(si);
+	sec = h * 3600 + m * 60 + s;
+	if (fr.n % fr.d) {
+		// non integer frame rate
+		if (df) {
+			// TODO: drop frame
+			totalMinutes = 60 * h + m;
+			// 2 skipped frames per minute, excluding the 10 minute divisible ones.
+			return sec * (fr.n / fr.d + 1) - 2 * (totalMinutes - totalMinutes / 10); 
+		} else {
+			// non drop frame
+			// round up to the next highest frame rate, time code doesn't represent real time.
+			return sec * (fr.n / fr.d + 1);
+		}
+	} else {
+		//  integer frame rates
+		return sec * fr.n / fr.d;
+	}
+	
 }
