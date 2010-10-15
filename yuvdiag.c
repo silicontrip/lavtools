@@ -197,12 +197,13 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 	int h,m,s,f;
 	y4m_ratio_t fr;
 	char df = ':';
-	int d,n;
+	int d,n,ofc;
 	
 //	fprintf (stderr,"string_tc\n");
 
 	fr = y4m_si_get_framerate (sinfo);
 	
+	ofc = fc;
 
 	// TODO: need to handle NTSC drop frame
 	if (fr.n % fr.d) {
@@ -231,7 +232,7 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 	
 	
 	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
-	mjpeg_debug ("%d - %s\n",fc,tc);
+	mjpeg_debug ("%d - %s",ofc,tc);
 
 }
 
@@ -739,7 +740,7 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 int main (int argc, char *argv[])
 {
 	
-	int verbose = 4; // LOG_ERROR ;
+	int verbose = 1; 
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
