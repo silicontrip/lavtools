@@ -115,36 +115,42 @@ unsigned int decode_char ( int *p, unsigned char * text)
 	
 }
 
-int ftwidth (FT_Face face, unsigned char * text) {
+void ftdims (int *px, int *py, int *lines, FT_Face face, unsigned char * text) {
 
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
 	FT_UInt       glyph_index;
-	int           pen_x, pen_y,n,max;
+	int           pen_x, pen_y,n,max,topmax=0,rowmax=0;
 	char special[5];
 	unsigned int sp;
 	uint8_t x,y,z,w;
 	
-	pen_x = 0; max = 0;
+	
+	pen_x = 0; max = 0; pen_y = 0;
 	for ( n = 0; n < strlen(text); n++ ) {
 		
 		sp = decode_char(&n,text);
 		
 		if (sp == 10) {
 			if (pen_x>max) max=pen_x;
-			pen_x = 0;
-		} else {
+			pen_x = 0; //pen_y += rowmax + topmax;
+			(*lines)++;
+		} else if (sp >=32) {
 		
 			FT_Load_Char( face, sp, FT_LOAD_RENDER );
 		
 			/* ignore errors */
 			pen_x += slot->advance.x;
 			pen_y += slot->advance.y; /* not useful for now */
+			
+			if ( slot->bitmap_top > topmax) topmax=slot->bitmap_top;
+			if ( slot->bitmap.rows-slot->bitmap_top > rowmax) rowmax = slot->bitmap.rows-slot->bitmap_top;
+			
 		}
 	}
 	if (max > pen_x) pen_x = max;
-	return pen_x;
-	
+	*px = pen_x;
+	*py = rowmax + topmax;
 }
 
 void draw_bitmap (FT_Bitmap*  bitmap, int x, int y, uint8_t *m[3], y4m_stream_info_t *si,  uint8_t yc, uint8_t uc, uint8_t vc )
@@ -193,14 +199,14 @@ void draw_bitmap (FT_Bitmap*  bitmap, int x, int y, uint8_t *m[3], y4m_stream_in
 
 
 static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, unsigned char * text,
-						 int pen_y, int yc, int uc, int vc )
+						 int pen_y, int yc, int uc, int vc, int yadvance )
 {
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
 	FT_UInt       glyph_index;
 	int           pen_x,  n,x,y;	
 	int error;
-	int twidth;
+	int twidth,theight,lines=0;
 	uint8_t bri;
 	uint8_t piy,piu,piv;
 	int cx,cy;
@@ -214,7 +220,7 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, uns
 	// configurable start location.
 	width = y4m_si_get_plane_width(si,0);
 
-	twidth = ftwidth(face,text);
+	ftdims(&twidth, &theight, &lines, face,text);
 	twidth = twidth >> 6;
 	
 	pen_x =  width / 2 - twidth / 2;
@@ -223,6 +229,9 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, uns
 		pen_x = 0;
 	}
 	
+	mjpeg_debug ("dims: w: %d h: %d l: %d",twidth,theight,lines);
+	
+	pen_y -= theight * lines;
 	
 	
 	for ( n = 0; n < strlen(text); n++ )
@@ -234,10 +243,10 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, uns
 		if (sp == 10) {
 			
 			//TODO: get correct vertical spacing.
-			FT_Load_Char( face, sp, FT_LOAD_RENDER );
+		//	FT_Load_Char( face, sp, FT_LOAD_RENDER );
 
 			pen_x =  width / 2 - twidth / 2;
-			pen_y += slot->bitmap_top;
+			pen_y += theight+4; // test value since most of my subs tests are 24
 
 		} else {
 			
@@ -307,7 +316,7 @@ unsigned char * get_sub (struct subhead s, int fc) {
 
 
 static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs, 
-				   int pen_y, int yc, int uc, int vc )
+				   int pen_y, int yc, int uc, int vc, int yadvance )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
@@ -338,7 +347,7 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 			
 			text=get_sub(subs,framecounter);
 			if (text != '\0') { 
-				filterframe(yuv_data,inStrInfo,face,text,pen_y,yc,uc,vc);
+				filterframe(yuv_data,inStrInfo,face,text,pen_y,yc,uc,vc,yadvance);
 			}
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 		}
@@ -582,7 +591,7 @@ int main (int argc, char *argv[])
 	if (subname != NULL) {
 	// read the subtitle file
 		read_subs(&subs,subname);
-		filter(fdIn, fdOut, &in_streaminfo,face,subs,pen_y,yc,uc,vc);
+		filter(fdIn, fdOut, &in_streaminfo,face,subs,pen_y,yc,uc,vc,14 * height / 10);
 		// mjpeg_debug ("free subname");
 		free (subname);
 		// mjpeg_debug ("free subs");
