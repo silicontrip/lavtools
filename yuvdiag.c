@@ -215,6 +215,7 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 		
 		// drop calculation.
 		// stick an IF around this make it command line configurable.
+		// this algorithm is not the correct SMPTE algorithm. 
 		fc = (fc * fr.n) / n;
 		df =';';
 
@@ -230,7 +231,7 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 	
 	
 	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
-//	fprintf (stderr,"%d - %s\n",fc,tc);
+	mjpeg_debug ("%d - %s\n",fc,tc);
 
 }
 

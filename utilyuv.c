@@ -292,10 +292,14 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 	if (fr.n % fr.d) {
 		// non integer frame rate
 		if (df) {
-			// TODO: drop frame
-			totalMinutes = 60 * h + m;
-			// 2 skipped frames per minute, excluding the 10 minute divisible ones.
-			return sec * (fr.n / fr.d + 1) - 2 * (totalMinutes - totalMinutes / 10); 
+			if ( fabs(29.97 - (1.0 * fr.n / fr.d )) < 0.001){
+				// TODO: this only works for 29.97
+				totalMinutes = 60 * h + m;
+				// 2 skipped frames per minute, excluding the 10 minute divisible ones.
+				return sec * (fr.n / fr.d + 1) - 2 * (totalMinutes - totalMinutes / 10);
+			} else {
+				mjpeg_warn ("Unknown drop frame frame rate: %d/%d",fr.n,fr.d);
+			}
 		} else {
 			// non drop frame
 			// round up to the next highest frame rate, time code doesn't represent real time.
