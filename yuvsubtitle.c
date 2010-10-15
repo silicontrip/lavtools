@@ -51,7 +51,7 @@ struct subtitle {
 	int on;
 	int off;
 //	char *text;
-	char text[256]; // for testing
+	unsigned char text[256]; // for testing
 };
 
 struct subhead {
@@ -69,27 +69,66 @@ static void print_usage()
 			);
 }
 
+unsigned int decode_char ( int *p, unsigned char * text)
+{
+	unsigned int sp;
+	
+	char special[3];
+	sp = text[*p];
+//	 mjpeg_debug ("encoded character %d",sp);
+	
+	// try for a uri style special characters
 
-int ftwidth (FT_Face face, char * text) {
+	if (sp == '%') {
+		strncpy(special,&text[*p+1],2);
+		special[2] = '\0';
+		*p+=2;
+		sscanf(special,"%x",&sp);
+	} else if ((sp & 224) == 192) {
+		if ((text[*p+1] & 192) == 128) {
+		//	mjpeg_debug("decode UTF dual character");
+
+			sp = ((sp & 31) << 6) + (text[*p+1] & 63);
+			*p++;
+		}
+	} else if ((sp & 240) == 224) {
+		
+		if ((text[*p+1] & 192) == 128 && (text[*p+2] & 192) == 128) {
+//			mjpeg_debug("decode UTF triple character");
+			sp = ((sp & 15) << 12) + ((text[*p+1] & 63) << 6) + (text[*p+2] & 63);
+			*p+=2;
+		}
+	} else if ((sp & 248) == 240) {
+		
+		if ((text[*p+1] & 192) == 128 && (text[*p+2] & 192) == 128 && (text[*p+3] & 192) == 128) {
+//			mjpeg_debug("decode UTF quad character");
+
+			sp = ((sp & 7) << 18) + ((text[*p+1] & 63) << 12)  + ((text[*p+2] & 63) << 6) + (text[*p+3] & 63);
+			*p+=3;
+
+		}
+	}
+	
+	//mjpeg_debug ("decoded character %x",sp);
+
+	return sp;
+	
+}
+
+int ftwidth (FT_Face face, unsigned char * text) {
 
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
 	FT_UInt       glyph_index;
 	int           pen_x, pen_y,n,max;
 	char special[5];
-	int sp;
+	unsigned int sp;
+	uint8_t x,y,z,w;
 	
 	pen_x = 0; max = 0;
 	for ( n = 0; n < strlen(text); n++ ) {
-		sp = text[n];
-		if (sp == '%') {
-			strncpy(special,&text[n+1],4);
-			special[4] = '\0';
-			n+=4;
-			sscanf(special,"%x",&sp);
-			
-			
-		}	
+		
+		sp = decode_char(&n,text);
 		
 		if (sp == 10) {
 			if (pen_x>max) max=pen_x;
@@ -153,7 +192,7 @@ void draw_bitmap (FT_Bitmap*  bitmap, int x, int y, uint8_t *m[3], y4m_stream_in
 }				  
 
 
-static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, char * text,
+static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, unsigned char * text,
 						 int pen_y, int yc, int uc, int vc )
 {
 	
@@ -190,14 +229,7 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 	{
 		/* load glyph image into the slot (erase previous one) */
 		
-		// try for a uri style special characters
-		sp = text[n];
-		if (sp == '%') {
-			strncpy(special,&text[n+1],4);
-			special[4] = '\0';
-			n+=4;
-			sscanf(special,"%x",&sp);
-		}	
+		sp = decode_char(&n,text);		
 		
 		if (sp == 10) {
 			
@@ -211,12 +243,13 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 			
 			FT_Load_Char( face, sp, FT_LOAD_RENDER );
 			
-			for (cx=-1; cx < 3; cx ++) 
-				for (cy =-1; cy<3; cy++) {
+			for (sp=0;sp<3;sp++)
+			for (cx=-1; cx < 2; cx ++) 
+				for (cy =-1; cy<2; cy++) {
 					
 					draw_bitmap( &slot->bitmap,
-								pen_x + slot->bitmap_left + cx,
-								pen_y - slot->bitmap_top + cy, 
+								pen_x + slot->bitmap_left + cx + sp,
+								pen_y - slot->bitmap_top + cy + sp, 
 								m,si,16,128,128 );
 					
 				}
@@ -256,7 +289,7 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 }
 
 
-char * get_sub (struct subhead s, int fc) {
+unsigned char * get_sub (struct subhead s, int fc) {
 
 	int n;
 	// mjpeg_info("entries: %d ", s.entries);
@@ -281,7 +314,7 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	int                read_error_code ;
 	int                write_error_code ;
 	int framecounter=0;
-	char *text;
+	unsigned char *text;
 	
 	// Allocate memory for the YUV channels
 	
@@ -423,6 +456,9 @@ int read_subs (struct subhead *s, char *filename) {
 		}
 			strcpy(s->subs[count].text, p);
 		for (c=0; c < strlen(s->subs[count].text); c++) {
+			
+		//	mjpeg_debug("copying character: %d",s->subs[count].text[c]);
+			
 			if (s->subs[count].text[c] < 32) {
 				s->subs[count].text[c]=0;		
 			}
@@ -547,9 +583,9 @@ int main (int argc, char *argv[])
 	// read the subtitle file
 		read_subs(&subs,subname);
 		filter(fdIn, fdOut, &in_streaminfo,face,subs,pen_y,yc,uc,vc);
-		mjpeg_debug ("free subname");
+		// mjpeg_debug ("free subname");
 		free (subname);
-		mjpeg_debug ("free subs");
+		// mjpeg_debug ("free subs");
 
 		free (subs.subs);
 	} else {
