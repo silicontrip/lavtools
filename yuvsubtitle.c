@@ -200,8 +200,10 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, cha
 		}	
 		
 		if (sp == 10) {
+			FT_Load_Char( face, sp, FT_LOAD_RENDER );
+
 			pen_x =  width / 2 - twidth / 2;
-			pen_y += slot->advance.y >> 6; /* not useful for now */
+			pen_y += slot->bitmap_top; /* not useful for now */
 
 		} else {
 			
