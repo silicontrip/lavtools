@@ -194,43 +194,16 @@ void read_font(uint8_t **d)
 
 void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 
-	int h,m,s,f;
-	y4m_ratio_t fr;
+	int h,m,s,f,d;
 	char df = ':';
-	int d,n;
-	
-//	fprintf (stderr,"string_tc\n");
-
-	fr = y4m_si_get_framerate (sinfo);
-	
-
-	// TODO: need to handle NTSC drop frame
-	if (fr.n % fr.d) {
 		
-		n = fr.n;
-		
-		// round up to integer frame rate
-		// non drop calculation.
-		fr.n += fr.d - (fr.n % fr.d);
-		
-		// drop calculation.
-		// stick an IF around this make it command line configurable.
-		fc = (fc * fr.n) / n;
-		df =';';
-
-	}
-	
 	// fprintf (stderr,"%d/%d int fr %d\n",fr.n,fr.d, fr.n % fr.d);
-
-	
-	h = fr.d * fc / fr.n / 3600;
-	m = (fr.d * fc / fr.n / 60) % 60;
-	s = (fr.d * fc / fr.n) % 60;
-	f = fc % (fr.n / fr.d);
-	
+	d=1;
+	framecount2timecode(sinfo,&h,&m,&s,&f,fc,&d);
+	if (d) { df = ';'; }
 	
 	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
-//	fprintf (stderr,"%d - %s\n",fc,tc);
+	mjpeg_debug ("%d - %s",fc,tc);
 
 }
 
@@ -738,7 +711,7 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 int main (int argc, char *argv[])
 {
 	
-	int verbose = 4; // LOG_ERROR ;
+	int verbose = 1; 
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;

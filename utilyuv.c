@@ -13,7 +13,14 @@ struct y4m_stream_info_cache {
 	int ch;
 };
 
- struct y4m_stream_info_cache sic;
+struct y4m_stream_info_cache sic;
+
+struct colour {
+	uint8_t y;
+	uint8_t u;
+	uint8_t v;
+};
+
 
 // Allocate a uint8_t frame
 int chromalloc(uint8_t *m[3], y4m_stream_info_t *sinfo)
@@ -127,7 +134,7 @@ uint8_t get_pixel(register int x, register int y, int plane, uint8_t *m[3],y4m_s
 	w = y4m_si_get_plane_width(si,plane);
 	*/
 	
-	//  the y4m_si_get_plane functions are eating large amounts of CPU.
+	//  the y4m_si_get_plane functions are eating large amounts of CPU on PPC machines.
 	
 	if ( plane == 0) {
 		h = sic.h;
@@ -272,3 +279,84 @@ int ychroma(int y, y4m_stream_info_t *si)
 	
 	return ychr;
 }
+
+int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int df) 
+{
+
+	int sec;
+	int dropFrames,timeBase,totalMinutes;
+	y4m_ratio_t fr;
+	
+	fr = y4m_si_get_framerate(si);
+	sec = h * 3600 + m * 60 + s;
+	if (fr.n % fr.d) {
+		// non integer frame rate
+		if (df) {
+			if ( fabs(29.97 - (1.0 * fr.n / fr.d )) < 0.001){
+				// TODO: this only works for 29.97
+				totalMinutes = 60 * h + m;
+				fr.n += fr.d - (fr.n % fr.d);
+				// 2 skipped frames per minute, excluding the 10 minute divisible ones.
+				return sec * fr.n / fr.d - 2 * (totalMinutes - totalMinutes / 10);
+			} else {
+				mjpeg_warn ("Unknown drop frame frame rate: %d/%d",fr.n,fr.d);
+			}
+		} else {
+			// non drop frame
+			// round up to the next highest frame rate, time code doesn't represent real time.
+			fr.n += fr.d - (fr.n % fr.d);
+			return sec * fr.n / fr.d;
+		}
+	} else {
+		//  integer frame rates
+		return sec * fr.n / fr.d;
+	}
+	
+}
+
+void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f, int fc, int *df ) 
+{
+	
+	y4m_ratio_t fr;
+	int d,n,ofc;
+	int smpted, smptem;
+	//	fprintf (stderr,"string_tc\n");
+	
+	fr = y4m_si_get_framerate (si);
+		
+	if (fr.n % fr.d) {
+		
+		n = fr.n;
+		
+		// round up to integer frame rate
+		// non drop calculation.
+		fr.n += fr.d - (fr.n % fr.d);
+		
+		if (df) {
+		// drop calculation.
+
+			if ( fabs(29.97 - (1.0 * n / fr.d )) < 0.001){
+				// the correct SMPTE algorithm for 29.97
+				smpted = fc / 17982;
+				smptem = fc % 17982;
+				fc +=  18*smpted + 2*((smptem - 2) / 1798);
+			} else {
+				// this algorithm is not the correct SMPTE algorithm. 
+				// but is more generic
+				fc = (fc * fr.n) / n;
+			}
+
+			
+		}
+	} else {
+		*df = 0;
+	}
+	
+	
+	*h = fr.d * fc / fr.n / 3600;
+	*m = (fr.d * fc / fr.n / 60) % 60;
+	*s = (fr.d * fc / fr.n) % 60;
+	*f = fc % (fr.n / fr.d);
+	
+}
+
