@@ -308,12 +308,12 @@ void read_subs_t(struct subhead *s)
 	strcpy(s->subs[3].text,"I have altered the Deal. Pray I don't alter it any further.");
 	
 	s->subs[4].on = 368;
-	s->subs[4].off = 434;
+	s->subs[4].off = 434; 
 	strcpy(s->subs[4].text,"This deal is getting worse all the time.");
 
 }
 
-int edlcount (FILE *file, int *maxline, int *lines)
+void edlcount (FILE *file, int *maxline, int *lines)
 {
 	
 	int c;
