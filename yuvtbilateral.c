@@ -357,6 +357,7 @@ int main (int argc, char *argv[])
 		
 	}
 	
+			y4m_accept_extensions(1);
 	
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);

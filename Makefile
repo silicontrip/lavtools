@@ -19,26 +19,26 @@ TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvo
 
 all: $(TARGETS)
 
-yuvtshot: yuvtshot.o utilyuv.o
+yuvtshot: yuvtshot.o 
 
-yuvdiff: yuvdiff.o utilyuv.o
+yuvdiff: yuvdiff.o 
 
-yuvpixelgraph: yuvpixelgraph.o utilyuv.o
+yuvpixelgraph: yuvpixelgraph.o 
 
-yuvbilateral: yuvbilateral.o utilyuv.o
+yuvbilateral: yuvbilateral.o 
 
-yuvtbilateral: yuvtbilateral.o utilyuv.o
+yuvtbilateral: yuvtbilateral.o 
 
-yuvsubtitle: yuvsubtitle.o utilyuv.o
+yuvsubtitle: yuvsubtitle.o 
 	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle $<
 
-yuvdiag: yuvdiag.o utilyuv.o
+yuvdiag: yuvdiag.o 
 	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag $<
 
 yuvCIFilter: yuvCIFilter.o
 	gcc $(LDFLAGS) $(CFLAGS) $(COCOAFLAGS) -o yuvCIFilter $<
 
-yuvilace: yuvilace.o utilyuv.o
+yuvilace: yuvilace.o 
 	gcc $(LDFLAGS) $(CFLAGS) -lfftw3 -o yuvilace utilyuv.o $<
 
 libav2yuv: libav2yuv.c

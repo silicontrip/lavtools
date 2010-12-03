@@ -447,6 +447,7 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 	
 }
 
+/*
 void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 {	
 	int fs,cfs;
@@ -463,7 +464,7 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 
 	
 }
-
+*/
 static void print_usage() 
 {
 	fprintf (stderr,
