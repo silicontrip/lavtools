@@ -99,58 +99,6 @@ static void print_usage()
 			 );
 }
 
-// Allocate a uint8_t frame
-int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	m[0] = (uint8_t *)malloc(fs);
-	m[1] = (uint8_t *)malloc(cfs);
-	m[2] = (uint8_t *)malloc(cfs);
-	
-	if( !m[0] || !m[1] || !m[2]) {
-		return -1;
-	} else {
-		return 0;
-	}
-	
-}
-
-//Copy a uint8_t frame
-int chromacpy(uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
-{
-	
-	int fs,cfs;
-	
-	fs = fd->plane_length_luma;
-	cfs = fd->plane_length_chroma;
-	
-	memcpy (m[0],n[0],fs);
-	memcpy (m[1],n[1],cfs);
-	memcpy (m[2],n[2],cfs);
-	
-}
-
-// returns the opposite field ordering
-int invert_order(int f)
-{
-	switch (f) {
-			
-		case Y4M_ILACE_TOP_FIRST:
-			return Y4M_ILACE_BOTTOM_FIRST;
-		case Y4M_ILACE_BOTTOM_FIRST:
-			return Y4M_ILACE_TOP_FIRST;
-		case Y4M_ILACE_NONE:
-			return Y4M_ILACE_NONE;
-		default:
-			return Y4M_UNKNOWN;
-	}
-}
-
 int_detect3 (int x, int y,uint8_t *m[3],frame_dimensions *fd)
 {
 	uint8_t luma[4];
