@@ -5,7 +5,7 @@
 #include <mpegconsts.h>
 #include <stdint.h>
 #include <string.h>
-
+#include <math.h>
 
 
 // allocates the plane buffers based on the stream info
@@ -42,6 +42,7 @@ int ychroma (int y, y4m_stream_info_t *si);
 
 // time code functions
 int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int df) ;
-void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,  int fc, int df );
+void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,  int fc, int *df );
+
 
 #endif
