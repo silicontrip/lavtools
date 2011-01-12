@@ -98,7 +98,9 @@ static void filterinitialize () {
 	this.kernelRadius = this.sigmaD>this.sigmaR?this.sigmaD * 2:this.sigmaR * 2;
 	this.kernelRadius = this.kernelRadius / PRECISION;
 	
-	this.twoSigmaRSquared = (2 * (1.0 *this.sigmaR/PRECISION)  * (1.0 *this.sigmaR/PRECISION)) * PRECISION;
+//	this.twoSigmaRSquared = (2 * (1.0 *this.sigmaR/PRECISION)  * (1.0 *this.sigmaR/PRECISION)) * PRECISION;	
+	this.twoSigmaRSquared = (2 * (this.sigmaR * this.sigmaR)/PRECISION);
+
 	
 	this.kernelSize = this.kernelRadius * 2 + 1;
 	// center = (this.kernelSize - 1) / 2;
@@ -159,7 +161,8 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 		
 		//fprintf (stderr,"kernel D %d. kp %d cen %d\n",this.kernelD[z],intensityKernelPos,intensityCenter);
 		
-		weight = this.kernelD[z] * similarity(intensityKernelPos,intensityCenter);
+		// multiplying two fixed precision numbers together squares the PRECISION. So need to remove it.
+		weight = this.kernelD[z] * similarity(intensityKernelPos,intensityCenter) / PRECISION;
 		totalWeight += weight;
 		sum += (weight * intensityKernelPos);
 		
@@ -357,7 +360,7 @@ int main (int argc, char *argv[])
 		
 	}
 	
-			y4m_accept_extensions(1);
+	y4m_accept_extensions(1);
 	
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
