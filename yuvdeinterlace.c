@@ -92,6 +92,7 @@ static void print_usage()
 			 "\t\t 2: deinterlace to half height double framerate. (only good for spacial filters)\n"
 			 "\t\t 3: deinterlace to full height same frame rate. (Merges both fields into one)\n"
 			 "\t\t 4: Interlace to full height half frame rate. (re-interlace)\n" 
+			 "\t\t 5: deinterlace to full height same frame rate. (Drops one field)\n"
 			 "\t -I[t|b|p] force interlace mode\n"
 			 "\t -f deinterlace entire frame (no adaptive detection)\n"
 			 "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
@@ -634,7 +635,7 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 	full = getFullframe();
 	
 	for (x=0; x<w; x++) {
-		for (y=0; y<h; y+=2) {
+		for (y=0; y<h; y++) {
 			// is interpolation required
 			// there may be a more efficient way to de-interlace a full frame
 			if (full != 0 || int_detect3(x,y,n,fd) ) {
@@ -648,10 +649,14 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 						merge_pixels(x,y,l,n,fd);
 //						merge_pixels(x,y+1,l,n,fd);
 						break;
+					case 5:
+						if (!(y%2)) { deint_pixels(x,y,l,n,fd); }
+						break;
+
 					default:
-						deint_pixels(x,y,l,n,fd);
+						if (!(y%2)) { deint_pixels(x,y,l,n,fd); }
 //deint_pixels(x,y+2,l,n,fd);
-						deint_pixels(x,y+1,m,n,fd);
+						if (y%2) { deint_pixels(x,y,m,n,fd); }
 //						deint_pixels(x,y+3,m,n,fd);
 						break;
 				}
@@ -732,7 +737,7 @@ static void deinterlace(int fdIn,
 			//mjpeg_warn("write");
 			
 			
-			if (getMark() == 3 || getMark() == 1) {
+			if (getMark() == 3 || getMark() == 1 || getMark() == 5) {
 				write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_bdata );
 			} else if (interlaced == Y4M_ILACE_TOP_FIRST) {
 				write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_tdata );
@@ -1019,6 +1024,7 @@ int main (int argc, char *argv[])
 		case 0: // double frame rate
 			frame_rate.n *= 2 ;
 		case 3: // same height, same frame rate (merge)
+		case 5:
 			if (yuv_interlacing != Y4M_UNKNOWN)
 				y4m_si_set_interlace(&in_streaminfo, yuv_interlacing);
 			

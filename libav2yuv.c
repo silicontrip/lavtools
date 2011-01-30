@@ -418,7 +418,7 @@ int parseEDL (char *file, struct edlentry **list)
 }
 
 
-void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
+void avchromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
 	
 	int y,h,w;
@@ -881,7 +881,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			
 			//	mjpeg_debug("after sws_scale(). %d \n",convert_mode);
 			
-			chromacpy(yuv_data,*pFrame444,streaminfo);
+			avchromacpy(yuv_data,*pFrame444,streaminfo);
 			
 			//	manual_write_yuv(yuv_data,streaminfo);
 			
@@ -897,7 +897,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #ifdef DEBUGPROCESSVIDEO
 			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
-			chromacpy(yuv_data,pFrame,streaminfo);
+			avchromacpy(yuv_data,pFrame,streaminfo);
 		}
 	} /* frame finished */
 	

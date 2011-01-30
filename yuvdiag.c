@@ -57,13 +57,14 @@ gcc -O3 -I/opt/local/include -I/opt/local/include/freetype2 -I/usr/local/include
 static void print_usage() 
 {
 	fprintf (stderr,
-		"usage: yuvdiag [-v] [-ycl] [-h]\n"
+		"usage: yuvdiag [-v] [-ycltf] [-h]\n"
 		"yuvdiag converts the yuvstream for technical viewing\n"
 		"\n"
 		"\t -y copy yuv channels into the luma channel\n"
 		"\t -c chroma scope\n" 
 		"\t -l luma scope\n" 
-		"\t -t time code\n"
+		"\t -t time code must be supplied with -f\n"
+			 "\t -f font face\n"
 		"\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 		"\t -h print this help\n"
 	);
