@@ -1,8 +1,6 @@
 AC_INIT([MarkYUV], [1.4], [mjpeg0@silicontrip.org])
 AM_INIT_AUTOMAKE([MarkYUV],[1.4])
 AC_PROG_CC
-AC_PROG_OBJC
-AC_LANG_PUSH([Objective C])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
 AC_ARG_WITH(mjpegtools, AC_HELP_STRING([--with-mjpegtools=PATH], [PATH where mjpegtools are installed.]),with_mjpegtools=$withval)
@@ -39,7 +37,7 @@ OLD_CFLAGS="$CFLAGS"
 OLD_LIBS="$LIBS"
 LIBS="$LIBS -L$with_mjpegtools/lib"
 CFLAGS="$CFLAGS -I$with_mjpegtools/include"
-AC_CHECK_LIB([mjpegutils],[mjpeg_default_handler_verbosity],have_mjpegutils="yes",[echo "Error! mjpegutils must be installed" exit -1])
+AC_CHECK_LIB([mjpegutils],[mjpeg_default_handler_verbosity],have_mjpegutils="yes",[echo "Error! mjpegutils must be installed" ; exit -1])
 MJPEG_LIBS="-L$with_mjpegtools/lib"
 MJPEG_CFLAGS="-I$with_mjpegtools/include"
 LIBS="$OLD_LIBS"
@@ -76,7 +74,14 @@ FREETYPE_CFLAGS="-I$with_ffreetype/include"
 LIBS="$OLD_LIBS"
 CFLAGS="$OLD_CFLAGS"
 
+AC_LANG_PUSH([Objective C])
 AC_CHECK_HEADER([QuartzCore/CIFilter.h],have_coreimage="yes")
+if (test "x$have_coreimage" == "xyes")
+then
+	AC_PROG_OBJC
+
+fi
+
 
 AM_CONDITIONAL(HAVE_COREIMAGE, test "x$have_coreimage" = xyes)
 AM_CONDITIONAL(HAVE_FFTW, test "x$have_fftw" = xyes)
