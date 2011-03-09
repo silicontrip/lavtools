@@ -33,8 +33,8 @@ gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvadjust.c -o yuvadjust
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <mjpegutils/yuv4mpeg.h>
+#include <mjpegutils/mpegconsts.h>
 
 #define YUVRFPS_VERSION "0.3"
 
