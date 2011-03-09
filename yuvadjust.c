@@ -124,8 +124,8 @@ static void adjust(  int fdIn , y4m_stream_info_t  *inStrInfo,
 					vv = *(yuv_data[2]+x+(y*cw)) - 128 ;
 
 					// hue rotation, saturation and shift
-					nvu = cos_hue * vu - sin_hue * vv * adj_sat + adj_v;
-					nvv = sin_hue * vu + cos_hue * vv * adj_sat + adj_u;
+					nvu = (cos_hue * vu - sin_hue * vv) * adj_sat + adj_v;
+					nvv = (sin_hue * vu + cos_hue * vv) * adj_sat + adj_u;
 					
 					if (nvu > 112) nvu = 112;
 					if (nvu < -112) nvu = -112;
