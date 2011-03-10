@@ -1,10 +1,7 @@
 
-#OPT_FLAG=-g
 OPT_FLAG=-O3 -ftree-vectorize
-#CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3 -DHAVE_AV_FREE_PACKET
-#CODECFLAGS=-DHAVE_AV_FREE_PACKET
-AM_LDFLAGS=-L/usr/X11/lib -L/usr/local/lib -lmjpegutils -L/opt/local/lib 
-AM_CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/opt/local/include/freetype2
+AM_LDFLAGS=@MJPEG_LIBS@
+AM_CFLAGS=@MJPEG_CFLAGS@
 
 bin_PROGRAMS= yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 	yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot \
@@ -81,6 +78,10 @@ yuvwater_SOURCES = yuvwater.c
 yuvbilateral_SOURCES = yuvbilateral.c utilyuv.c
 yuvtbilateral_SOURCES = yuvtbilateral.c utilyuv.c
 yuvpixelgraph_SOURCES = yuvpixelgraph.c utilyuv.c
+
+
+.c.o:
+	gcc $(AM_CFLAGS) -c -o $@ $<
 
 clean:
 	 rm -f *.o $(TARGETS)
