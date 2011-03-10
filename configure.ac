@@ -1,8 +1,26 @@
 AC_INIT([MarkYUV], [1.4], [mjpeg0@silicontrip.org])
 AM_INIT_AUTOMAKE([MarkYUV],[1.4])
 AC_PROG_CC
+AC_CONFIG_HEADERS([config.h])
 AC_CONFIG_FILES([Makefile])
 AC_OUTPUT
+# Checks for header files.
+AC_CHECK_HEADERS([fcntl.h stdint.h stdlib.h string.h strings.h unistd.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
+AC_TYPE_INT16_T
+AC_TYPE_INT64_T
+AC_TYPE_SIZE_T
+AC_TYPE_UINT16_T
+AC_TYPE_UINT32_T
+AC_TYPE_UINT64_T
+AC_TYPE_UINT8_T
+
+# Checks for library functions.
+AC_FUNC_MALLOC
+AC_CHECK_FUNCS([memset regcomp sqrt strcasecmp])
+
 AC_ARG_WITH(mjpegtools, AC_HELP_STRING([--with-mjpegtools=PATH], [PATH where mjpegtools are installed.]),with_mjpegtools=$withval)
 AC_ARG_WITH(ffmpeg, AC_HELP_STRING([--with-ffmpeg=PATH], [PATH where libavcodec is installed.]),with_ffmpeg=$withval)
 AC_ARG_WITH(fftw, AC_HELP_STRING([--with-fftw=PATH], [PATH where FFTW is installed.]),with_fftw=$withval)
@@ -45,7 +63,7 @@ CFLAGS="$OLD_CFLAGS"
 
 LIBS="$LIBS -L$with_ffmpeg/lib"
 CFLAGS="$CFLAGS -I$with_ffmpeg/include"
-AC_CHECK_LIB([avcodec],[av_free_packet],have_ffmpeg="yes")
+AC_CHECK_LIB([avcodec],[av_free_packet],have_ffmpeg="yes",have_ffmpeg="no")
 AC_CHECK_LIB([avcodec],[avcodec_decode_audio2],have_audio2="yes")
 AC_CHECK_LIB([avcodec],[avcodec_decode_audio3],have_audio3="yes")
 AC_CHECK_LIB([avcodec],[avcodec_decode_video],have_video="yes")
@@ -60,7 +78,7 @@ CFLAGS="$OLD_CFLAGS"
 
 LIBS="$LIBS -L$with_fftw/lib"
 CFLAGS="$CFLAGS -I$with_fftw/include"
-AC_CHECK_LIB([fftw3],[fftw_plan_r2r_2d],have_fftw="yes")
+AC_CHECK_LIB([fftw3],[fftw_plan_r2r_2d],have_fftw="yes",have_fftw="no")
 FFTW_LIBS="-L$with_fftw/lib"
 FFTW_CFLAGS="-I$with_fftw/include"
 LIBS="$OLD_LIBS"
@@ -68,20 +86,27 @@ CFLAGS="$OLD_CFLAGS"
 
 LIBS="$LIBS -L$with_freetype/lib"
 CFLAGS="$CFLAGS -I$with_ffreetype/include"
-AC_CHECK_LIB([freetype],[FT_New_Face],have_freetype="yes")
+AC_CHECK_LIB([freetype],[FT_New_Face],have_freetype="yes",have_freetype="no")
 FREETYPE_LIBS="-L$with_freetype/lib"
 FREETYPE_CFLAGS="-I$with_ffreetype/include"
 LIBS="$OLD_LIBS"
 CFLAGS="$OLD_CFLAGS"
 
-AC_LANG_PUSH([Objective C])
-AC_CHECK_HEADER([QuartzCore/CIFilter.h],have_coreimage="yes")
-if (test "x$have_coreimage" == "xyes")
+AC_CHECK_HEADER([QuartzCore/CIFilter.h],have_coreimage="yes",have_coreimage="no")
+if test "x$have_coreimage" = "xyes"
 then
+	AC_LANG_PUSH([Objective C])
 	AC_PROG_OBJC
-
 fi
 
+if test "x$have_audio3" = "xyes"
+then
+	AC_DEFINE("HAVE_AVCODEC_DECODE_AUDIO3")
+fi
+if test "x$have_video2" = "xyes"
+then
+	AC_DEFINE("HAVE_AVCODEC_DECODE_VIDEO2")
+fi
 
 AM_CONDITIONAL(HAVE_COREIMAGE, test "x$have_coreimage" = xyes)
 AM_CONDITIONAL(HAVE_FFTW, test "x$have_fftw" = xyes)
@@ -96,3 +121,9 @@ AC_SUBST(FFMPEG_LIBS)
 AC_SUBST(FFMPEG_CFLAGS)
 AC_SUBST(FREETYPE_LIBS)
 AC_SUBST(FREETYPE_CFLAGS)
+
+echo "FFMPEG: $have_ffmpeg"
+echo "FFTW: ${have_fftw}"
+echo "FREETYPE: ${have_freetype}"
+echo "Core Image: ${have_coreimage}"
+
