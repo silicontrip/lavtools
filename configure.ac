@@ -92,10 +92,10 @@ FREETYPE_CFLAGS="-I$with_ffreetype/include"
 LIBS="$OLD_LIBS"
 CFLAGS="$OLD_CFLAGS"
 
+AC_LANG_PUSH([Objective C])
 AC_CHECK_HEADER([QuartzCore/CIFilter.h],have_coreimage="yes",have_coreimage="no")
 if test "x$have_coreimage" = "xyes"
 then
-	AC_LANG_PUSH([Objective C])
 	AC_PROG_OBJC
 fi
 

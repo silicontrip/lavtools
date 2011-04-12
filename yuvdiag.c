@@ -298,14 +298,14 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 
 }
 
-static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname )
+static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname, int frameCounter )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
 	uint8_t				*font_data;
 	int                read_error_code ;
 	int                write_error_code = Y4M_OK;
-	int frameCounter = 0;
+	// int frameCounter = 0;
 	char time[32];
 	
 	int w,h,error;
@@ -716,8 +716,9 @@ int main (int argc, char *argv[])
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	int width, mode, c;
-	const static char *legal_flags = "tvyiclhf:";
+	int mode, c;
+	int start = 0;
+	const static char *legal_flags = "tvyiclhf:s:";
 	
 	char *fontname=NULL;
 	
@@ -749,6 +750,9 @@ int main (int argc, char *argv[])
 				case 't':
 					mode = MODE_TIMEC;
 					break;
+			case 's':
+				start = atoi(optarg);
+				break;
 			case 'f':
 				fontname = (char *) malloc (strlen(optarg));
 				strcpy(fontname , optarg);
@@ -815,7 +819,7 @@ int main (int argc, char *argv[])
 			mjpeg_error_exit1("no font specified");
 		
 		y4m_write_stream_header(fdOut,&in_streaminfo);
-		timecode(fdIn, &in_streaminfo, fdOut,fontname);
+		timecode(fdIn, &in_streaminfo, fdOut,fontname,start);
 	}
 
 	

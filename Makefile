@@ -45,8 +45,9 @@ am__append_3 = yuvCIFilter
 am__append_4 = yuvilace
 subdir = .
 DIST_COMMON = README $(am__configure_deps) $(srcdir)/Makefile.am \
-	$(srcdir)/Makefile.in $(top_srcdir)/configure AUTHORS COPYING \
-	ChangeLog INSTALL NEWS depcomp install-sh missing
+	$(srcdir)/Makefile.in $(srcdir)/config.h.in \
+	$(top_srcdir)/configure AUTHORS COPYING ChangeLog INSTALL NEWS \
+	depcomp install-sh missing
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
 am__aclocal_m4_deps = $(top_srcdir)/configure.ac
 am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
@@ -54,6 +55,7 @@ am__configure_deps = $(am__aclocal_m4_deps) $(CONFIGURE_DEPENDENCIES) \
 am__CONFIG_DISTCLEAN_FILES = config.status config.cache config.log \
  configure.lineno config.status.lineno
 mkinstalldirs = $(install_sh) -d
+CONFIG_HEADER = config.h
 CONFIG_CLEAN_FILES =
 CONFIG_CLEAN_VPATH_FILES =
 am__EXEEXT_1 = libav-bitrate$(EXEEXT) \
@@ -196,9 +198,10 @@ AWK = awk
 CC = gcc
 CCDEPMODE = depmode=gcc3
 CFLAGS = -g -O2
+CPP = 
 CPPFLAGS = 
 CYGPATH_W = echo
-DEFS = -DPACKAGE_NAME=\"MarkYUV\" -DPACKAGE_TARNAME=\"markyuv\" -DPACKAGE_VERSION=\"1.4\" -DPACKAGE_STRING=\"MarkYUV\ 1.4\" -DPACKAGE_BUGREPORT=\"mjpeg0@silicontrip.org\" -DPACKAGE_URL=\"\" -DPACKAGE=\"MarkYUV\" -DVERSION=\"1.4\"
+DEFS = -DHAVE_CONFIG_H
 DEPDIR = .deps
 ECHO_C = \c
 ECHO_N = 
@@ -225,9 +228,9 @@ MAKEINFO = ${SHELL} /Users/d332027/Developer/mark_yuv/missing --run makeinfo
 MJPEG_CFLAGS = 
 MJPEG_LIBS = 
 MKDIR_P = ./install-sh -c -d
-OBJC = gcc
-OBJCDEPMODE = depmode=gcc3
-OBJCFLAGS = -g -O2
+OBJC = 
+OBJCDEPMODE = 
+OBJCFLAGS = 
 OBJCPP = 
 OBJEXT = o
 PACKAGE = MarkYUV
@@ -247,7 +250,7 @@ abs_srcdir = /Users/d332027/Developer/mark_yuv
 abs_top_builddir = /Users/d332027/Developer/mark_yuv
 abs_top_srcdir = /Users/d332027/Developer/mark_yuv
 ac_ct_CC = gcc
-ac_ct_OBJC = gcc
+ac_ct_OBJC = 
 am__include = include
 am__leading_dot = .
 am__quote = 
@@ -285,13 +288,9 @@ target_alias =
 top_build_prefix = 
 top_builddir = .
 top_srcdir = .
-
-#OPT_FLAG=-g
 OPT_FLAG = -O3 -ftree-vectorize
-#CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3 -DHAVE_AV_FREE_PACKET
-#CODECFLAGS=-DHAVE_AV_FREE_PACKET
-AM_LDFLAGS = -L/usr/X11/lib -L/usr/local/lib -lmjpegutils -L/opt/local/lib 
-AM_CFLAGS = $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/opt/local/include/freetype2
+AM_LDFLAGS = 
+AM_CFLAGS = 
 FFMPEG_FLAGS = $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 libav_bitrate_SOURCES = libav-bitrate.c
 libav2yuv_SOURCES = libav2yuv.c
@@ -317,7 +316,8 @@ yuvwater_SOURCES = yuvwater.c
 yuvbilateral_SOURCES = yuvbilateral.c utilyuv.c
 yuvtbilateral_SOURCES = yuvtbilateral.c utilyuv.c
 yuvpixelgraph_SOURCES = yuvpixelgraph.c utilyuv.c
-all: all-am
+all: config.h
+	$(MAKE) $(AM_MAKEFLAGS) all-am
 
 .SUFFIXES:
 .SUFFIXES: .c .m .o .obj
@@ -355,6 +355,23 @@ $(top_srcdir)/configure:  $(am__configure_deps)
 $(ACLOCAL_M4):  $(am__aclocal_m4_deps)
 	$(am__cd) $(srcdir) && $(ACLOCAL) $(ACLOCAL_AMFLAGS)
 $(am__aclocal_m4_deps):
+
+config.h: stamp-h1
+	@if test ! -f $@; then \
+	  rm -f stamp-h1; \
+	  $(MAKE) $(AM_MAKEFLAGS) stamp-h1; \
+	else :; fi
+
+stamp-h1: $(srcdir)/config.h.in $(top_builddir)/config.status
+	@rm -f stamp-h1
+	cd $(top_builddir) && $(SHELL) ./config.status config.h
+$(srcdir)/config.h.in:  $(am__configure_deps) 
+	($(am__cd) $(top_srcdir) && $(AUTOHEADER))
+	rm -f stamp-h1
+	touch $@
+
+distclean-hdr:
+	-rm -f config.h stamp-h1
 install-binPROGRAMS: $(bin_PROGRAMS)
 	@$(NORMAL_INSTALL)
 	test -z "$(bindir)" || $(MKDIR_P) "$(DESTDIR)$(bindir)"
@@ -489,13 +506,6 @@ include ./$(DEPDIR)/yuvtbilateral.Po
 include ./$(DEPDIR)/yuvtshot.Po
 include ./$(DEPDIR)/yuvwater.Po
 
-.c.o:
-	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
-	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-#	source='$<' object='$@' libtool=no \
-#	DEPDIR=$(DEPDIR) $(CCDEPMODE) $(depcomp) \
-#	$(COMPILE) -c $<
-
 .c.obj:
 	$(COMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
 	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
@@ -506,16 +516,16 @@ include ./$(DEPDIR)/yuvwater.Po
 .m.o:
 	$(OBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ $<
 	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-#	source='$<' object='$@' libtool=no \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(OBJCCOMPILE) -c -o $@ $<
+	source='$<' object='$@' libtool=no \
+	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+	$(OBJCCOMPILE) -c -o $@ $<
 
 .m.obj:
 	$(OBJCCOMPILE) -MT $@ -MD -MP -MF $(DEPDIR)/$*.Tpo -c -o $@ `$(CYGPATH_W) '$<'`
 	$(am__mv) $(DEPDIR)/$*.Tpo $(DEPDIR)/$*.Po
-#	source='$<' object='$@' libtool=no \
-#	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
-#	$(OBJCCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
+	source='$<' object='$@' libtool=no \
+	DEPDIR=$(DEPDIR) $(OBJCDEPMODE) $(depcomp) \
+	$(OBJCCOMPILE) -c -o $@ `$(CYGPATH_W) '$<'`
 
 ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	list='$(SOURCES) $(HEADERS) $(LISP) $(TAGS_FILES)'; \
@@ -527,11 +537,11 @@ ID: $(HEADERS) $(SOURCES) $(LISP) $(TAGS_FILES)
 	mkid -fID $$unique
 tags: TAGS
 
-TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+TAGS:  $(HEADERS) $(SOURCES) config.h.in $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
 	set x; \
 	here=`pwd`; \
-	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
+	list='$(SOURCES) $(HEADERS) config.h.in $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
 	  done | \
@@ -549,9 +559,9 @@ TAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
 	  fi; \
 	fi
 ctags: CTAGS
-CTAGS:  $(HEADERS) $(SOURCES)  $(TAGS_DEPENDENCIES) \
+CTAGS:  $(HEADERS) $(SOURCES) config.h.in $(TAGS_DEPENDENCIES) \
 		$(TAGS_FILES) $(LISP)
-	list='$(SOURCES) $(HEADERS)  $(LISP) $(TAGS_FILES)'; \
+	list='$(SOURCES) $(HEADERS) config.h.in $(LISP) $(TAGS_FILES)'; \
 	unique=`for i in $$list; do \
 	    if test -f "$$i"; then echo $$i; else echo $(srcdir)/$$i; fi; \
 	  done | \
@@ -718,7 +728,7 @@ distcleancheck: distclean
 	       exit 1; } >&2
 check-am: all-am
 check: check-am
-all-am: Makefile $(PROGRAMS)
+all-am: Makefile $(PROGRAMS) config.h
 installdirs:
 	for dir in "$(DESTDIR)$(bindir)"; do \
 	  test -z "$$dir" || $(MKDIR_P) "$$dir"; \
@@ -754,7 +764,7 @@ distclean: distclean-am
 	-rm -rf ./$(DEPDIR)
 	-rm -f Makefile
 distclean-am: clean-am distclean-compile distclean-generic \
-	distclean-tags
+	distclean-hdr distclean-tags
 
 dvi: dvi-am
 
@@ -817,22 +827,23 @@ ps-am:
 
 uninstall-am: uninstall-binPROGRAMS
 
-.MAKE: install-am install-strip
+.MAKE: all install-am install-strip
 
 .PHONY: CTAGS GTAGS all all-am am--refresh check check-am clean \
 	clean-binPROGRAMS clean-generic ctags dist dist-all dist-bzip2 \
 	dist-gzip dist-lzma dist-shar dist-tarZ dist-xz dist-zip \
 	distcheck distclean distclean-compile distclean-generic \
-	distclean-tags distcleancheck distdir distuninstallcheck dvi \
-	dvi-am html html-am info info-am install install-am \
-	install-binPROGRAMS install-data install-data-am install-dvi \
-	install-dvi-am install-exec install-exec-am install-html \
-	install-html-am install-info install-info-am install-man \
-	install-pdf install-pdf-am install-ps install-ps-am \
-	install-strip installcheck installcheck-am installdirs \
-	maintainer-clean maintainer-clean-generic mostlyclean \
-	mostlyclean-compile mostlyclean-generic pdf pdf-am ps ps-am \
-	tags uninstall uninstall-am uninstall-binPROGRAMS
+	distclean-hdr distclean-tags distcleancheck distdir \
+	distuninstallcheck dvi dvi-am html html-am info info-am \
+	install install-am install-binPROGRAMS install-data \
+	install-data-am install-dvi install-dvi-am install-exec \
+	install-exec-am install-html install-html-am install-info \
+	install-info-am install-man install-pdf install-pdf-am \
+	install-ps install-ps-am install-strip installcheck \
+	installcheck-am installdirs maintainer-clean \
+	maintainer-clean-generic mostlyclean mostlyclean-compile \
+	mostlyclean-generic pdf pdf-am ps ps-am tags uninstall \
+	uninstall-am uninstall-binPROGRAMS
 
 
 libav2yuv: libav2yuv.c utilyuv.o
@@ -855,6 +866,9 @@ yuvCIFilter: yuvCIFilter.o utilyuv.o
 
 yuvilace: yuvilace.o  utilyuv.o
 	gcc $(LDFLAGS) $(CFLAGS) $(FFTWFLAGS) -o yuvilace utilyuv.o $<
+
+.c.o:
+	gcc $(AM_CFLAGS) -c -o $@ $<
 
 clean:
 	 rm -f *.o $(TARGETS)
