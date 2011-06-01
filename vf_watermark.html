@@ -1,0 +1,39 @@
+<h3>Static image overlay for ffmpeg</h3>
+<p>
+This was my first paid video filter job, to
+add a static image overlay to a video file.
+</P>
+<p>
+This filter handles PNGs with alpha chanels (and any other image format that libavcodec can read).
+The image can be positioned and scaled.  And also has an interval on and off.
+</P>
+<p>
+The filter uses the arguments:
+<pre>
+image_name[:X:Y[:W:H[:on_time:off_time]]]
+or
+config_name.cfg (the .cfg is required)
+</pre>
+<p> The config file is a quick way to store frequently used settings.  
+The config file consists of:
+</p>
+<pre>
+filename mywatermark.png
+x 640
+y 400
+w 64
+h 16
+ontime 5
+offtime 55
+</pre>
+</p>
+
+<p>
+The interval uses the source video's DTS value to calculate if the watermark is shown or not.  This may produce unexpected results if the source video has timecode breaks, or if part of the video is skipped using the ffmpeg command line option -ss.
+
+ontime and offtime must both be specified for interval display to work.
+
+The default values for ontime and offtime are -1 meaning do not use interval display, the watermark remains visible for the entire duration of the video.
+</p>
+<h4>Results</h4>
+<? news::imageinline("lavtools/vf_watermark",-1); ?>

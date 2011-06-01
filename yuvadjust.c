@@ -33,8 +33,8 @@ gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvadjust.c -o yuvadjust
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <mjpegutils/yuv4mpeg.h>
+#include <mjpegutils/mpegconsts.h>
 
 #define YUVRFPS_VERSION "0.3"
 
@@ -124,8 +124,8 @@ static void adjust(  int fdIn , y4m_stream_info_t  *inStrInfo,
 					vv = *(yuv_data[2]+x+(y*cw)) - 128 ;
 
 					// hue rotation, saturation and shift
-					nvu = cos_hue * vu - sin_hue * vv * adj_sat + adj_v;
-					nvv = sin_hue * vu + cos_hue * vv * adj_sat + adj_u;
+					nvu = (cos_hue * vu - sin_hue * vv) * adj_sat + adj_v;
+					nvv = (sin_hue * vu + cos_hue * vv) * adj_sat + adj_u;
 					
 					if (nvu > 112) nvu = 112;
 					if (nvu < -112) nvu = -112;

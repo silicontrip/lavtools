@@ -3,8 +3,6 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- *  based on code:
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -39,7 +37,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include "mpegconsts.h"
 #include "utilyuv.h"
 
-#define VERSION "0.1"
+#define YUV_VERSION "0.1"
 
 static void print_usage() 
 {
@@ -91,6 +89,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	int                read_error_code ;
 	int                write_error_code ;
 	
+	int c=0;
 	// Allocate memory for the YUV channels
 	
 	if (chromalloc(yuv_data,inStrInfo))		
@@ -107,8 +106,11 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_odata,yuv_data,inStrInfo);
-			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
+			
+			
+			printf ("%d %d %d\n",c++,get_pixel(324,176,1,yuv_data,inStrInfo),get_pixel(324,176,2,yuv_data,inStrInfo));
+			//filterframe(yuv_odata,yuv_data,inStrInfo);
+			//write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
 		
 		y4m_fini_frame_info( &in_frame );
@@ -175,9 +177,9 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuv (version " VERSION ") is a general deinterlace/interlace utility for yuv streams");
-	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
-	// mjpeg_info ("yuvcropdetect -h for help");
+	mjpeg_info ("yyuvpixelgraph (version " YUV_VERSION ") is a general deinterlace/interlace utility for yuv streams");
+	mjpeg_info ("(C) 2010 Mark Heath <mjpeg0 at silicontrip.org>");
+	//mjpeg_info ("yuv -h for help");
 	
     
 	y4m_write_stream_header(fdOut,&in_streaminfo);

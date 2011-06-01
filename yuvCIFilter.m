@@ -215,11 +215,11 @@ int argbYUV(uint8_t **m, NSBitmapImageRep *bit, y4m_stream_info_t *si)
 			b = d[y * bpp + (x<<2) + 3];
 			
 			// if (ITU601) {
-			// optimize this, do want
-			// would integer calculations work?
 				yc =((16843 * r) + (33030 * g) + (6423 * b)>>16) + 16;
 				uc =(-(9699 * r) - (19071 * g) + (28770 * b)>>16) + 128;
 				vc =((28770 * r) - (24117 * g) - (4653 * b)>>16) + 128;
+				
+				// optimize this, do want
 /*
 				yc =  (0.257 * r) + (0.504 * g) + (0.098 * b) + 16;
 				uc = -(0.148 * r) - (0.291 * g) + (0.439 * b) + 128;

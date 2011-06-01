@@ -1,4 +1,12 @@
 <h3>Anything to YUV</h3>
+<p>
+Tested the EDL mode of this program.  Discovered what appears to be
+a bug in the libav library in which frames are unexpectedly dropped.
+I have attempted to work around the bug, however it appears to be filetype
+specific.  Currently m2v files work accurately.  Use this with the
+updated yuvdiag tool to stamp your video for EDL file creation.  Or
+use a frame accurate video player.
+</p>
 <p>This is a very simple generic anything to yuv tool, using the
 libav library from ffmpeg. It supports any video file that libav
 supports (which includes WMV3s now!!!) it can be used to replace
@@ -32,6 +40,8 @@ so I can make this the best software.</p>
 </p>
 
 <h4>HISTORY</h4> <p> <ul> 
+<li>9 July 2010. Fixed a major memory leak when concatenating multiple files (eg large number of jpeg frames)
+<li>5 July 2010. Discovered that the SW_SCALER wasn't implemented (or that the changes were lost) Correctly implemented SW_SCALER version. Also added Mono and 420jpeg chroma modes.
 <li>13 May 2009. SWS_SCALER version
 <li>5 Apr 2009. First release of the EDL.
 <li>2 Feb 2009. First release of the PCM writer version (use the -w flag)

@@ -1,8 +1,9 @@
 /*
  * watermark
- * copyright (c) 2010 Mark Heath mjpeg0 @ silicontrip dot net
+ * copyright (c) 2010 Mark Heath mjpeg0 @ silicontrip dot net 
+ * http://silicontrip.net/~mark/lavtools/
  *
- * Places a transperant static image over the video.
+ * Places a transparent static image over the video.
  *
  * This file is part of FFmpeg.
  *
@@ -20,7 +21,6 @@
  * License along with FFmpeg; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA
  */
-
 
 #include "libavcodec/avcodec.h"
 #include "libavformat/avformat.h"
@@ -55,8 +55,6 @@ typedef struct
 	AVFrame  *pFrame;
 // it appears that maskFrame is erased
 	AVFrame  *maskFrame;
-	
-	
 	
 } OverlayContext;
 
@@ -104,7 +102,7 @@ static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
 
 		if (argc==0) {
 		
-			if (!strcmp("cfg",args+(strlen(args)-3))) {
+			if (!strcmp(".cfg",args+(strlen(args)-4))) {
 				FILE *fd;
 				char val[256];
 				char key[256]; // subject to buffer overflows
@@ -184,6 +182,26 @@ static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
 	 
 	av_log(ctx,AV_LOG_DEBUG, "init(). %s X %d, Y %d, H %d, W %d\n",ovl->imageName, ovl->printX,ovl->printY,ovl->printH,ovl->printW);
 
+	 //  check incorrect combination of parameters
+	 if (ovl->printW < 0 && ovl->printH > 0) {
+		av_log(ctx, AV_LOG_ERROR, "Height without Width specified.\n");
+		return -1;
+	}
+	if (ovl->printH < 0 && ovl->printW > 0) {
+		av_log(ctx, AV_LOG_ERROR, "Width without Height specified.\n");
+		return -1;
+	}
+
+	if (ovl->printON < 0 && off > 0) {
+		av_log(ctx, AV_LOG_ERROR, "Off time without On time specified.\n");
+		return -1;
+	}
+	if (ovl->printON > 0 && off < 0) {
+		av_log(ctx, AV_LOG_ERROR, "On time without Off time specified.\n");
+		return -1;
+	}
+
+	 	 
 	return 0;
 }
 
@@ -207,6 +225,9 @@ static int query_formats(AVFilterContext *ctx)
 
 	av_log(ctx, AV_LOG_DEBUG, "query_formats(). exit\n");
 
+=======
+    avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
+>>>>>>> 9352602216821a58f0dd66bbd3014117ebafa534:vf_watermark.c
     return 0;
 }
 
@@ -302,7 +323,6 @@ static int config_props(AVFilterLink *outlink)
 	
 	overlay = avcodec_alloc_frame();
 	
-	
 	// read overlay file into overlay AVFrame
 	
 	av_read_frame(pFormatCtx, &packet);
@@ -311,6 +331,7 @@ static int config_props(AVFilterLink *outlink)
 	// will always be GRAY8
 	
 	// should be all or nothing, so no real need to test both
+	// testing both incase one was missed.
 	if (ovl->printW == -1 || ovl->printH == -1)
 	{
 		ovl->printW = pCodecCtx->width;
@@ -334,6 +355,8 @@ static int config_props(AVFilterLink *outlink)
 	av_log(ctx,AV_LOG_DEBUG,"mask linesize %d\n",ovl->maskFrame->linesize[0]);
 	
 	// copy the alpha mask, it appears to be getting lost during sws_scale
+	/*	copy the alpha mask, it appears to be getting lost during sws_scale
+		copy the alpha if it exists and then scale it. */
 	ovl->mask=0;
 	if (pCodecCtx->pix_fmt == PIX_FMT_ARGB ||
 		pCodecCtx->pix_fmt == PIX_FMT_RGBA ||
@@ -355,6 +378,8 @@ static int config_props(AVFilterLink *outlink)
 		
 		av_log(ctx,AV_LOG_DEBUG," in: %dx%d, out %dx%d\n",pCodecCtx->width, pCodecCtx->height,ovl->printW, ovl->printH);
 		
+		// scale & copy, even if we don't scale, we still need to copy
+				
 		sws=sws_getContext(pCodecCtx->width, pCodecCtx->height, PIX_FMT_GRAY8, 
 						   ovl->printW, ovl->printH, PIX_FMT_GRAY8,
 						   SWS_BILINEAR, NULL, NULL, NULL);
@@ -378,22 +403,16 @@ static int config_props(AVFilterLink *outlink)
 					   ovl->printW, ovl->printH, inlink->format,
 					   SWS_BILINEAR, NULL, NULL, NULL);
 	
+	// set the output filter frame size to the input frame size.
 	
 	outlink->w = inlink->w;
     outlink->h = inlink->h;
-/*
-	av_log(ctx,AV_LOG_DEBUG, "maskFrame data[0] %x data[1] %x data[2] %x data[3] %x\n",ovl->maskFrame->data[0],ovl->maskFrame->data[1],ovl->maskFrame->data[2],ovl->maskFrame->data[3]);
-	av_log(ctx,AV_LOG_DEBUG, "pFrame data[0] %x data[1] %x data[2] %x data[3] %x\n",ovl->pFrame->data[0],ovl->pFrame->data[1],ovl->pFrame->data[2],ovl->pFrame->data[3]);
-	av_log(ctx,AV_LOG_DEBUG, "maskFrame linesize[0] %x linesize[1] %x linesize[2] %x linesize[3] %x\n",ovl->maskFrame->linesize[0],ovl->maskFrame->linesize[1],ovl->maskFrame->linesize[2],ovl->maskFrame->linesize[3]);
-	av_log(ctx,AV_LOG_DEBUG, "pFrame linesize[0] %x linesize[1] %x linesize[2] %x linesize[3] %x\n",ovl->pFrame->linesize[0],ovl->pFrame->linesize[1],ovl->pFrame->linesize[2],ovl->pFrame->linesize[3]);
-	av_log(ctx,AV_LOG_DEBUG, "config_props() sws_scale\n");
-*/
+	
 	// convert the image 
 
 	sws_scale(sws, overlay->data, overlay->linesize, 0, pCodecCtx->height, 
 				ovl->pFrame->data, ovl->pFrame->linesize);
 	
-	av_log(ctx,AV_LOG_DEBUG, "config_props() sws_freeContext\n");
 
 	av_free(tempMask);
 	av_free(overlay);
@@ -403,9 +422,6 @@ static int config_props(AVFilterLink *outlink)
 	
     // Close the video file
     av_close_input_file(pFormatCtx);
-	
-	av_log(ctx,AV_LOG_DEBUG, "config_props() exit.\n");
-
 	
     return 0;
 	
@@ -449,9 +465,8 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 	lumaMask=255;
 
 	for (j=0; j<h; j++) {
-		if (y+j<py || y+j>py+ovl->printH) {
+		if (y+j<py || y+j>=py+ovl->printH) {
 			memcpy((out->data[0])+(j+y)*out->linesize[0],(in->data[0])+(y+j)*in->linesize[0],link->w);
-		//	memcpy((out->data[0])+(j+y)*out->linesize[0],(ovl->pFrame->data[0])+(y+j)*ovl->pFrame->linesize[0],link->w);
 
 			if (j%(1<<ovl->vsub)) {
 				memcpy((out->data[1])+((j+y)>>ovl->vsub)*out->linesize[1],(in->data[1])+((j+y)>>ovl->vsub)*in->linesize[1],link->w >> ovl->hsub);
@@ -459,47 +474,49 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 			}
 		} else {
 		
-			// draw image
 			for (i=0;i<link->w;i++) {
-			
-				if (i<ovl->printX || i>ovl->printX+ovl->printW) {
+			// check X to see if we are over the overlay
+				if (i<ovl->printX || i>=ovl->printX+ovl->printW) {
 					*((out->data[0])+(j+y)*out->linesize[0]+i) = *((in->data[0])+(j+y)*in->linesize[0]+i);
-					 if (j%(1<<ovl->vsub) && i%(1<<ovl->hsub)) {
+				 if (!(j%(1<<ovl->vsub) && i%(1<<ovl->hsub))) {
 						*((out->data[1])+((j+y)>>ovl->vsub)*out->linesize[1]+(i>>ovl->hsub))=*((in->data[1])+((j+y)>>ovl->vsub)*in->linesize[1]+(i>>ovl->hsub));
 						*((out->data[2])+((j+y)>>ovl->vsub)*out->linesize[2]+(i>>ovl->hsub))=*((in->data[2])+((j+y)>>ovl->vsub)*in->linesize[2]+(i>>ovl->hsub));
-					}
+				}
 				} else {
-					lumaFrame = *((in->data[0])+(j+y)*in->linesize[0]+i);
-					lumaPrint = *((ovl->pFrame->data[0])+(j+y-ovl->printY)*ovl->pFrame->linesize[0]+i-ovl->printX);
-					uPrint = *((ovl->pFrame->data[1])+((j+y-ovl->printY)>>(ovl->vsub))*ovl->pFrame->linesize[1]+((i-ovl->printX)>>(ovl->hsub)));
-					vPrint = *((ovl->pFrame->data[2])+((j+y-ovl->printY)>>(ovl->vsub))*ovl->pFrame->linesize[2]+((i-ovl->printX)>>(ovl->hsub)));
+					// draw image
+
+					lumaFrame = *((in->data[0])+(j+y)*in->linesize[0]+i); // input luma
+					lumaPrint = *((ovl->pFrame->data[0])+(j+y-ovl->printY)*ovl->pFrame->linesize[0]+i-ovl->printX);  // overlay luma
+					uPrint = *((ovl->pFrame->data[1])+((j+y-ovl->printY)>>(ovl->vsub))*ovl->pFrame->linesize[1]+((i-ovl->printX)>>(ovl->hsub))); // overlay chroma
+					vPrint = *((ovl->pFrame->data[2])+((j+y-ovl->printY)>>(ovl->vsub))*ovl->pFrame->linesize[2]+((i-ovl->printX)>>(ovl->hsub))); // overlay chroma
 
 					if (ovl->mask) {
-						lumaMask = *(ovl->maskFrame->data[0] + (j+y - ovl->printY) * ovl->maskFrame->linesize[0] + i-ovl->printX );
+						lumaMask = *(ovl->maskFrame->data[0] + (j+y - ovl->printY) * ovl->maskFrame->linesize[0] + i-ovl->printX ); // mask intensity
 					}
 					
-			//	av_log(link->src, AV_LOG_INFO, "luma mask %d\n",lumaMask);
-
-					if (lumaMask == 255) {
+					if (lumaMask == 255) { 	// optimize for completely opaque
 						*((out->data[0])+(j+y)*out->linesize[0]+i) = lumaPrint;
-						if (j%(1<<ovl->vsub) && i%(1<<ovl->hsub)) {
+						if (!(j%(1<<ovl->vsub) && i%(1<<ovl->hsub))) {
 							*((out->data[1])+((j+y)>>ovl->vsub)*out->linesize[1]+(i>>ovl->hsub))= uPrint;
 							*((out->data[2])+((j+y)>>ovl->vsub)*out->linesize[2]+(i>>ovl->hsub))= vPrint;
 						}
+					} else if (lumaMask == 0) { // optimize for completely transparent
+
+						*((out->data[0])+(j+y)*out->linesize[0]+i) = *((in->data[0])+(j+y)*in->linesize[0]+i);
+						if (!(j%(1<<ovl->vsub) && i%(1<<ovl->hsub))) {
+							*((out->data[1])+((j+y)>>ovl->vsub)*out->linesize[1]+(i>>ovl->hsub))=*((in->data[1])+((j+y)>>ovl->vsub)*in->linesize[1]+(i>>ovl->hsub));
+							*((out->data[2])+((j+y)>>ovl->vsub)*out->linesize[2]+(i>>ovl->hsub))=*((in->data[2])+((j+y)>>ovl->vsub)*in->linesize[2]+(i>>ovl->hsub));
+						}
 					} else {
 						*((out->data[0])+(j+y)*out->linesize[0]+i) = (lumaFrame* (255 - lumaMask) + lumaPrint * lumaMask) / 255;
-						if (j%(1<<ovl->vsub) && i%(1<<ovl->hsub)) {
+					if (!(j%(1<<ovl->vsub) && i%(1<<ovl->hsub))) {
 							*((out->data[1])+((j+y)>>ovl->vsub)*out->linesize[1]+(i>>ovl->hsub))= (*((in->data[1])+((j+y)>>ovl->vsub)*in->linesize[1]+(i>>ovl->hsub)) * (255-lumaMask) + uPrint *lumaMask) / 255;
 							*((out->data[2])+((j+y)>>ovl->vsub)*out->linesize[2]+(i>>ovl->hsub))=(*((in->data[2])+((j+y)>>ovl->vsub)*in->linesize[2]+(i>>ovl->hsub)) * (255-lumaMask) + vPrint *lumaMask) / 255;
 						}
 					}
-					
-						// lumaMask=255;
 				}
 			}
-		
 		}
-
 	}
 	
     avfilter_draw_slice(link->dst->outputs[0], y, h, slice_dir);

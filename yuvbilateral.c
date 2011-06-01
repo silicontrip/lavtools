@@ -1,10 +1,13 @@
 /*
- *  generic.c
+ *  yuvbilateral.c
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- *  based on code:
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
+ * a spacial bilateral filter
+ *
+ *  Bilateral filter  based on code from:
+ *  http://user.cs.tu-berlin.de/~eitz/bilateral_filtering/
+ * 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -33,7 +36,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
-
+#include <math.h>
 
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
@@ -41,18 +44,124 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 
 #define VERSION "0.1"
 
+#define PRECISION 256
+
+struct parameters {
+
+	unsigned int sigmaD;
+	unsigned int sigmaR;
+	
+	unsigned int kernelRadius;
+	
+	unsigned int *kernelD;
+	unsigned int *kernelR;
+	
+	unsigned int *gaussSimilarity;
+	
+	unsigned int twoSigmaRSquared;
+	
+	int direction;
+	
+};
+
+static struct parameters this;
+
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuv\n"
+			 "usage: yuvbilateral -r sigmaR -d sigmaD [-v 0..2]\n"
+			 "\t -r sigmaR set the "
+			 "\t -r sigmaD set the "
+
 			);
+}
+
+unsigned int gauss (unsigned int sigma, int x, int y) {
+	return exp(-((x * x + y * y) / (2.0 * (1.0* sigma/PRECISION) * (1.0*sigma/PRECISION)))) * PRECISION;
+}
+
+unsigned int similarity(int p, int s) {
+	// this equals: Math.exp(-(( Math.abs(p-s)) /  2 * this.sigmaR * this.sigmaR));
+	// but is precomputed to improve performance
+	if (this.direction == 0) 
+		return this.gaussSimilarity[abs(p-s)];
+	
+	return this.gaussSimilarity[255-abs(p-s)];
+
+}
+
+static void filterinitialize () {
+
+	int kernelSize, center;
+	int x,y,i;
+	
+	this.kernelRadius = this.sigmaD>this.sigmaR?this.sigmaD * 2:this.sigmaR * 2;
+	this.kernelRadius = this.kernelRadius / PRECISION;
+	
+	this.twoSigmaRSquared = (2 * (1.0 *this.sigmaR/PRECISION)  * (1.0 *this.sigmaR/PRECISION)) * PRECISION;
+	
+	kernelSize = this.kernelRadius * 2 + 1;
+	center = (kernelSize - 1) / 2;
+	
+	
+	this.kernelD = (unsigned int*) malloc( sizeof (unsigned int) * kernelSize * kernelSize);
+	
+	if (this.kernelD == NULL ){
+		mjpeg_error_exit1("Cannot allocate memory for filter kernel");
+	}
+		
+	
+	for ( x = -center; x < -center + kernelSize; x++) {
+		for ( y = -center; y < -center + kernelSize; y++) {
+			this.kernelD[x + center + (y + center) * kernelSize] = gauss(this.sigmaD, x, y);
+			//fprintf(stderr,"x: %d y: %d = %d\n",x,y,this.kernelD[x + center + (y + center) * kernelSize]);
+		}
+	}
+	
+	this.gaussSimilarity = (unsigned int*) malloc(sizeof (unsigned int) * 256);
+	if (this.gaussSimilarity == NULL ){
+		free(this.kernelD);
+		mjpeg_error_exit1("Cannot allocate memory for gaussian curve");
+	}
+	
+	// precomute all possible similarity values for
+	// performance reasons
+	for ( i = 0; i < 256; i++) {
+		this.gaussSimilarity[i] = exp(-((i) / (1.0 * this.twoSigmaRSquared/PRECISION))) * PRECISION;
+	}
+	
+	
 }
 
 static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
 
-	o[i+j*w] = p[i+j*w];
+	unsigned int sum =0;
+	unsigned int totalWeight = 0;
+	int weight;
+	int m,n;
 	
+	uint8_t intensityCenter = p[j * w + i];
+	int mMax = i + this.kernelRadius;
+	int nMax = j + this.kernelRadius;
+	
+	for ( m = i-this.kernelRadius; m < mMax; m++) {
+		for ( n = j-this.kernelRadius; n < nMax; n++) {
+			
+			if (m>=0 && n>=0 && m < w && n < h) {
+				int intensityKernelPos = p[m + n * w];
+				
+				weight = this.kernelD[(i-m + this.kernelRadius) + (j-n + this.kernelRadius) * (this.kernelRadius*2)] * similarity(intensityKernelPos,intensityCenter);
+				totalWeight += weight;
+				sum += (weight * intensityKernelPos);
+			}
+		}
+	}
+	if (totalWeight > 0 )
+	o[j * w + i] = (sum / totalWeight);
+	else
+	o[j * w + i] = intensityCenter;
 }
+
 
 static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 {
@@ -62,11 +171,11 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 	
 	height=y4m_si_get_plane_height(si,0);
 	width=y4m_si_get_plane_width(si,0);
-	
+
 	// I'll assume that the chroma subsampling is the same for both u and v channels
 	height2=y4m_si_get_plane_height(si,1);
 	width2=y4m_si_get_plane_width(si,1);
-	
+
 	
 	for (y=0; y < height; y++) {
 		for (x=0; x < width; x++) {
@@ -77,17 +186,17 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
 				filterpixel(m[1],n[1],x,y,width2,height2);
 				filterpixel(m[2],n[2],x,y,width2,height2);
 			}
-			
+			 
 		}
 	}
 	
 }
 
-
-static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
+static void filter(int fdIn, int fdOut, y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
-	uint8_t            *yuv_data[3] ;
+	uint8_t            *yuv_data[3];
+	uint8_t				*yuv_odata[3];
 	int                read_error_code ;
 	int                write_error_code ;
 	
@@ -95,6 +204,11 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+	
+	if (chromalloc(yuv_odata,inStrInfo)){
+		chromafree(yuv_data);
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+	}
 	
 	/* Initialize counters */
 	
@@ -107,6 +221,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
+			
 			filterframe(yuv_odata,yuv_data,inStrInfo);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
@@ -118,9 +233,8 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
 	
-	free( yuv_data[0] );
-	free( yuv_data[1] );
-	free( yuv_data[2] );
+	chromafree( yuv_data );
+	chromafree( yuv_odata);
 	
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
@@ -142,7 +256,13 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "hv:";
+	const static char *legal_flags = "v:hr:d:i";
+	
+	float sigma;
+	
+	this.sigmaR = 0;
+	this.sigmaD = 0;
+	this.direction = 0;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -152,12 +272,30 @@ int main (int argc, char *argv[])
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
 				
-				case 'h':
-				case '?':
+			case 'h':
+			case '?':
 				print_usage (argv);
 				return 0 ;
 				break;
+			case 'r':
+				sigma = atof(optarg);
+				this.sigmaR = sigma * PRECISION;
+				break;
+			case 'd':
+				sigma = atof(optarg);
+				this.sigmaD = sigma * PRECISION;
+				break;
+			case 'i':
+				this.direction = 1;
+				break;
+				
 		}
+	}
+	
+	if (this.sigmaR == 0 || this.sigmaD == 0) {
+		print_usage();
+		mjpeg_error_exit1("Sigma D and R must be set");
+		
 	}
 	
 	// mjpeg tools global initialisations
@@ -175,15 +313,17 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuv (version " VERSION ") is a general deinterlace/interlace utility for yuv streams");
-	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
-	// mjpeg_info ("yuvcropdetect -h for help");
+	mjpeg_info ("yuvbilateral (version " VERSION ") is a spatial bilateral filter for yuv streams");
+	mjpeg_info ("(C) 2010 Mark Heath <mjpeg0 at silicontrip.org>");
+	mjpeg_info ("yuvbilateral -h for help");
 	
     
-	y4m_write_stream_header(fdOut,&in_streaminfo);
 	/* in that function we do all the important work */
-	filter(fdIn, &in_streaminfo);
+	filterinitialize ();
+	y4m_write_stream_header(fdOut,&in_streaminfo);
+	filter(fdIn,fdOut, &in_streaminfo);
 	y4m_fini_stream_info (&in_streaminfo);
+	//filteruninitialize();
 	
 	return 0;
 }
