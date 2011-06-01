@@ -57,14 +57,15 @@ gcc -O3 -I/opt/local/include -I/opt/local/include/freetype2 -I/usr/local/include
 static void print_usage() 
 {
 	fprintf (stderr,
-		"usage: yuvdiag [-v] [-ycltf] [-h]\n"
+		"usage: yuvdiag [-v] [-yclt] [-h] [-f fontfile.ttf] [-s start frame number]\n"
 		"yuvdiag converts the yuvstream for technical viewing\n"
 		"\n"
-		"\t -y copy yuv channels into the luma channel\n"
-		"\t -c chroma scope\n" 
-		"\t -l luma scope\n" 
-		"\t -t time code must be supplied with -f\n"
-			 "\t -f font face\n"
+		"\t -y copy yuv channels into the luma channel mode\n"
+		"\t -c chroma scope mode\n" 
+		"\t -l luma scope mode\n" 
+		"\t -t time code mode.  Must be supplied with -f\n"
+		"\t -f path to font file\n"
+		"\t -s start timecode at frame number\n";
 		"\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 		"\t -h print this help\n"
 	);
@@ -203,7 +204,9 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
 	framecount2timecode(sinfo,&h,&m,&s,&f,fc,&d);
 	if (d) { df = ';'; }
 	
-	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
+//	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
+	sprintf(tc,"%02d:%02d:%02d%c%02d",h,m,s,df,f);
+
 	mjpeg_debug ("%d - %s",fc,tc);
 
 }
@@ -216,6 +219,8 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 	int dw,dx,dy,cy;
 	int cpos,rpos;
 	int ilace;
+	int xoff,yoff;
+	int fbri;
 	
 	
 	dw = y4m_si_get_plane_width(sinfo,0);
@@ -237,9 +242,9 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 		
 		cpos = c * face->glyph->metrics.horiAdvance/64; 
 		
-		if (r=='T') {
+		if (c==0) {
 			// font metric tweaking.
-				black_box(yuv,sinfo,x,y,15 * face->glyph->metrics.horiAdvance/64,face->glyph->metrics.height/64+2);
+			//black_box(yuv,sinfo,x,y,15 * face->glyph->metrics.horiAdvance/64,face->glyph->metrics.height/64+2);
 				cy =  y + face->glyph->metrics.height/64 + 1;
 		}
 		//fprintf (stderr,"ft width %d\n",face->glyph->bitmap.width);
@@ -250,10 +255,15 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 			ilace = 1;
 		}
 		
+		xoff = x + cpos+face->glyph->metrics.horiBearingX/64;
+		yoff = cy - face->glyph->metrics.horiBearingY/64;
+		
 		for (dy=0; dy<face->glyph->bitmap.rows;dy+=ilace) {
 			for (dx=0; dx<face->glyph->bitmap.width;dx++) {
 				// fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
-				yuv[0][(x+dx+cpos+face->glyph->metrics.horiBearingX/64)+(cy+dy-face->glyph->metrics.horiBearingY/64)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
+				fbri = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
+				yuv[0][(dx+xoff)+(dy+yoff)*dw] =  fbri + ((255-fbri) * yuv[0][(dx+xoff)+(dy+yoff)*dw])/255 ;
+				// + (255 - *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width)) * yuv[0][(dx+xoff)+(dy+yoff)*dw];
 			//	yuv[0][(x+dx+cpos)+(cy+dy-face->glyph->metrics.horiBearingY/64)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
 
 			}

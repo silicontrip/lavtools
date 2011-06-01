@@ -41,8 +41,9 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvdiff [-g -v -h -Ip|b|p]\n"
-			 "yuvdiff produces a 2d graph showing time vs frame difference\n"
+			 "yuvdiff produces a video showing frame by frame difference\n"
 			 "\n"
+			 "\t -g produce text output suitable for graphing in gnuplot\n"
 			 "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 			 "\t -I<pbt> Force interlace mode\n"
 			 "\t -h print this help\n"

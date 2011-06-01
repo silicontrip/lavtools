@@ -16,8 +16,8 @@
 #include <mpegconsts.h>
 
 
-#include <ffmpeg/avcodec.h>
-#include <ffmpeg/avformat.h>
+#include <libavcodec/avcodec.h>
+#include <libavformat/avformat.h>
 
 #include <stdio.h>
 #include <string.h>
