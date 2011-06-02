@@ -65,7 +65,7 @@ static void print_usage()
 		"\t -l luma scope mode\n" 
 		"\t -t time code mode.  Must be supplied with -f\n"
 		"\t -f path to font file\n"
-		"\t -s start timecode at frame number\n";
+		"\t -s start timecode at frame number\n"
 		"\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 		"\t -h print this help\n"
 	);
