@@ -332,7 +332,9 @@ void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,
 		// non drop calculation.
 		fr.n += fr.d - (fr.n % fr.d);
 		
-		if (df) {
+	mjpeg_debug ("rounded up to : %d:%d\n",fr.n,fr.d);
+		
+		if (*df) {
 		// drop calculation.
 
 			if ( fabs(29.97 - (1.0 * n / fr.d )) < 0.001){

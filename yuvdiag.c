@@ -66,6 +66,7 @@ static void print_usage()
 		"\t -t time code mode.  Must be supplied with -f\n"
 		"\t -f path to font file\n"
 		"\t -s start timecode at frame number\n"
+			 "\t -n non drop frame timecode (for non integer framerate)\n"
 		"\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 		"\t -h print this help\n"
 	);
@@ -194,13 +195,14 @@ void read_font(uint8_t **d)
 	
 }	
 
-void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo ) {
+void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo, int dropFrame ) {
 
 	int h,m,s,f,d;
 	char df = ':';
 		
 	// fprintf (stderr,"%d/%d int fr %d\n",fr.n,fr.d, fr.n % fr.d);
-	d=1;
+	d=dropFrame;
+	// framecount2timecode will unset the dropframe flag if integer framerate.
 	framecount2timecode(sinfo,&h,&m,&s,&f,fc,&d);
 	if (d) { df = ';'; }
 	
@@ -308,7 +310,7 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 
 }
 
-static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname, int frameCounter )
+static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname, int frameCounter, int dropFrame )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
@@ -370,7 +372,7 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 		if (read_error_code == Y4M_OK) {
 		
 			// convert counter into TC string
-			string_tc(time,frameCounter,inStrInfo);
+			string_tc(time,frameCounter,inStrInfo,dropFrame);
 
 			// draw black box
 			
@@ -726,9 +728,9 @@ int main (int argc, char *argv[])
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	int mode, c;
+	int mode, c,dropFrame=1;
 	int start = 0;
-	const static char *legal_flags = "tvyiclhf:s:";
+	const static char *legal_flags = "tv:yiclhf:s:n";
 	
 	char *fontname=NULL;
 	
@@ -736,6 +738,7 @@ int main (int argc, char *argv[])
 		switch (c) {
 			case 'v':
 				verbose = atoi (optarg);
+				//verbose = 2;
 				if (verbose < 0 || verbose > 2)
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
@@ -766,6 +769,9 @@ int main (int argc, char *argv[])
 			case 'f':
 				fontname = (char *) malloc (strlen(optarg));
 				strcpy(fontname , optarg);
+				break;
+			case 'n':
+				dropFrame=0;
 				break;
 				}
 	}
@@ -829,7 +835,7 @@ int main (int argc, char *argv[])
 			mjpeg_error_exit1("no font specified");
 		
 		y4m_write_stream_header(fdOut,&in_streaminfo);
-		timecode(fdIn, &in_streaminfo, fdOut,fontname,start);
+		timecode(fdIn, &in_streaminfo, fdOut,fontname,start,dropFrame);
 	}
 
 	
