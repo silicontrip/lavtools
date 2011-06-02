@@ -14,7 +14,7 @@ FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 
 TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 		yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
-		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph 
+		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev
 
 
 all: $(TARGETS)
@@ -25,7 +25,7 @@ yuvtshot: yuvtshot.o utilyuv.o
 
 yuvdiff: yuvdiff.o utilyuv.o
 
- 
+yuvfieldrev: yuvfieldrev.o utilyuv.o 
 
 yuvpixelgraph: yuvpixelgraph.o utilyuv.o
 

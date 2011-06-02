@@ -49,7 +49,7 @@ static void print_usage()
 }
 
 
-static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
+static void filter(  int fdIn ,int fdOut  , y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
@@ -148,7 +148,6 @@ int main (int argc, char *argv[])
 	
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
-	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 
 	
 	// ***************************************************************
@@ -159,15 +158,18 @@ int main (int argc, char *argv[])
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
+	
 	// Information output
 	mjpeg_info ("yuv (version " VERSION ") is a field reversing utility for yuv streams");
 	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");	
 	
+	
+	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 	y4m_si_set_interlace(&out_streaminfo, invert_order(y4m_si_get_interlace(&in_streaminfo)));
-    
 	y4m_write_stream_header(fdOut,&out_streaminfo);
+	
 	/* in that function we do all the important work */
-	filter(fdIn, &in_streaminfo);
+	filter(fdIn, fdOut, &in_streaminfo);
 	y4m_fini_stream_info (&in_streaminfo);
 	y4m_fini_stream_info (&out_streaminfo);
 
