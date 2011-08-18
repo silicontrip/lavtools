@@ -1129,7 +1129,7 @@ int main(int argc, char *argv[])
 						}
 						if (convert) {
 							img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, 
-															 pCodecCtx->width, pCodecCtx->height, convert_mode, 0, 0, NULL, NULL); 
+															 pCodecCtx->width, pCodecCtx->height, convert_mode, SWS_BICUBIC, NULL, NULL, NULL); 
 						}
 					} else {
 						numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;

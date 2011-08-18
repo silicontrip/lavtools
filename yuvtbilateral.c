@@ -204,20 +204,19 @@ static void filterframe (uint8_t *m[3], uint8_t ***n, y4m_stream_info_t *si)
 	
 }
 
-
+// temporal filter loop
 static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            ***yuv_data;
 	uint8_t				*yuv_odata[3];
+	uint8_t				**temp_yuv;
 	int                read_error_code ;
 	int                write_error_code ;
 	int c,d;
 	
 	// Allocate memory for the YUV channels
-	
-	
-	
+	// may move these off into utility functions
 	if (chromalloc(yuv_odata,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
@@ -256,9 +255,13 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[this.kernelSize-1] );
 		// shuffle
 		// should use pointers...
+		
+		temp_yuv = yuv_data[0];
 		for (c=0;c<this.kernelSize-1;c++) {
-			chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+	//		chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			yuv_data[c] = yuv_data[c+1];
 		}
+		yuv_data[this.kernelSize-1] = temp_yuv;
 		
 	}
 	
@@ -274,10 +277,13 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[this.kernelSize-1] );
 		// shuffle
-		// should use pointers...
+		temp_yuv = yuv_data[0];
 		for (c=0;c<this.kernelSize-1;c++) {
-			chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			// should use pointers...
+			//		chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			yuv_data[c] = yuv_data[c+1];
 		}
+		yuv_data[this.kernelSize-1] = temp_yuv;
 		
 	}
 	// finalise loop		
@@ -291,10 +297,13 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		y4m_init_frame_info( &in_frame );
 		
 		// shuffle
-		// should use pointers...
+		temp_yuv = yuv_data[0];
 		for (c=0;c<this.kernelSize-1;c++) {
-			chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			// should use pointers...
+			//		chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			yuv_data[c] = yuv_data[c+1];
 		}
+		yuv_data[this.kernelSize-1] = temp_yuv;
 		
 	}
 	
@@ -377,7 +386,7 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuvtbilateral (version " VERSION ") is a general deinterlace/interlace utility for yuv streams");
+	mjpeg_info ("yuvtbilateral (version " VERSION ") is a temporal bilateral filter for yuv streams");
 	mjpeg_info ("(C) 2010 Mark Heath <mjpeg0 at silicontrip.org>");
 	mjpeg_info (" -h for help");
 	

@@ -206,8 +206,8 @@ void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo, int dropFrame ) {
 	framecount2timecode(sinfo,&h,&m,&s,&f,fc,&d);
 	if (d) { df = ';'; }
 	
-//	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
-	sprintf(tc,"%02d:%02d:%02d%c%02d",h,m,s,df,f);
+	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
+//	sprintf(tc,"%02d:%02d:%02d%c%02d",h,m,s,df,f);
 
 	mjpeg_debug ("%d - %s",fc,tc);
 
@@ -246,7 +246,7 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 		
 		if (c==0) {
 			// font metric tweaking.
-			//black_box(yuv,sinfo,x,y,15 * face->glyph->metrics.horiAdvance/64,face->glyph->metrics.height/64+2);
+			black_box(yuv,sinfo,x,y,15 * face->glyph->metrics.horiAdvance/64,face->glyph->metrics.height/64+2);
 				cy =  y + face->glyph->metrics.height/64 + 1;
 		}
 		//fprintf (stderr,"ft width %d\n",face->glyph->bitmap.width);
