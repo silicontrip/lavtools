@@ -84,7 +84,7 @@ int temporalalloc (uint8_t ***yuv_data, y4m_stream_info_t *sinfo, int length)
 			free (yuv_data);
 			return -1;
 		}
-		if(chromalloc(yuv_data[c],inStrInfo)) {
+		if(chromalloc(yuv_data[c],sinfo)) {
 			for (d=0;d<c;d++) {
 				chromafree(yuv_data[d]);
 				free(yuv_data[d]);
@@ -106,6 +106,7 @@ void temporalfree(uint8_t ***yuv_data, int length)
 	free (yuv_data);
 }
 
+//which direction does it shuffle
 void temporalshuffle(uint8_t ***yuv_data, int length)
 {
 	
