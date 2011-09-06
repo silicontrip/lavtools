@@ -65,6 +65,59 @@ void chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
 	
 }
 
+
+//allocate an array of frames, for temporal filters
+int temporalalloc (uint8_t ***yuv_data, y4m_stream_info_t *sinfo, int length)
+{
+	int c,d;
+	
+	yuv_data= (uint8_t ***) malloc(sizeof (uint8_t *) * length);
+	if (yuv_data == NULL) return -1;
+	for (c=0;c<length;c++) {
+		yuv_data[c] = (uint8_t **) malloc(sizeof (uint8_t *) * 3);
+		if (yuv_data[c] == NULL) {
+			// how am I going to keep track of what I've allocated?
+			for (d=0;d<c;d++) {
+				chromafree(yuv_data[d]);
+				free(yuv_data[d]);
+			}
+			free (yuv_data);
+			return -1;
+		}
+		if(chromalloc(yuv_data[c],inStrInfo)) {
+			for (d=0;d<c;d++) {
+				chromafree(yuv_data[d]);
+				free(yuv_data[d]);
+			}
+			free(yuv_data[c]);
+			free(yuv_data);
+			return -1;
+		}
+	}
+}
+
+void temporalfree(uint8_t ***yuv_data, int length) 
+{
+	int d;
+	for (d=0;d<length;d++) {
+		chromafree(yuv_data[d]);
+		free(yuv_data[d]);
+	}
+	free (yuv_data);
+}
+
+void temporalshuffle(uint8_t ***yuv_data, int length)
+{
+	
+	uint8_t				**temp_yuv;
+	int c;
+	
+	temp_yuv = yuv_data[0];
+	for (c=0;c<length-1;c++) 		
+		yuv_data[c] = yuv_data[c+1];
+	yuv_data[length-1] = temp_yuv;
+}	
+
 //Copy a  single field of a frame
 
 void copyfield(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo, int which)

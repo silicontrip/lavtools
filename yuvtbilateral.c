@@ -307,6 +307,7 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		
 	}
 	
+	// deallocate temporal buffer
 	
 	// Clean-up regardless an error happened or not
 	
