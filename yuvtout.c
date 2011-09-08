@@ -297,7 +297,6 @@ int main (int argc, char *argv[])
 	mjpeg_info ("(C) 2010 Mark Heath <mjpeg0 at silicontrip.org>");
 	mjpeg_info (" -h for help");
 	
-	
 	/* in that function we do all the important work */
 	//filterinitialize ();
 	y4m_write_stream_header(fdOut,&in_streaminfo);
