@@ -58,14 +58,14 @@ typedef uint8_t pixelvalue;
 
 int outlier(pixelvalue x, pixelvalue y, pixelvalue z)
 {
-
+	
 	int dif;
 	
 	dif =  ((abs(x - y) + abs (z - y) ) / 2) - abs(z-x);
 	
 	//fprintf(stderr,"dif: %d %d\n",dif2,dif1);
 	
-	return (dif > 6) ?1: 0;
+	return (dif > 4) ?1: 0;
 	
 }
 
@@ -82,40 +82,63 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 	
 	uint8_t diff[1024];
 	uint8_t med[1024];
-
+	
 	pixel_loc = j * w + i;	
-
+	
 	
 	if (  (i-1 < 0) || (i+1 > w) || (j-1 < 0) || (j+1 >= h)) {
 		o[chan][pixel_loc] = p[1][chan][pixel_loc];
 	} else {
-	
+		
 		for (x=-1; x<2; x++)
 		{
-
+			
 			if ((j-2 >=0) || (j+2 < h)) {
 				if (!outlier(p[1][chan][(j-2) * w + i+x], p[1][chan][j * w + i+x], p[1][chan][(j+2) * w + i+x]))
-					ol = 0;
+					ol=0;
 			}
-
+			
 			
 			if (!outlier(p[1][chan][(j-1) * w + i+x], p[1][chan][j * w + i+x], p[1][chan][(j+1) * w + i+x]))
 				ol = 0;
-			/*
-			if (!outlier(p[0][chan][j * w + i+x], p[1][chan][j * w + i+x], p[2][chan][j * w + i+x]))
-				ol = 0;
-			 */
-
+			
+		//	if (!outlier(p[0][chan][j * w + i+x], p[1][chan][j * w + i+x], p[2][chan][j * w + i+x]))
+		//		ol = 0;
+			
+			
 		}
 		if (ol) {
-			if ((j-2 >=0) || (j+2 < h)) {
-				
-				o[chan][pixel_loc] = (p[1][chan][(j-1) * w + i] + p[1][chan][(j+1) * w + i]  + p[1][chan][(j-2) * w + i] + p[1][chan][(j+2) * w + i] ) / 4;
-				
-			}
-			o[chan][pixel_loc] = (p[1][chan][(j-1) * w + i] + p[1][chan][(j+1) * w + i] ) / 2;
+			// might pick the best
 			
-			//o[chan][pixel_loc] = 235;
+			sum = 255;
+			
+			total = (p[1][chan][(j-1) * w + i] + p[1][chan][(j+1) * w + i] ) / 2;
+
+			
+			if ((j-2 >=0) || (j+2 < h)) {
+				// interlace
+			//	sum = abs(p[1][chan][(j-2) * w + i] - p[1][chan][(j+2) * w + i]);
+				x = ( p[1][chan][(j-2) * w + i] + p[1][chan][(j+2) * w + i]) / 2;
+				total = (x + total) / 2;
+			}
+			
+			
+			// vertical
+	//		if (abs(p[1][chan][(j-1) * w + i] - p[1][chan][(j+1) * w + i]) < sum) {
+	//			sum = abs(p[1][chan][(j-1) * w + i] - p[1][chan][(j+1) * w + i]);
+	//		}
+			
+			// temporal
+//			if (abs(p[0][chan][j * w + i] - p[2][chan][j * w + i]) < sum) {
+//				sum = abs(p[0][chan][j * w + i] - p[2][chan][j * w + i]);
+//				total = (p[0][chan][j * w + i] + p[2][chan][j * w + i] ) / 2;
+//			}
+			
+			
+			
+			o[chan][pixel_loc] = total;
+			
+			// o[chan][pixel_loc] = 235;
 			
 		} else {
 			o[chan][pixel_loc] = p[1][chan][pixel_loc];
@@ -141,7 +164,7 @@ static void filterframe (uint8_t *m[3], uint8_t ***n, y4m_stream_info_t *si,int 
 	
 	for (y=0; y < height; y++) {
 		for (x=0; x < width; x++) {
-					
+			
 			filterpixel(m,n,0,x,y,width,height,temporalLength);
 			
 			if (x<width2 && y<height2) {
@@ -173,7 +196,7 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo, int te
 	// sanity check!!!
 	if(temporalalloc(&yuv_data,inStrInfo,3))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the temporal YUV4MPEG data!");
-
+	
 	
 	
 	/* Initialize counters */
@@ -279,7 +302,7 @@ int main (int argc, char *argv[])
 				break;
 		}
 	}
-		
+	
 	y4m_accept_extensions(1);
 	
 	// mjpeg tools global initialisations
@@ -305,7 +328,7 @@ int main (int argc, char *argv[])
 	/* in that function we do all the important work */
 	//filterinitialize ();
 	y4m_write_stream_header(fdOut,&in_streaminfo);
-
+	
 	filter(fdIn, fdOut, &in_streaminfo,3);
 	
 	y4m_fini_stream_info (&in_streaminfo);
