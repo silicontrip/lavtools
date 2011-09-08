@@ -65,12 +65,12 @@ int outlier(pixelvalue x, pixelvalue y, pixelvalue z)
 	
 	//fprintf(stderr,"dif: %d %d\n",dif2,dif1);
 	
-	return (dif > 4) ?1: 0;
+	return dif>4?1:0;
 	
 }
 
 
-static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w, int h, int temporalLength) {
+static void filterpixel(uint8_t **o, uint8_t **p,int chan, int i, int j, int w, int h) {
 	
 	unsigned int sum =0;
 	unsigned int total = 0;
@@ -80,26 +80,26 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 	
 	// Arg! don't want to temporarily allocate this memory.
 	
-	uint8_t diff[1024];
-	uint8_t med[1024];
 	
 	pixel_loc = j * w + i;	
 	
 	
 	if (  (i-1 < 0) || (i+1 > w) || (j-1 < 0) || (j+1 >= h)) {
-		o[chan][pixel_loc] = p[1][chan][pixel_loc];
+		o[chan][pixel_loc] = p[chan][pixel_loc];
 	} else {
 		
+		// detect phase
+
 		for (x=-1; x<2; x++)
 		{
 			
 			if ((j-2 >=0) || (j+2 < h)) {
-				if (!outlier(p[1][chan][(j-2) * w + i+x], p[1][chan][j * w + i+x], p[1][chan][(j+2) * w + i+x]))
+				if (!outlier(p[chan][(j-2) * w + i+x], p[chan][j * w + i+x], p[chan][(j+2) * w + i+x]))
 					ol=0;
 			}
 			
 			
-			if (!outlier(p[1][chan][(j-1) * w + i+x], p[1][chan][j * w + i+x], p[1][chan][(j+1) * w + i+x]))
+			if (!outlier(p[chan][(j-1) * w + i+x], p[chan][j * w + i+x], p[chan][(j+1) * w + i+x]))
 				ol = 0;
 			
 		//	if (!outlier(p[0][chan][j * w + i+x], p[1][chan][j * w + i+x], p[2][chan][j * w + i+x]))
@@ -107,18 +107,19 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 			
 			
 		}
+		// interpolate
 		if (ol) {
 			// might pick the best
 			
 			sum = 255;
 			
-			total = (p[1][chan][(j-1) * w + i] + p[1][chan][(j+1) * w + i] ) / 2;
+			total = (p[chan][(j-1) * w + i] + p[chan][(j+1) * w + i] ) / 2;
 
 			
 			if ((j-2 >=0) || (j+2 < h)) {
 				// interlace
 			//	sum = abs(p[1][chan][(j-2) * w + i] - p[1][chan][(j+2) * w + i]);
-				x = ( p[1][chan][(j-2) * w + i] + p[1][chan][(j+2) * w + i]) / 2;
+				x = ( p[chan][(j-2) * w + i] + p[chan][(j+2) * w + i]) / 2;
 				total = (x + total) / 2;
 			}
 			
@@ -138,16 +139,19 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 			
 			o[chan][pixel_loc] = total;
 			
+			
+			// test mode for marking
 			// o[chan][pixel_loc] = 235;
 			
 		} else {
-			o[chan][pixel_loc] = p[1][chan][pixel_loc];
+			// just copy the pixel
+			o[chan][pixel_loc] = p[chan][pixel_loc];
 		}
 	}
 	
 }
 
-static void filterframe (uint8_t *m[3], uint8_t ***n, y4m_stream_info_t *si,int temporalLength)
+static void filterframe (uint8_t *m[3], uint8_t **n, y4m_stream_info_t *si)
 {
 	
 	int x,y;
@@ -165,11 +169,11 @@ static void filterframe (uint8_t *m[3], uint8_t ***n, y4m_stream_info_t *si,int 
 	for (y=0; y < height; y++) {
 		for (x=0; x < width; x++) {
 			
-			filterpixel(m,n,0,x,y,width,height,temporalLength);
+			filterpixel(m,n,0,x,y,width,height);
 			
 			if (x<width2 && y<height2) {
-				filterpixel(m,n,1,x,y,width2,height2,temporalLength);
-				filterpixel(m,n,2,x,y,width2,height2,temporalLength);
+				filterpixel(m,n,1,x,y,width2,height2);
+				filterpixel(m,n,2,x,y,width2,height2);
 			}
 			
 		}
@@ -178,10 +182,10 @@ static void filterframe (uint8_t *m[3], uint8_t ***n, y4m_stream_info_t *si,int 
 }
 
 // temporal filter loop
-static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo, int temporalLength )
+static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
-	uint8_t            ***yuv_data;
+	uint8_t            *yuv_data[3];
 	uint8_t				*yuv_odata[3];
 	uint8_t				**temp_yuv;
 	int                read_error_code ;
@@ -191,11 +195,11 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo, int te
 	// Allocate memory for the YUV channels
 	// may move these off into utility functions
 	if (chromalloc(yuv_odata,inStrInfo))		
-		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+		mjpeg_error_exit1 ("Could'nt allocate memory for the out YUV4MPEG data!");
 	
 	// sanity check!!!
-	if(temporalalloc(&yuv_data,inStrInfo,3))
-		mjpeg_error_exit1 ("Could'nt allocate memory for the temporal YUV4MPEG data!");
+	if(chromalloc(yuv_data,inStrInfo))
+		mjpeg_error_exit1 ("Could'nt allocate memory for the in YUV4MPEG data!");
 	
 	
 	
@@ -204,53 +208,22 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo, int te
 	write_error_code = Y4M_OK ;
 	
 	y4m_init_frame_info( &in_frame );
-	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[temporalLength-1] );
-	
-	// what can I call this utility function
-	//init loop mode
-	for (c=temporalLength-1;c>0;c--) {
-		chromacpy(yuv_data[c-1],yuv_data[c],inStrInfo);
-	}
-	
-	// if temporalLength is an odd value should it be rounded up or down
-	for(d=1;d<temporalLength/2;d++) {
-		y4m_fini_frame_info( &in_frame );
-		y4m_init_frame_info( &in_frame );
-		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[temporalLength-1] );
-		// shuffle
-		temporalshuffle(yuv_data,temporalLength);
-	}
-	
+	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+		
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
+		
+		y4m_init_frame_info( &in_frame );
+		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_odata,yuv_data,inStrInfo,temporalLength);
+			filterframe(yuv_odata,yuv_data,inStrInfo);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
 		
 		y4m_fini_frame_info( &in_frame );
-		y4m_init_frame_info( &in_frame );
-		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[temporalLength-1] );
-		// shuffle
-		temporalshuffle(yuv_data,temporalLength);
-		
+				
 	}
-	// finalise loop		
-	for(c=0;c<temporalLength/2;c++) {
-		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_odata,yuv_data,inStrInfo,temporalLength);
-			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
-		}
-		
-		y4m_fini_frame_info( &in_frame );
-		y4m_init_frame_info( &in_frame );
-		
-		// shuffle
-		temporalshuffle(yuv_data,temporalLength);
-		
-	}
-	
 	
 	// Clean-up regardless an error happened or not
 	
@@ -259,7 +232,7 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo, int te
 	chromafree(yuv_odata);
 	
 	//must free yuv temporal buffer
-	temporalfree(yuv_data,temporalLength);
+	chromafree(yuv_data);
 	
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
@@ -329,7 +302,7 @@ int main (int argc, char *argv[])
 	//filterinitialize ();
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 	
-	filter(fdIn, fdOut, &in_streaminfo,3);
+	filter(fdIn, fdOut, &in_streaminfo);
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	
