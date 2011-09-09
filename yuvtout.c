@@ -293,8 +293,8 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuvtemporal (version " VERSION ") is a temporal filter for yuv streams");
-	mjpeg_info ("(C) 2010 Mark Heath <mjpeg0 at silicontrip.org>");
+	mjpeg_info ("yuvtout (version " VERSION ") is a VHS noise reduction filter for yuv streams");
+	mjpeg_info ("(C) 2011 Mark Heath <mjpeg0 at silicontrip.org>");
 	mjpeg_info (" -h for help");
 	
 	/* in that function we do all the important work */
