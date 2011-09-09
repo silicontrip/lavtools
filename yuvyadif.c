@@ -351,7 +351,7 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1("source material not interlaced");
 	}
 	
-	y4m_si_set_interlace(&in_streaminfo, yuv_interlacing);
+	y4m_si_set_interlace(&in_streaminfo, Y4M_ILACE_NONE);
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 
 	
