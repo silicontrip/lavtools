@@ -73,9 +73,15 @@ static struct parameters this;
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuvbilateral -r sigmaR -d sigmaD [-v 0..2]\n"
-			 "\t -r sigmaR set the similarity distance"
-			 "\t -r sigmaD set the temporal/spacial distance"
+			 "usage: yuvbilateral [-v 0..2]\n"
+			 "\t -a Ax"
+			 "\t -b Ay"
+			 "\t -c Bx"
+			 "\t -d By"
+			 "\t -i Sx"
+			 "\t -j Sy"
+			 "\t -k a"
+			 "\t -l h"
 
 			);
 }
@@ -158,7 +164,8 @@ static void filterinitialize (int Ax, int Ay, int Bx, int By, int Sx, int Sy, in
 	
 	this.gw = (int*)malloc(Sxd*Syd*sizeof(int));
 	
-	//	int w = 0, m, n;
+	w = 0;
+	//int m, n;
 	// int j;
 	for ( j=-Sy; j<=Sy; ++j)
 	{
@@ -169,7 +176,10 @@ static void filterinitialize (int Ax, int Ay, int Bx, int By, int Sx, int Sy, in
 		{
 			if (k < 0) n = MIN(k+Bx,0);
 			else n = MAX(k-Bx,0);
+			
+			
 			this.gw[w++] = exp(-((m*m+n*n)/(2*a2))) * PRECISION;
+			//fprintf (stderr,"gw: 
 		}
 	}
 	
@@ -228,6 +238,8 @@ static void filterframeB  (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) 
 				{
 					const int yT = -MIN(MIN(this.Sy,u),y);
 					const int yB = MIN(MIN(this.Sy,heightm1-u),heightm1-y);
+			//	fprintf (stderr,"yb: %d sy: %d hm1: %d u: %d y: %d\n",yB,this.Sy,heightm1,u,y);
+
 					const int yBb = MIN(MIN(this.By,heightm1-u),heightm1-y);
 					const unsigned char *s1_saved = pfp + (u+yT)*pitch;
 					const unsigned char *s2_saved = pfp + (y+yT)*pitch + x;
@@ -244,9 +256,12 @@ static void filterframeB  (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) 
 						const int *gwT = gw_saved;
 						int diff = 0, gweights = 0;
 						int j;
-						for ( j=yT; j<=yB; ++j)
+					//	 fprintf (stderr,"yt: %d yb: %d\n",yT,yB);
+
+						for ( j=yT; j<=yB; j++)
 						{
 							int k;
+					//		fprintf (stderr,"xl: %d xr: %d\n",xL,xR);
 							for ( k=xL; k<=xR; ++k)
 							{
 								diff += ABS(s1[k]-s2[k])*gwT[k];
@@ -256,6 +271,9 @@ static void filterframeB  (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) 
 							s2 += pitch;
 							gwT += Sxd;
 						}
+						
+					//	fprintf (stderr,"diff: %d gweights: %d\n",diff,gweights);
+						
 						const int weight = exp((diff/gweights)*hin) * PRECISION;
 						const int xRb = MIN(MIN(this.Bx,widthm1-v),widthm1-x);
 						const unsigned char *sbp = sbp_saved + v;
@@ -514,10 +532,21 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "v:hr:d:";
+	const static char *legal_flags = "v:ha:b:c:d:i:j:k:l:";
 	
-	float sigma;
 	
+	
+	int Ax, Ay, Bx, By, Sy, Sx; 
+	float a, h;
+	
+	Ax=4;
+	Ay=4;
+	Bx=1;
+	By=1;
+	Sx=4;
+	Sy=4;
+	a=1.0;
+	h=1.0;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -532,12 +561,35 @@ int main (int argc, char *argv[])
 				print_usage (argv);
 				return 0 ;
 				break;
-			case 'r':
-				sigma = atof(optarg);
+			case 'a':
+				Ax = atoi(optarg);
+				break;
+			case 'b':
+				Ay = atoi(optarg);
+				break;
+				
+			case 'c':
+				Bx = atoi(optarg);
 				break;
 			case 'd':
-				sigma = atof(optarg);
+				By = atoi(optarg);
 				break;
+				
+				
+			case 'i':
+				Sx = atoi(optarg);
+				break;
+			case 'j':
+				Sy = atoi(optarg);
+				break;
+				
+			case 'k':
+				a = atof(optarg);
+				break;
+			case 'l':
+				h = atof(optarg);
+				break;
+				
 				
 		}
 	}
@@ -564,7 +616,7 @@ int main (int argc, char *argv[])
 	
     
 	/* in that function we do all the important work */
-	filterinitialize (4,4,2,2,2,2,1.0,1.0,&in_streaminfo);
+	filterinitialize (Ax,Ay,Bx,By,Sx,Sy,a,h,&in_streaminfo);
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 	filter(fdIn,fdOut, &in_streaminfo);
 	y4m_fini_stream_info (&in_streaminfo);
