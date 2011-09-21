@@ -206,9 +206,10 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 	/* Initialize counters */
 	
 	write_error_code = Y4M_OK ;
-	
-	y4m_init_frame_info( &in_frame );
-	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+	read_error_code = Y4M_OK;
+
+	//y4m_init_frame_info( &in_frame );
+	//read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 		
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		

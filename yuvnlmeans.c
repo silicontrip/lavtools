@@ -58,6 +58,12 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 struct parameters {
 
 	int Ax,Ay,Bx,By,Sx,Sy,a,h;
+	
+	int iDWin;
+	int iDBloc;
+	float fSigma;
+	float fFiltPar;
+	
 	// want to change these into fixed precision
 	int *gwh;
 	int *dsum;
@@ -74,14 +80,10 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvbilateral [-v 0..2]\n"
-			 "\t -a Ax"
-			 "\t -b Ay"
-			 "\t -c Bx"
-			 "\t -d By"
-			 "\t -i Sx"
-			 "\t -j Sy"
-			 "\t -k a"
-			 "\t -l h"
+			 "\t -w window size (1)"
+			 "\t -b search window size (10)"
+			 "\t -s Sigma (1.0)"
+			 "\t -f Filtering (0.55)"
 
 			);
 }
@@ -139,7 +141,7 @@ static void filterinitialize (int Ax, int Ay, int Bx, int By, int Sx, int Sy, in
 	const int Byh = (By+1)>>1;
 	
 	
-	
+	// gwh doesn't appear to be used anywhere.
 	this.gwh = (int*)malloc(Sxdh*Sydh*sizeof(int));
 	int w = 0, m, n;
 	int j;
@@ -193,6 +195,393 @@ static void filterinitialize (int Ax, int Ay, int Bx, int By, int Sx, int Sy, in
 	
 	
 }
+
+#define LUTPRECISION 1000.0
+#define LUTMAX 30.0
+#define LUTMAXM1 29.0
+#define fTiny 0.00000001f
+
+void  wxFillExpLut(float *lut, int size) {
+	int i;
+    for (i=0; i< size; i++)   lut[i]=   expf( - (float) i / LUTPRECISION);
+}
+
+float wxSLUT(float dif, float *lut) {
+	
+    if (dif >= (float) LUTMAXM1) return 0.0;
+	
+    int  x= (int) floor( (double) dif * (float) LUTPRECISION);
+	
+    float y1=lut[x];
+    float y2=lut[x+1];
+	
+    return y1 + (y2-y1)*(dif*LUTPRECISION -  x);
+}
+
+
+int fiL2IntDist(uint8_t *u0,uint8_t *u1,int i0,int j0,int i1,int j1,int radius,int width0, int width1) {
+	
+    int dist=0;
+	int s;
+    for (s=-radius; s<= radius; s++) {
+		
+        int l = (j0+s)*width0 + (i0-radius);
+        uint8_t *ptr0 = &u0[l];
+		
+        l = (j1+s)*width1 + (i1-radius);
+        uint8_t *ptr1 = &u1[l];
+		
+		int r;
+        for (r=-radius; r<=radius; r++,ptr0++,ptr1++) {
+            int dif = (*ptr0 - *ptr1);
+            dist += (dif*dif);
+        }
+		
+    }
+	
+    return dist;
+}
+
+
+void nlmeans_ipol(int iDWin,            // Half size of patch
+                  int iDBloc,           // Half size of research window
+                  float fSigma,         // Noise parameter
+                  float fFiltPar,       // Filtering parameter
+                  uint8_t *fpI,          // Input
+                  uint8_t *fpO,          // Output
+                  int iWidth,int iHeight) {
+	
+	
+	
+	
+    // length of each channel
+    int iwxh = iWidth * iHeight;
+	
+	
+    //  length of comparison window
+    int ihwl = (2*iDWin+1);
+    int iwl = (2*iDWin+1) * (2*iDWin+1);
+	
+	// forcing 1 channel in this instance.
+  //  int icwl = iChannels * iwl;
+	int icwl = iwl;
+	
+	
+    // filtering parameter
+    float fSigma2 = fSigma * fSigma;
+    float fH = fFiltPar * fSigma;
+    float fH2 = fH * fH;
+	
+    // multiply by size of patch, since distances are not normalized
+    fH2 *= (float) icwl;
+	
+	
+	
+    // tabulate exp(-x), faster than using directly function expf
+    int iLutLength = (int) rintf((float) LUTMAX * (float) LUTPRECISION);
+//    float *fpLut = new float[iLutLength];
+	float *fpLut = (float *) malloc( sizeof(float)  * iLutLength);
+
+    wxFillExpLut(fpLut,iLutLength);
+	
+	
+	
+	
+    // auxiliary variable
+    // number of denoised values per pixel
+	
+	// why is this a float?
+    //float *fpCount = new float[iwxh];
+	int *fpCount = (int *) malloc (sizeof(int) * iwxh);
+	//fpClear(fpCount, 0.0f,iwxh);
+	memset(fpCount,0,sizeof(int) * iwxh);
+    
+	
+	
+	
+    // clear output
+	//    for (int ii=0; ii < iChannels; ii++) fpClear(fpO[ii], 0.0f, iwxh);
+	int *fpOut = (int *) malloc (sizeof(int) * iwxh);
+
+	memset(fpOut,0,sizeof(int) * iwxh);
+
+	
+	
+    // PROCESS STARTS
+    // for each pixel (x,y)
+#pragma omp parallel shared(fpI, fpO)
+    {
+		
+		
+#pragma omp for schedule(dynamic) nowait
+		// auxiliary variable
+		// denoised patch centered at a certain pixel
+	//	float **fpODenoised = new float*[iChannels];
+	//	for (int ii=0; ii < iChannels; ii++) fpODenoised[ii] = new float[iwl];
+	
+	// single channel	
+		float *fpODenoised = (float *) malloc (sizeof(float) * iwl);
+		
+		int y;
+        for ( y=0; y < iHeight ; y++) {
+		//	fprintf(stderr,"line: %d\n",y);
+			int x;
+            for ( x=0 ; x < iWidth;  x++) {
+				
+                // reduce the size of the comparison window if we are near the boundary
+                int iDWin0 = MIN(iDWin,MIN(iWidth-1-x,MIN(iHeight-1-y,MIN(x,y))));
+				
+				
+                // research zone depending on the boundary and the size of the window
+                int imin=MAX(x-iDBloc,iDWin0);
+                int jmin=MAX(y-iDBloc,iDWin0);
+				
+                int imax=MIN(x+iDBloc,iWidth-1-iDWin0);
+                int jmax=MIN(y+iDBloc,iHeight-1-iDWin0);
+				
+				
+				
+                //  clear current denoised patch
+                //for (int ii=0; ii < iChannels; ii++) fpClear(fpODenoised[ii], 0.0f, iwl);
+				
+				
+				memset(fpODenoised,0, sizeof(float) * iwl);
+
+				
+                // maximum of weights. Used for reference patch
+                float fMaxWeight = 0.0f;
+				
+				
+                // sum of weights
+                float fTotalWeight = 0.0f;
+				
+				int j;
+                for (j=jmin; j <= jmax; j++) {
+					int i;
+                    for (i=imin ; i <= imax; i++)
+                        if (i!=x || j!=y) {
+							
+                            int ifDif = fiL2IntDist(fpI,fpI,x,y,i,j,iDWin0,iWidth,iWidth);
+							
+                            // dif^2 - 2 * fSigma^2 * N      dif is not normalized
+                            float fDif = MAX(ifDif - 2 * (float) icwl *  fSigma2, 0.0f);
+                            fDif = fDif / fH2;
+							
+                            float fWeight = wxSLUT(fDif,fpLut);
+							
+                            if (fWeight > fMaxWeight) fMaxWeight = fWeight;
+							
+                            fTotalWeight += fWeight;
+							
+							int is;
+                            for ( is=-iDWin0; is <=iDWin0; is++) {
+                                int aiindex = (iDWin+is) * ihwl + iDWin;
+                                int ail = (j+is)*iWidth+i;
+								
+								int ir;
+                                for ( ir=-iDWin0; ir <= iDWin0; ir++) {
+									
+                                    int iindex = aiindex + ir;
+                                    int il= ail +ir;
+									
+                                  //  for (int ii=0; ii < iChannels; ii++)
+                                        fpODenoised[iindex] += fWeight * fpI[il];
+									
+                                }
+								
+                            }
+							
+                        }
+				}
+			
+                // current patch with fMaxWeight
+				int is;
+                for ( is=-iDWin0; is <=iDWin0; is++) {
+                    int aiindex = (iDWin+is) * ihwl + iDWin;
+                    int ail=(y+is)*iWidth+x;
+					
+					int ir;
+                    for ( ir=-iDWin0; ir <= iDWin0; ir++) {
+						
+                        int iindex = aiindex + ir;
+                        int il=ail+ir;
+						
+                      //  for (int ii=0; ii < iChannels; ii++)
+                            fpODenoised[iindex] += fMaxWeight * fpI[il];
+						
+                    }
+                }
+				
+				
+				
+                fTotalWeight += fMaxWeight;
+				
+				
+				
+				
+				
+				
+				
+                // normalize average value when fTotalweight is not near zero
+                if (fTotalWeight > fTiny) {
+					
+					
+					int is;
+                    for ( is=-iDWin0; is <=iDWin0; is++) {
+                        int aiindex = (iDWin+is) * ihwl + iDWin;
+                        int ail=(y+is)*iWidth+x;
+						int ir;
+                        for ( ir=-iDWin0; ir <= iDWin0; ir++) {
+                            int iindex = aiindex + ir;
+                            int il=ail+ ir;
+							
+                            fpCount[il]++;
+							
+                            //for (int ii=0; ii < iChannels; ii++) {
+                                fpOut[il] += fpODenoised[iindex] / fTotalWeight;
+								
+                            }
+							
+                        }
+                    }
+					
+					
+                }
+				
+				
+				
+				
+				
+				
+            }
+			
+			
+			
+         //   for (int ii=0; ii < iChannels; ii++) delete[] fpODenoised[ii];
+          //  delete[] fpODenoised;
+		free(fpODenoised);
+			
+        }
+		
+		
+		
+		
+    
+
+int ii;
+    for ( ii=0; ii < iwxh; ii++)
+        if (fpCount[ii]>0) {
+				fpO[ii] = fpOut[ii] / fpCount[ii];
+        } else {
+				fpO[ii] = fpI[ii];
+        }
+	
+	
+	
+	
+    // delete memory
+    free(fpLut);
+    free(fpCount);
+free(fpOut);
+	
+	
+}
+
+static void filterframeNL (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) {
+
+	int b;
+	for (b=0; b < 3; b++)
+	{
+	
+		 uint8_t *srcp = n[b];
+		 uint8_t *dstp = m[b];
+
+		
+		const int height = y4m_si_get_plane_height(si,b);
+		const int width = y4m_si_get_plane_width(si,b);
+		const int heightm1 = height -1;
+		const int widthm1 = width -1;
+
+		int x1,y1,x2,y2,u,v;
+		
+		for (y1=0;y1<height;y1++) {
+
+			fprintf (stderr,"LINE %d\n",y1);
+			
+			for (x1=0;x1<width;x1++) {
+				//fprintf (stderr,"COL %d\n",x1);
+
+				memset(this.dsum,0,height * width * sizeof(int));
+
+				int srcoff = y1*width + x1;
+				int total = 0;
+				
+				for(y2=0;y2<height;y2++) {
+				
+					for(x2=0;x2<width;x2++) {
+					
+						int dstoff = y2*width + x2;
+
+						
+						int yT = -MIN(MIN(this.Ay,y1),y2);
+						int yB = MIN(MIN(this.Ay,heightm1-y1),heightm1-y2);
+						int xL = -MIN(MIN(this.Ax,x1),x2);
+						int xR = MIN(MIN(this.Ax,widthm1-x1),widthm1-x2);
+						
+						int count = 0;
+						int diff = 0;
+						
+						int winoff = yT * width;
+						
+						for (v=yT;v<yB;v++)
+						{
+							
+							for (u=xL;u<xR;u++) 
+							{
+							//	fprintf (stderr,"srcoff %d dstoff %d winoff %d u %d\n",srcoff,dstoff,winoff,u);
+								diff += abs(srcp[srcoff + winoff + u] - srcp[dstoff + winoff + u]);
+								count ++;
+							}
+							
+							winoff += width;
+				
+						}
+						
+					// fprintf(stderr,"diff: %d count %d\n",diff,count);
+						if (count == 0) {
+							this.dsum[dstoff] = 0;
+						} else {
+							this.dsum[dstoff] = 255 - (diff / count);
+							total += this.dsum[dstoff];
+						}
+					}
+					
+				}
+				
+				
+				dstp[srcoff] = 0;
+				int winoff = 0;
+				int pixel =0 ;
+				for(y2=0;y2<height;y2++) {
+					
+					for(x2=0;x2<width;x2++) {
+						pixel += srcp[ winoff + x2 ] * this.dsum[winoff + x2];
+					}
+											 winoff += width;
+				}
+				//	fprintf (stderr,"pixel: %d Total: %d\n",pixel,total);
+
+				if (total == 0) {
+					dstp[srcoff] = 0;
+				} else {
+					dstp[srcoff] = pixel / total;
+				}
+			}
+		}
+		
+	}
+}
+
 
 static void filterframeB  (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) {
 
@@ -358,7 +747,9 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) {
 
 		for (y=0; y < height; ++y) {
 			
+			// window edge limiter
 			const int stopy = MIN(y+this.Ay,heightm1);
+			// vertical offset pointer
 			const int doffy = y*width;
 			int x;
 			
@@ -366,8 +757,10 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) {
 
 			for (x=0; x < width; ++x) {
 				
+				// window edge limiter
 				const int startxt = MAX(x-this.Ax,0);
 				const int stopx = MIN(x+this.Ax,widthm1);
+				// horizontal and vertical offset pointer
 				const int doff = doffy+x;
 				
 			//	fprintf (stderr,"trace: filterframe doff=%d\n",doff);
@@ -434,7 +827,7 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) {
 							// what is this doing in the middle of processing
 							weight = exp((diff/gweights)*hin) * PRECISION;
 						} else {
-							weight = 1;
+							weight = PRECISION;
 						}
 						*cweight += weight;
 						*dweight += weight;
@@ -447,7 +840,7 @@ static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si) {
 					const int wmax = *dwmax <= 1 ? PRECISION : *dwmax;
 					*dsum += srcp[x]*wmax;
 					*dweight += wmax;
-					dstp[x] = MAX(MIN((int)(((*dsum)/(*dweight))+0.5),255),0);
+					dstp[x] = MAX(MIN((int)(((*dsum + PRECISION >> 1)/(*dweight))),255),0);
 					
 				}
 
@@ -494,11 +887,16 @@ static void filter(int fdIn, int fdOut, y4m_stream_info_t  *inStrInfo )
 			
 			// static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si, double *dsum, double *dweight, double *dwmax, int Ax, int Ay, int Sx, int Sy, double *gw)
 
+			int ii;
+			for (ii=0; ii< 3; ii++) 
+				nlmeans_ipol(this.iDWin,this.iDBloc,this.fSigma,this.fFiltPar,yuv_data[ii],yuv_odata[ii],y4m_si_get_plane_width(inStrInfo,ii),y4m_si_get_plane_height(inStrInfo,ii));
+			/*
 			if (this.Bx || this.By) {
 				filterframeB(yuv_odata,yuv_data,inStrInfo);
 			} else {
-				filterframe(yuv_odata,yuv_data,inStrInfo);
+				filterframeNL(yuv_odata,yuv_data,inStrInfo);
 			}
+			 */
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
 		
@@ -532,21 +930,35 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "v:ha:b:c:d:i:j:k:l:";
+	const static char *legal_flags = "v:hw:b:s:f:";
 	
+	/*
+	static struct option long_options[] =
+	{
+		/// These options set a flag. 
+		{"verbose", no_argument,       &verbose, 2},
+		{"quiet",   no_argument,       &verbose, 0},
+		// These options don't set a flag.
+		// We distinguish them by their indices. 
+		{"Ax",     required_argument,       0, 'a'},
+		{"Ay",  required_argument,       0, 'b'},
+		{"Bx",  required_argument, 0, 'd'},
+		{"By",  required_argument, 0, 'c'},
+		{"Sx",    required_argument, 0, 'i'},
+		{"Sy",    required_argument, 0, 'j'},
+		{"a",    required_argument, 0, 'k'},
+		{"h",    required_argument, 0, 'l'},
+		{0, 0, 0, 0}
+	};
+	*/
 	
+	int win,bloc; 
+	float sigma, filtpar;
 	
-	int Ax, Ay, Bx, By, Sy, Sx; 
-	float a, h;
-	
-	Ax=4;
-	Ay=4;
-	Bx=1;
-	By=1;
-	Sx=4;
-	Sy=4;
-	a=1.0;
-	h=1.0;
+	win=1;
+	bloc=10;
+	sigma=1.0;
+	filtpar=0.55;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -561,35 +973,19 @@ int main (int argc, char *argv[])
 				print_usage (argv);
 				return 0 ;
 				break;
-			case 'a':
-				Ax = atoi(optarg);
+			case 'w':
+				win = atoi(optarg);
 				break;
 			case 'b':
-				Ay = atoi(optarg);
+				bloc = atoi(optarg);
 				break;
 				
-			case 'c':
-				Bx = atoi(optarg);
+			case 's':
+				sigma = atof(optarg);
 				break;
-			case 'd':
-				By = atoi(optarg);
+			case 'f':
+				filtpar = atof(optarg);
 				break;
-				
-				
-			case 'i':
-				Sx = atoi(optarg);
-				break;
-			case 'j':
-				Sy = atoi(optarg);
-				break;
-				
-			case 'k':
-				a = atof(optarg);
-				break;
-			case 'l':
-				h = atof(optarg);
-				break;
-				
 				
 		}
 	}
@@ -616,7 +1012,12 @@ int main (int argc, char *argv[])
 	
     
 	/* in that function we do all the important work */
-	filterinitialize (Ax,Ay,Bx,By,Sx,Sy,a,h,&in_streaminfo);
+	//filterinitialize (Ax,Ay,Bx,By,Sx,Sy,a,h,&in_streaminfo);
+	this.iDWin = win;
+	this.iDBloc = bloc;
+	this.fSigma = sigma;
+	this.fFiltPar = filtpar;
+	
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 	filter(fdIn,fdOut, &in_streaminfo);
 	y4m_fini_stream_info (&in_streaminfo);
