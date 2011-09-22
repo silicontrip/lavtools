@@ -2,9 +2,17 @@
   *  yuvadjust.c
   * performs simple contrast brightness saturation adjustments
   *
-  *  modified from yuvfps.c by
-  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani
-  *
+**<h3>Adjust video</h3>
+**<p>Allows changes such as brightness, contrast, saturation, hue
+**shift and hue rotation. Supports negative values for inversion.
+**</p>
+**<UL>
+**<li>10th Aug 2008 Now supports upper and lower level adjustment for contrast stretching.
+**<li>10th May 2008 Phill Clarke noticed that none of my yuvtools will not compile with mjpegutils RC3.
+**Due to a change in the mjpeg_logging type. This code has the change that should work under rc3.
+**</li>
+**</ul>
+
   *
   *  This program is free software; you can redistribute it and/or modify
   *  it under the terms of the GNU General Public License as published by
