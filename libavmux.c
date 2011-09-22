@@ -11,6 +11,13 @@
 //
 //gcc -O3 -I/usr/local/include/ffmpeg -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libavmux.c -o libavmux
 //
+/*
+**<h3>Elementary stream to Container MUXER/DEMUXER</h3>
+**<p>This is a very simple avi/mov/mpg demuxer and muxer.</P>
+**<p>The demuxer works quite well, however the muxing part still has bugs and
+**has not correctly produced a working file.  This is still a work in progress.
+**</p>
+*/
 
 #include <ffmpeg/avcodec.h>
 #include <ffmpeg/avformat.h>
