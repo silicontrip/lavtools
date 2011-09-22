@@ -97,7 +97,12 @@ if ($dir = @opendir("$blogdir")) {
 </a>
 <p><a href="<?=$file?>"><?=$file?></a>
 <?php
+if (file_exists("$blogdir/$base.html")) {
 include ("$blogdir/$base.html");
+} else {
+$lines = file($file);
+foreach ($lines as $line) if(preg_match('/^\*\*/', $line)) print preg_replace("/^\*\*/", " ", $line);
+}
 ?>
 </div>
 <?php
