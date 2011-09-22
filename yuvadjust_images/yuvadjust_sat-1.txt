@@ -1,0 +1,1 @@
+Saturation Adjust by -1 (Equivalent to hue rotation of 180 degrees but faster)
