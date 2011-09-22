@@ -1,11 +1,24 @@
 /*
   *  yuvrfps.c
-  *  does a frame rate reduction based on simple frame drop.
-  *  drops 1 frame every X
-  *  This is to work with progressive 3:2 pulldown files 
-  *  Or files converted to a higher frame rate via frame doubling.
-  *  Similar to yuvkineco but can handle any sort of reduction
-  *  The program looks at X number of frames and removes the one which is duplicated
+**<h3>Frame Dropping Frame Rate Converter </h3>
+**<p>
+**Performs frame rate reduction by simple fractional amounts, by
+**dropping 1 out of every X frames or fields.  
+**</p><p>
+**This is to work with progressive 3:2 pulldown files performing conversions such as
+**29.97 to 23.976 similar to yuvkineco or even 30 to 25 fps.  It
+**analyses X frames and finds the least different fram e and drops
+**it, in theory removing any duplicated frames.
+**</p>
+**<h4>Usage</h4>
+**<pre>
+**-F <Decimation> reduces X frames to X-1
+**   Common Decimation ratios
+**   5: 29.97 -> 23.97
+**   6: 30 -> 25
+**-I t|b|p Force interlace mode
+**</pre>
+
   *
   *  modified from yuvfps.c by
   *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani
