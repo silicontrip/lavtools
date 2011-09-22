@@ -103,6 +103,10 @@ include ("$blogdir/$base.html");
 $lines = file($file);
 foreach ($lines as $line) if(preg_match('/^\*\*/', $line)) print preg_replace("/^\*\*/", " ", $line);
 }
+if (is_dir("$blogdir/${base}_images")) {
+?><h3>Images</h3><?
+news::imageinline("lavtools/${base}_images",-1);
+}
 ?>
 </div>
 <?php
