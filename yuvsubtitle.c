@@ -6,7 +6,21 @@
  
 ** <h3>YUV Subtitles</h3>
 ** <p> a subtitle rendering utility for yuv streams</p>
-** <p> Reads an ascii srt file and renders a TTF in the image</p>
+** <p> Reads an ascii subtitle file and renders a TTF in the image</p>
+** <p> The subtitle file is in the format </p>
+** <pre>
+**10,100,Leah and the wookie must never again leave this city.
+**100,170,That was never a condition of our arrangment.
+**</pre>
+**<h4>Arguments</h4>
+**<pre>
+**-f <fontfile> path to TTF file.
+**-s <size> size to render the subtitle
+**-y <y pos> vertical position on screen
+**-c <colour> colour in the format y,u,v
+**-u <filename> subtitle file filename
+**</pre>
+
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
  *
@@ -69,7 +83,7 @@ struct subhead {
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuv\n"
+			 "usage: yuvsubtitle\n"
 			);
 }
 
