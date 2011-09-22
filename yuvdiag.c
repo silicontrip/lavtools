@@ -4,9 +4,6 @@
  *  Technical display routines 
  *  Converts a YUV stream for technical purposes.
  *
- *  based on code:
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
- *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -24,6 +21,25 @@
 gcc -O3 yuvdiag.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvdiag
 gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils yuvdiag.c -o yuvdiag
 gcc -O3 -I/opt/local/include -I/opt/local/include/freetype2 -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils -lfreetype yuvdiag.c -o yuvdiag
+
+**<h3>Video Diagnostics</h3>
+**<p> 
+**This tool has 5 operating modes.
+**<ul>
+**<li>YUV split, which copies the U and V channels into the luma channel.  
+**<li>Chroma Scope, which shows a histogram of the chroma values in intensity and
+**<li>Luma Scope, which shows a histogram of luminance on the Y axis.  
+**<li>A traditional histogram.
+**<li>Timecode burn in. Uses Freetype to render a TTF.  I recommend a fixed width font.
+**</ul>
+**</p>
+**<p>
+**This program needs some work to add labels to the histogram scopes, but 
+**not being a video engineer, I do not know exactly what to add. 
+**</p>
+**<p>
+**feedback would be appreciated.
+**</p>
  */
 
 #ifdef HAVE_CONFIG_H
