@@ -3,7 +3,13 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- *  an NL-means spacial filter
+** <h3> NL-means filter </h3>
+** <p>An NL-means spacial filter.
+** this performs an NL-means spatial filter on the video stream.
+** It is slow, approximately 15 seconds per SD frame (2.4ghz Core 2 Duo)
+** The noise reduction from the NL-means algorithm is quite effective.</p>
+**<p>I am looking at methods to optimise this code</p>
+
  *
  *  NL-means filter based on code from:
  * 
