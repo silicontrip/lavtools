@@ -42,8 +42,8 @@ static void print_usage()
 }
 
 /* libav demuxer
-** expects an array of open files, one per stream
-*/
+ * expects an array of open files, one per stream
+ */
 
 
 int mux_files (char *outname, char **inname, int len, char *format) {
