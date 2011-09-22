@@ -1,6 +1,7 @@
 /*
   *  yuvhsync.c
-  * attempts to align horizontal sync drift.
+** <p>attempts to align horizontal sync drift.
+** work in progress </p>
   *
   *  modified from yuvadjust.c by
   *  Copyright (C) 2010 Mark Heath
