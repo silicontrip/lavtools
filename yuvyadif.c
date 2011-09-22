@@ -4,6 +4,8 @@
  *  http://silicontrip.net/~mark/lavtools/
  *
 **<p>An implementation of the YADIF deinterlace filter for yuv streams.</p>
+**<h4>Usage</h4>
+**<p>-I force interlace mode t|b. top or bottom field first.</p> 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,14 +42,11 @@
 
 #define VERSION "0.1"
 
-#define PRECISION 1024
-
-
-
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuv\n"
+			 "usage: yuvyadif -I t|b\n"
+			 "\t-I interlace mode top first or bottom first\n"
 			 );
 }
 
