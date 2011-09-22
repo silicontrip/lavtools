@@ -20,6 +20,8 @@ TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvo
 
 all: $(TARGETS)
 
+yuvTHREADED: utilyuv.o yuvTHREADED.o
+
 yuvdeinterlace: utilyuv.o yuvdeinterlace.o
 
 yuvtshot: yuvtshot.o utilyuv.o
