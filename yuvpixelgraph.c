@@ -3,6 +3,11 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
+** <h3>Pixel Graph</h3>
+**<p> produces a text file of the chroma channels of a single pixel.</p>
+** <p> I have been using this to analyse some chroma-luma bleeding (rainbow) I've found on commercial DVDs.
+** In order to write a filter to remove this rainbow effect.</p>
+** <p>The pixel location is hard coded.</p>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

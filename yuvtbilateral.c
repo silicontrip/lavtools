@@ -3,8 +3,26 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- *  based on code:
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
+** <h3>Bilateral temporal filter</h3>
+ 
+** <p> performs a temporal bilateral filter over the video. </p>
+** <p> As the bilateral filter is edge preserving, this filter has innate motion awareness
+** This filter attempts to perform a time based noise reduction while minimising ghosting.</p>
+ 
+** <p>Based on code from <a href="http://user.cs.tu-berlin.de/~eitz/bilateral_filtering/">m.eitz</a> </p>
+ 
+** <h4>EXAMPLE</h4>
+** <p>Useful options are:</p>
+** <pre>
+** -D 3
+** -R 3
+** </pre>
+** <p>
+** Higher values of R cause more ghosting.  Higher values of D increase the 
+** search radius, and increase processing time.
+** </p>
+ 
+ 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

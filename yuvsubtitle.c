@@ -3,6 +3,10 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
+ 
+** <h3>YUV Subtitles</h3>
+** <p> a subtitle rendering utility for yuv streams</p>
+** <p> Reads an ascii srt file and renders a TTF in the image</p>
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
  *
