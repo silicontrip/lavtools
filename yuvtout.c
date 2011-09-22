@@ -3,8 +3,12 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- *  based on code:
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
+**<h3>YUV VHS shot noise filter</h3>
+**<p> This is what the yuvtshot filter is meant to do for VHS speck noise</p>
+**<p> This is a spatial filter which detects and removes the white "speck" noise
+** from VHS tapes.</p>
+**<p> I have spent a while tuning the detection algorithm, it appears quite effective.
+** This filter is more useful at removing VHS noise than the tshot filter.  </p>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by

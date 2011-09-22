@@ -6,6 +6,10 @@
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
  *
+** <h3> Field reversing filter </h3>
+** <p> Works by delaying the fields by 1 field.  May also require audio adjustment to keep the audio in sync</p>
+** <p> I've noticed that some broadcast DVBT material is field reversed progressive material.  This filter can
+** return the content back to progressive.</p>
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
