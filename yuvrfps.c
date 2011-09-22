@@ -46,11 +46,12 @@
 static void print_usage() 
 {
   fprintf (stderr,
-	   "usage: yuvaddetect [-v -h -Ip|b|p]\n"
-	   "yuvaddetect produces a 2d graph showing time vs frame difference\n"
+	   "usage: yuvrfps [-F <decimation>]  [-I t|b|p] [-v 0|1|2]\n"
+	   "yuvrfps reduces frame rate by decimation\n"
            "\n"
 	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 	   "\t -I<pbt> Force interlace mode\n"
+	"\t -F <X> Drop 1 frame every X frames\n"
 	   "\t -h print this help\n"
          );
 }
@@ -355,7 +356,7 @@ int main (int argc, char *argv[])
 
   // Information output
   mjpeg_info ("yuvrfps (version " YUVRFPS_VERSION ") is a frame rate converter which drops doubled frames for yuv streams");
-  mjpeg_info ("yuvrfps -h for help, or man yuvaddetect");
+  mjpeg_info ("yuvrfps -h for help");
 
 if (src_interlacing == Y4M_UNKNOWN)
     src_interlacing = y4m_si_get_interlace(&in_streaminfo);
