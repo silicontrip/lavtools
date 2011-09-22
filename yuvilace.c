@@ -1,20 +1,35 @@
 /*
- *  Experiments in interlace detection
- *  Interlace is the increase of temporal information at the sacrifice of vertical spacial information.
- *  Interlace is totally adaptive.  Stationary objects increase their vertical resolution without any sort of detection.
- *  This system exploits the persistance of vision in the eye.
+**<h3>Interlace Detection</h3>
+**<h4>Experimental</h4>
+**<p>Attempts to perform interlace detection, by FFT
+**the vertical lines in the screen, and averaging the resulting
+**frequency spectra.  Also tried experimenting with filtering to
+**intelligently remove interlace. 
+**</p>
+**<p> This code simply performs a 1d vertical FFT on the video </p>
+**<h4>Theory</h4>
+**<h4>Experiments in interlace detection</h4>
+**<ul>
+**<li>Interlace is the increase (doubling) of temporal speed at the sacrifice (halving) of vertical spacial information.
+**<li>Interlace is totally adaptive.  Stationary objects increase their vertical resolution without any sort of detection.
+**<li>This system exploits the persistance of vision in the eye.
+**</ul>
  *
- *  In a full height progressive display, if the frame is treated as occuring at the same temporal value, stationary images
- *  retain their full height resolution, however moving images suffer from "comb" effect
- *
- *  If the entire frame is treated as two separate temporal images, then the vertical resolution is halved.
- *  A full height frame can be produced by interpolation, however this is noticable and would needlessly degrade the 
- *  the image.  
- *  Stationary portions would lose information.  Moving portions have already lost information due to the 
- *  nature of interlace.
- *
- *  Neither case is true, as part of the image may be stationary and part may be moving.
- *  Detecting the moving portion and interpolating only the needed pixels is the goal of this code.
+**<p>
+**  In a full height progressive display, if the frame is treated as occuring at the same temporal value, stationary images
+**  retain their full height resolution, however moving images suffer from "comb" effect
+**</p>
+**<p>
+**  If the entire frame is treated as two separate temporal images, then the vertical resolution is halved.
+**  A full height frame can be produced by interpolation, however this is noticable and would needlessly degrade the 
+**  the image.  
+**  Stationary portions would lose information.  Moving portions have already lost information due to the 
+**  nature of interlace.
+**</p>
+**<p>
+**  Neither case is true, as part of the image may be stationary and part may be moving.
+**  Detecting the moving portion and interpolating only the needed pixels is the goal of this code.
+**</p>
  *
  *  modified from yuvfps.c by
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani

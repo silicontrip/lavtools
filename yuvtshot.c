@@ -24,6 +24,27 @@
 gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils utilyuv.o yuvhsync.c -o yuvhsync
 ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils utilyuv.o yuvhsync.c -o yuvhsync
 
+**<h3>3D small radius median filter tshot (temporal shot noise filter)</h3>
+
+**<p> Removes temporal shot noise by use of a median filter in 1 or more dimensions</p>
+
+**<h4>Usage</h4>
+**<pre>
+**-a process all pixels. Do not adaptively select noise pixels
+**-c process chroma only
+**-y process luma only
+**-m modes: OR'd flags together
+**</pre>
+**<ul>
+**<li> 1 uses the pixels from the previous frame and next frame.</li>
+**<li> 2 uses the pixels to the left and the pixel to the right.</li>
+**<li> 4 uses the pixels immediately above and below.</li>
+**<li> 8 uses the 2 pixels 2 above and 2 below (for interlace material).</li>
+**</ul>
+
+**<p>Can remove VHS "sparkle" noise with mode 4.</p>
+
+
   */
 
 #include <stdio.h>
