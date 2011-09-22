@@ -2,6 +2,8 @@
  *  generic.c
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
+
+** <p> Skeleton code for generic spatial filters </p>
  *
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
