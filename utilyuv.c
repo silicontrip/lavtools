@@ -1,7 +1,9 @@
 #include "utilyuv.h"
 #include <stdio.h>
+/*
+** <p>this is a utility library. It doesn't do anything itself</p>
 
-/* going to start putting my most common functions here. 
+going to start putting my most common functions here. 
  
  gcc -I/usr/local/include/mjpegtools -c utilyuv.c
  
