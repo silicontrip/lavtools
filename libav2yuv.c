@@ -505,7 +505,7 @@ int parseCommandline (int argc, char *argv[],
 	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:v:";
 	
 	*aw=0;
-	*sct=CODEC_TYPE_VIDEO;
+	*sct=AVMEDIA_TYPE_VIDEO;
 	*yi = Y4M_UNKNOWN;
 	*ysm = Y4M_UNKNOWN;
 	*fdOut = 1;
@@ -571,7 +571,7 @@ int parseCommandline (int argc, char *argv[],
 				break;	
 			case 'w':
 				*aw=1;
-				*sct=CODEC_TYPE_AUDIO;
+				*sct=AVMEDIA_TYPE_AUDIO;
 				break;
 			case 'c':
 				*con = 1;
@@ -951,7 +951,7 @@ int main(int argc, char *argv[])
     AVFrame         *pFrame444 = NULL; 
     AVPacket        packet;
     int             numBytes,numSamples;
-	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
+	int audioWrite = 0,search_codec_type=AVMEDIA_TYPE_VIDEO;
     uint8_t         *buffer = NULL;
 	int16_t		*aBuffer = NULL;
 	char *tc_in = NULL,*tc_out=NULL;
@@ -1057,9 +1057,9 @@ int main(int argc, char *argv[])
 				
 				skip = 0;
 				if (audioWrite && edllist[edlcounter].audio) {
-					search_codec_type = CODEC_TYPE_AUDIO;
+					search_codec_type = AVMEDIA_TYPE_AUDIO;
 				} else if (!audioWrite && edllist[edlcounter].video) {
-					search_codec_type = CODEC_TYPE_VIDEO;
+					search_codec_type = AVMEDIA_TYPE_VIDEO;
 				} else {
 					// skip if write mode (audio or video) != edit mode
 					skip = 1;
@@ -1114,7 +1114,7 @@ int main(int argc, char *argv[])
 					if (audioWrite && tc_in) {
 						if (yuv_frame_rate.d == 0) {
 							for(i=0; i<pFormatCtx->nb_streams; i++) {
-								if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
+								if(pFormatCtx->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
 								{
 									yuv_frame_rate.n = pFormatCtx->streams[i]->r_frame_rate.num;
 									yuv_frame_rate.d = pFormatCtx->streams[i]->r_frame_rate.den;
