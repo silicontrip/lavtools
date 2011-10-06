@@ -16,7 +16,7 @@
  **   Common Decimation ratios
  **   5: 29.970 -> 23.976
  **   6: 30 -> 25
- **-f force drop frame (or X:Y fields)
+ **-f <X[:Y]> force drop frame X (or X:Y fields)
  **-I t|b|p Force interlace mode
  **</pre>
  
@@ -71,19 +71,35 @@ static void print_usage()
 			 );
 }
 
-void copyfield(int which, int width, int height, unsigned char *input[], unsigned char *output[])
+void copyfield(int which, y4m_stream_info_t *sinfo, unsigned char *input[], unsigned char *output[])
 {
 	// "which" is 0 for top field, 1 for bottom field
 	int r = 0;
-	int chromasize = width / 2;
-	for (r = which; r < height; r += 2)
+	
+	int h,w,cw,ch;
+	
+	h = y4m_si_get_plane_height(sinfo,0);
+	w = y4m_si_get_plane_width(sinfo,0);
+	cw = y4m_si_get_plane_width(sinfo,1);
+	ch = y4m_si_get_plane_height(sinfo,1);
+	
+	int chromapos = which * cw;
+	int lumapos = which * w;
+	
+	
+	
+	for (r = which; r < h; r += 2)
 	{
-		int chromapos = (r / 2) * (width / 2); 
-		memcpy(&output[0][r * width], &input[0][r * width], width);
-		memcpy(&output[1][chromapos], &input[1][chromapos], chromasize);
-		memcpy(&output[2][chromapos], &input[2][chromapos], chromasize);
+		memcpy(&output[0][lumapos], &input[0][lumapos], w);
+		if (r < ch) {
+			memcpy(&output[1][chromapos], &input[1][chromapos], cw);
+			memcpy(&output[2][chromapos], &input[2][chromapos], cw);
+			chromapos += cw * 2;
+		}
+		lumapos += w * 2;
 	}
 }
+
 
 
 
@@ -139,10 +155,10 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[f] );
-		++src_frame_counter ;
+	//	++src_frame_counter ;
 	}
 	
-	// l should be drop_frames + 1
+	// f should be drop_frames + 1
 	// do some test if fewer frames read and change drop_frames to equal frames read
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
@@ -214,25 +230,20 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 			}
 		} else {
 			mjpeg_info("Dropping fields even: %d odd: %d",dropmi,dropmo);
-			for (f=1; f<drop_frames;f++) {
-				if ((f == dropmi)||(f == dropmo)) {
-					if (f != drop_frames) {
-						// shuffle all feilds from next frame to this frame
-						for (l=f; l<drop_frames; l++) {
-							if (f == dropmi) {
-								copyfield (0,w , h, yuv_data[l+1],yuv_data[l]);
-							} else {
-								copyfield (1,w , h, yuv_data[l+1],yuv_data[l]);
-							}
-						}
-						//		fprintf(stderr,"writing %d (drop %d:%d)\n",f,dropmi,dropmo);
-						write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[f] );	
-					}
-					
-				} else {
-					//	fprintf(stderr,"writing %d (drop %d:%d)\n",f,dropmi,dropmo);
-					write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[f] );
-				}
+			for (f=1; f<drop_frames;f++) { 
+				
+				
+				if (f == dropmi) 
+					for (l=f; l<drop_frames; l++) 
+						copyfield (0,inStrInfo, yuv_data[l+1],yuv_data[l]);
+
+				if (f == dropmo)
+					for (l=f; l<drop_frames; l++) 
+						copyfield (1,inStrInfo, yuv_data[l+1],yuv_data[l]);
+
+				
+				write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[f] );	
+				
 			}
 		}
 		// output all but the minimum difference frame.
@@ -244,13 +255,23 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 		
 		// copy the last frame to the first
 		
-		for (l=0; l< frame_data_size; l++) {
-			yuv_data[0][0][l] = yuv_data[drop_frames][0][l];
-			if (!l%2) {
-				yuv_data[0][1][l>>2] = yuv_data[drop_frames][1][l>>2];
-				yuv_data[0][2][l>>2] = yuv_data[drop_frames][2][l>>2];
-			}
-		}
+		memcpy(yuv_data[0][0],yuv_data[drop_frames][0],frame_data_size);
+		// assumes 420 video
+		// TODO: read chroma subsampling from stream
+		memcpy(yuv_data[0][1],yuv_data[drop_frames][1],frame_data_size>>2);
+		memcpy(yuv_data[0][2],yuv_data[drop_frames][2],frame_data_size>>2);
+		
+		/*
+		 for (l=0; l< frame_data_size; l++) {
+		 yuv_data[0][0][l] = yuv_data[drop_frames][0][l];
+		 if (!l%2) {
+		 yuv_data[0][1][l>>2] = yuv_data[drop_frames][1][l>>2];
+		 yuv_data[0][2][l>>2] = yuv_data[drop_frames][2][l>>2];
+		 }
+		 }
+		 */
+		
+		// TODO if read fewer than drop_frames main loop will exit.
 		
 		for (f=1; f<=drop_frames && Y4M_ERR_EOF != read_error_code; f++) {
 			y4m_fini_frame_info( &in_frame );
@@ -265,7 +286,7 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	y4m_fini_frame_info( &in_frame );
 	
-	for (f=0; f< drop_frames; f++) {
+	for (f=0; f<=drop_frames; f++) {
 		free( yuv_data[f][0] );
 		free( yuv_data[f][1] );
 		free( yuv_data[f][2] );
