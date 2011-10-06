@@ -67,6 +67,7 @@ static void print_usage()
 			 "\t -I<pbt> Force interlace mode\n"
 			 "\t -F <X> Drop 1 frame every X frames\n"
 			 "\t -f <X>[:<Y>] force drop frame X (or fields X:Y) rather than detect\n"
+			 "\t -s <X> skip X frames. Output X frames before performing drop. To synchronize 3:2 pulldown cadence\n" 
 			 "\t -h print this help\n"
 			 );
 }
@@ -112,7 +113,7 @@ void copyfield(int which, y4m_stream_info_t *sinfo, unsigned char *input[], unsi
 static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 				   int fdOut, y4m_stream_info_t  *outStrInfo,
 				   int interlacing, int drop_frames,
-				   int iforce, int oforce)
+				   int iforce, int oforce,int skip)
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[drop_frames+1][3] ;	
@@ -145,11 +146,13 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	src_frame_counter = 0 ;
 	
 	// initialise and read the first number of frames
-	y4m_init_frame_info( &in_frame );
-	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[0] );
+	for (f=0; f <= skip; f++) {
+		y4m_init_frame_info( &in_frame );
+		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[0] );
 	
 	// we will never drop the first frame of a file
-	write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[0] );
+		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[0] );
+	}
 	
 	for (f=1; f<=drop_frames && Y4M_ERR_EOF != read_error_code; f++) {
 		y4m_fini_frame_info( &in_frame );
@@ -277,7 +280,6 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 			y4m_fini_frame_info( &in_frame );
 			y4m_init_frame_info( &in_frame );
 			read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[f] );
-			++src_frame_counter ;
 		}
 		
 		
@@ -339,12 +341,13 @@ int main (int argc, char *argv[])
 	int drop_frames = 0;
 	int oforce = -1;
 	int iforce = -1;
+	int skip = 0;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
 	y4m_ratio_t src_frame_rate;
-	const static char *legal_flags = "F:f:I:v:h";
+	const static char *legal_flags = "s:F:f:I:v:h";
 	int c ;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
@@ -364,6 +367,9 @@ int main (int argc, char *argv[])
 				//force = atof(optarg);
 				sscanf (optarg,"%d:%d",&iforce,&oforce);
 				//	fprintf (stderr,"Full: %d Even: %d Odd: %d\n",force,iforce,oforce);
+				break;
+			case 's':
+				skip = atoi(optarg);
 				break;
 			case 'h':
 			case '?':
@@ -417,7 +423,7 @@ int main (int argc, char *argv[])
 	/* in that function we do all the important work */
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 	
-	detect( fdIn,&in_streaminfo,fdOut,&out_streaminfo,src_interlacing,drop_frames,iforce,oforce);
+	detect( fdIn,&in_streaminfo,fdOut,&out_streaminfo,src_interlacing,drop_frames,iforce,oforce,skip);
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	y4m_fini_stream_info (&out_streaminfo);
