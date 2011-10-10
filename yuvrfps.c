@@ -10,6 +10,11 @@
  **analyses X frames and finds the least different fram e and drops
  **it, in theory removing any duplicated frames.
  **</p>
+ **<p> It is possible that the 3:2 pulldown cadence starts on an interlace frame
+ **in which the detection will make all frames interlace (field reversed progressive)
+ **this can be corrected by the -s option to start the sequence on a progressive frame.
+ **It should be less than the Decimation number.
+ **</p>
  **<h4>Usage</h4>
  **<pre>
  **-F <Decimation> reduces X frames to X-1
@@ -18,6 +23,7 @@
  **   6: 30 -> 25
  **-f <X[:Y]> force drop frame X (or X:Y fields)
  **-I t|b|p Force interlace mode
+ **-s <X> skip X frames. Output X frames unchanged before starting detection.
  **</pre>
  
  *
