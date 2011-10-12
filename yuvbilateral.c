@@ -70,8 +70,8 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvbilateral -r sigmaR -d sigmaD [-v 0..2]\n"
-			 "\t -r sigmaR set the "
-			 "\t -r sigmaD set the "
+			 "\t -r sigmaR set the similarity distance\n"
+			 "\t -r sigmaD set the search radius\n"
 
 			);
 }

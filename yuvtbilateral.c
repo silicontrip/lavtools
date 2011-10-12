@@ -87,7 +87,9 @@ static struct parameters this;
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuv\n"
+			 "usage: yuvbilateral -r sigmaR -d sigmaD [-v 0..2]\n"
+			 "\t -r sigmaR set the similarity distance\n"
+			 "\t -r sigmaD set the search radius\n"
 			 );
 }
 
