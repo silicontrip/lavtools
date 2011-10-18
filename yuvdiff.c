@@ -1,11 +1,33 @@
 /*
- *  yuvpulldowndetect.c
+ *  yuvdiff.c
  *  produces a 2d graph showing time vs frame difference.
  *  the idea is that 3:2 pulldown has a distinct frame duplication pattern
  *  .
  *  modified from yuvfps.c by
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani
  *
+ 
+** <h3>Frame rate conversion detection</h3>
+** 
+** <p> Started life similar to yuvaddetect, may even contain disused
+** code from ad detect.  This program produces an ASCII file suitable
+** for plotting in gnuplot of the difference between consecutive frames
+** or fields.  Suitable for detecting 3-2 pulldown, or any other
+** pulldown (frame duplication) frame rate conversion.  If the output
+** is ran through an FFT it can even detect other frequency rate
+** changes such as 2.39 (25 to 59.94, progressive PAL to interlaced
+** NTSC) </p>
+ 
+** <p> This program cannot remove pulldown.  Try my other program
+** yuvrfps for frame duplication removal.  I do not know of a way to
+** remove frame blended frame rate conversion.  </p>
+**
+** <p> I have used this extensively to detect pulldown material.  </p>
+**
+** <p>A single comparison frame can be used to compare all frames 
+** in a stream.  Useful for attempting to find the comparison frame in the stream</p>
+ 
+ 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -32,6 +54,9 @@
 #include <unistd.h>
 #include <signal.h>
 
+#include <fcntl.h>
+
+
 #include "yuv4mpeg.h"
 #include "mpegconsts.h"
 
@@ -42,15 +67,20 @@ static void print_usage()
 	fprintf (stderr,
 			 "usage: yuvdiff [-g -v -h -Ip|b|p]\n"
 			 "yuvdiff produces a video showing frame by frame difference\n"
+			 "Or specify a file to compare differences from the first frame of that file\n"
 			 "\n"
 			 "\t -g produce text output suitable for graphing in gnuplot\n"
 			 "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 			 "\t -I<pbt> Force interlace mode\n"
+			 "\t -i <file> a y4m stream to compare with\n"
 			 "\t -h print this help\n"
 			 );
 }
 
-static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_stream_info_t *outStrInfo ,int interlacing,int graph)
+
+
+
+static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_stream_info_t *outStrInfo ,int interlacing,int graph, uint8_t *yuv_cdata[3])
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;	
@@ -84,9 +114,11 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 	chromalloc(yuv_wdata,inStrInfo);
 	
 	
+	
 	if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2] ||
 	   !yuv_odata[0] || !yuv_odata[1] || !yuv_odata[2]  )
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+	
 	
 	
 	write_error_code = Y4M_OK ;
@@ -96,7 +128,12 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 	
 	
 	
-	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_odata );
+	if (yuv_cdata[0] != NULL) {
+		chromacpy (yuv_odata,yuv_cdata,inStrInfo);
+	}
+	else {
+		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_odata );
+	}
 	++src_frame_counter ;
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
@@ -143,10 +180,13 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 		
 		++src_frame_counter ;
 		
-		yuv_tdata = yuv_odata[0];  yuv_odata[0] = yuv_data[0]; yuv_data[0] = yuv_tdata;
-		yuv_tdata = yuv_odata[1];  yuv_odata[1] = yuv_data[1]; yuv_data[1] = yuv_tdata;
-		yuv_tdata = yuv_odata[2];  yuv_odata[2] = yuv_data[2]; yuv_data[2] = yuv_tdata;
-		
+		// do not copy current frame to comparison frame
+		// if reading from comparison file.
+		if ( yuv_cdata[0] == NULL ) {
+			yuv_tdata = yuv_odata[0];  yuv_odata[0] = yuv_data[0]; yuv_data[0] = yuv_tdata;
+			yuv_tdata = yuv_odata[1];  yuv_odata[1] = yuv_data[1]; yuv_data[1] = yuv_tdata;
+			yuv_tdata = yuv_odata[2];  yuv_odata[2] = yuv_data[2]; yuv_data[2] = yuv_tdata;
+		}
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		
@@ -193,11 +233,18 @@ int main (int argc, char *argv[])
 	
 	int verbose = 4; // LOG_ERROR ;
 	int fdIn = 0 , fdOut=1;
-	y4m_stream_info_t in_streaminfo,out_streaminfo;;
+	y4m_stream_info_t in_streaminfo,out_streaminfo,compare_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
-	const static char *legal_flags = "gI:v:h";
+	const static char *legal_flags = "i:gI:v:h";
+	int fdCompare = 0;
+	y4m_frame_info_t   compare_frame ;
+	char *inputfile;
 	int graph = 0;
 	int c ;
+	
+	uint8_t *yuv_cdata[3];	
+
+	yuv_cdata[0] = NULL;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -212,6 +259,43 @@ int main (int argc, char *argv[])
 			case 'I':
 				src_interlacing = parse_interlacing(optarg);
 				break;
+			case 'i':
+				//fprintf(stderr,"case i\n");
+
+				fdCompare = open (optarg,O_RDONLY);
+				if (fdCompare < 0) {
+					perror ("Opening file");
+					mjpeg_error_exit1 ("Couln't open comparison file");
+				}
+				//fprintf(stderr,"y4m_read_stream_header\n");
+
+				if (y4m_read_stream_header (fdCompare, &compare_streaminfo) != Y4M_OK)
+					mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
+				//fprintf(stderr,"chromalloc\n");
+
+					chromalloc(yuv_cdata,&compare_streaminfo);
+				
+			//	fprintf(stderr,"yuv_cdata[0]==NULL\n");
+
+				if (yuv_cdata[0]==NULL) {
+					mjpeg_error_exit1 ("Could'nt allocate memory for comparison frame!");
+				}
+				//fprintf(stderr,"y4m_init_frame_info\n");
+
+				y4m_init_frame_info( &compare_frame );
+				if(y4m_read_frame(fdCompare,&compare_streaminfo,&compare_frame,yuv_cdata ) != Y4M_OK) {
+					mjpeg_error_exit1 ("Could'nt read comparison frame!");
+					chromafree(yuv_cdata);
+					y4m_fini_frame_info( &compare_frame );
+				}
+				y4m_fini_frame_info( &compare_frame );
+				close (fdCompare);
+				
+				//fprintf(stderr,"read comparison frame\n");
+				
+				break;
+				
+				
 			case 'h':
 			case '?':
 				print_usage (argv);
@@ -247,12 +331,22 @@ int main (int argc, char *argv[])
 		y4m_write_stream_header(fdOut,&out_streaminfo);
 	}
 	
+	if (yuv_cdata[0] != NULL) {
+		if (y4m_si_get_framelength(&in_streaminfo) != y4m_si_get_framelength(&compare_streaminfo)) {
+			mjpeg_error_exit1 ("Comparison stream frame size doesn't match input stream!");
+		}
+	}
+	
 	/* in that function we do all the important work */
-	detect( fdIn,fdOut,&in_streaminfo,&out_streaminfo, src_interlacing,graph);
+	detect( fdIn,fdOut,&in_streaminfo,&out_streaminfo, src_interlacing,graph,yuv_cdata);
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	if (!graph) {
 		y4m_fini_stream_info (&out_streaminfo);
+	}
+	
+	if (yuv_cdata[0] != NULL) {
+		chromafree(yuv_cdata);
 	}
 	
 	return 0;
