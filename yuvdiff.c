@@ -7,25 +7,25 @@
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani
  *
  
-** <h3>Frame rate conversion detection</h3>
-** 
-** <p> Started life similar to yuvaddetect, may even contain disused
-** code from ad detect.  This program produces an ASCII file suitable
-** for plotting in gnuplot of the difference between consecutive frames
-** or fields.  Suitable for detecting 3-2 pulldown, or any other
-** pulldown (frame duplication) frame rate conversion.  If the output
-** is ran through an FFT it can even detect other frequency rate
-** changes such as 2.39 (25 to 59.94, progressive PAL to interlaced
-** NTSC) </p>
- 
-** <p> This program cannot remove pulldown.  Try my other program
-** yuvrfps for frame duplication removal.  I do not know of a way to
-** remove frame blended frame rate conversion.  </p>
-**
-** <p> I have used this extensively to detect pulldown material.  </p>
-**
-** <p>A single comparison frame can be used to compare all frames 
-** in a stream.  Useful for attempting to find the comparison frame in the stream</p>
+ ** <h3>Frame rate conversion detection</h3>
+ ** 
+ ** <p> Started life similar to yuvaddetect, may even contain disused
+ ** code from ad detect.  This program produces an ASCII file suitable
+ ** for plotting in gnuplot of the difference between consecutive frames
+ ** or fields.  Suitable for detecting 3-2 pulldown, or any other
+ ** pulldown (frame duplication) frame rate conversion.  If the output
+ ** is ran through an FFT it can even detect other frequency rate
+ ** changes such as 2.39 (25 to 59.94, progressive PAL to interlaced
+ ** NTSC) </p>
+ ** 
+ ** <p> This program cannot remove pulldown.  Try my other program
+ ** yuvrfps for frame duplication removal.  I do not know of a way to
+ ** remove frame blended frame rate conversion.  </p>
+ **
+ ** <p> I have used this extensively to detect pulldown material.  </p>
+ **
+ ** <p>A single comparison frame can be used to compare all frames 
+ ** in a stream.  Useful for attempting to find the comparison frame in the stream</p>
  
  
  *
@@ -78,9 +78,55 @@ static void print_usage()
 }
 
 
+void luma_sum_diff  (int *bri, int *bro, 	uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t  *in)
+{
+	int l,x;
+	int fds,w;
+	
+	*bri = 0; *bro=0;
+	
+	w = y4m_si_get_width(in);
+	fds = y4m_si_get_plane_length(in,0);
+	// only comparing Luma, less noise, more resolution... blah blah
+	
+	for (l=0; l< fds; l+=w<<1) {
+		for (x=0; x<w; x++) {
+			bri += abs(m[0][l+x]-n[0][l+x]);
+			bro += abs(m[0][l+x+w]-n[0][l+x+w]);
+		}
+	}
+}
+
+void diff (uint8_t *m[3],uint8_t *n[3],uint8_t *o[3], y4m_stream_info_t  *in)
+{
+	int l,x,w,cw,ch,frame_data_size;
+	
+	w = y4m_si_get_width(in);
+	
+	cw = y4m_si_get_plane_width(in,1);
+	ch = y4m_si_get_plane_height(in,1);
+	
+	frame_data_size = y4m_si_get_plane_length(in,0);
+	
+	
+	for (l=0; l< frame_data_size; l+=w<<1) {
+		for (x=0; x<w; x++) {		
+			m[0][l+x] = (n[0][l+x]-o[0][l+x]) + 128 ;
+			m[0][l+x+w] = (n[0][l+x+w]-o[0][l+x+w]) + 128;
+		}
+	}
+	
+	for (l=0; l<ch; l++) {
+		for (x=0;x<cw;x++){
+			m[1][l*cw+x] = (n[1][l*cw+x] - o[1][l*cw+x]) + 128;
+			m[2][l*cw+x] =  (n[2][l*cw+x] - o[2][l*cw+x]) +128;
+		}
+	}
+	
+}
 
 
-static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_stream_info_t *outStrInfo ,int interlacing,int graph, uint8_t *yuv_cdata[3])
+static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_stream_info_t *outStrInfo ,int interlacing,int graph, uint8_t ***yuv_cdata, int frames)
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;	
@@ -93,27 +139,16 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 	int                read_error_code ;
 	int                write_error_code ;
 	int                src_frame_counter ;
-	int w,h,x,cw,ch;
+	int w,h,x,cw,ch,n;
 	int bri=0, bro=0,l=0;
+	int *totali,*totalo;
 	
 	// Allocate memory for the YUV channels
-	
-	h = y4m_si_get_height(inStrInfo); 
-	w = y4m_si_get_width(inStrInfo);
-	
-	cw = y4m_si_get_plane_width(inStrInfo,1);
-	ch = y4m_si_get_plane_height(inStrInfo,1);
-	
-	
-	frame_data_size = y4m_si_get_plane_length(inStrInfo,0);
-	
 	
 	
 	chromalloc(yuv_data,inStrInfo);
 	chromalloc(yuv_odata,inStrInfo);
 	chromalloc(yuv_wdata,inStrInfo);
-	
-	
 	
 	if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2] ||
 	   !yuv_odata[0] || !yuv_odata[1] || !yuv_odata[2]  )
@@ -128,8 +163,14 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 	
 	
 	
-	if (yuv_cdata[0] != NULL) {
-		chromacpy (yuv_odata,yuv_cdata,inStrInfo);
+	if (frames > 0) {
+		totali = (int *) malloc (sizeof(int) * frames);
+		totalo = (int *) malloc (sizeof(int) * frames);
+		
+		if (totali == NULL || totalo ==NULL)
+			mjpeg_error_exit1("Cannot allocate memory (totals)");
+		
+		chromacpy (yuv_odata,yuv_cdata[0],inStrInfo);
 	}
 	else {
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_odata );
@@ -144,57 +185,91 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 		
 		
 		// perform frame difference.
-		// only comparing Luma, less noise, more resolution... blah blah
-		
-		bri = 0; bro=0;
-		for (l=0; l< frame_data_size; l+=w<<1) {
-			for (x=0; x<w; x++) {
-				bri += abs(yuv_data[0][l+x]-yuv_odata[0][l+x]);
-				bro += abs(yuv_data[0][l+x+w]-yuv_odata[0][l+x+w]);
-				
-				yuv_wdata[0][l+x] = (yuv_data[0][l+x]-yuv_odata[0][l+x]) + 128 ;
-				yuv_wdata[0][l+x+w] = (yuv_data[0][l+x+w]-yuv_odata[0][l+x+w]) + 128;
-			}
-		}
-		// so much for optimizing only luma
-		for (l=0; l<ch; l++) {
-			for (x=0;x<cw;x++){
-				yuv_wdata[1][l*cw+x] = (yuv_data[1][l*cw+x] - yuv_odata[1][l*cw+x]) + 128;
-				yuv_wdata[2][l*cw+x] =  (yuv_data[2][l*cw+x] - yuv_odata[2][l*cw+x]) +128;
-			}
-		}
 		
 		if (graph) {
-			if (interlacing == Y4M_ILACE_NONE) {
-				printf ("%d %d\n",src_frame_counter,bri+bro);
-			} else if (interlacing == Y4M_ILACE_TOP_FIRST) {
-				printf ("%d %d\n",src_frame_counter,bri);
-				printf ("%d.5 %d\n",src_frame_counter,bro);
-			} else if (interlacing = Y4M_ILACE_BOTTOM_FIRST) {
-				printf ("%d %d\n",src_frame_counter,bro);
-				printf ("%d.5 %d\n",src_frame_counter,bri);
+			n=0;
+			
+			do {
+				luma_sum_diff(&bri,&bro,yuv_data,yuv_odata,inStrInfo);
+				if (frames > 0) {
+					totali[n] = bri;
+					totalo[n] = bro;
+					chromacpy (yuv_odata,yuv_cdata[++n],inStrInfo);
+				}
+			} while (n < frames);
+			
+			if ( frames == 0) {
+				if (interlacing == Y4M_ILACE_NONE) {
+					printf ("%d %d\n",src_frame_counter,bri+bro);
+				} else if (interlacing == Y4M_ILACE_TOP_FIRST) {
+					printf ("%d %d\n",src_frame_counter,bri);
+					printf ("%d.5 %d\n",src_frame_counter,bro);
+				} else if (interlacing = Y4M_ILACE_BOTTOM_FIRST) {
+					printf ("%d %d\n",src_frame_counter,bro);
+					printf ("%d.5 %d\n",src_frame_counter,bri);
+				}
+			} else {
+				if (interlacing == Y4M_ILACE_NONE) {
+					printf ("%d ",src_frame_counter);
+					for (n=0; n < frames; n++) {
+						printf ("%d ",totali[n]+totalo[n]);
+					}
+					printf ("\n");
+				} else if (interlacing == Y4M_ILACE_TOP_FIRST) {
+					printf ("%d ",src_frame_counter);
+					for (n=0; n < frames; n++) {
+						printf ("%d ",totali[n]);
+					}
+					printf ("\n");
+					
+					printf ("%d.5 ",src_frame_counter);
+					for (n=0; n < frames; n++) {
+						printf ("%d ",totalo[n]);
+					}
+					printf ("\n");
+				} else if (interlacing = Y4M_ILACE_BOTTOM_FIRST) {
+					printf ("%d ",src_frame_counter);
+					for (n=0; n < frames; n++) {
+						printf ("%d ",totalo[n]);
+					}
+					printf ("\n");
+					printf ("%d.5 ",src_frame_counter);
+					for (n=0; n < frames; n++) {
+						printf ("%d ",totali[n]);
+					}
+					printf ("\n");
+				}
 			}
+			
+			
 		} else {
+			diff(yuv_wdata,yuv_data,yuv_odata,inStrInfo);
 			write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_wdata );
 		}
+		
 		
 		++src_frame_counter ;
 		
 		// do not copy current frame to comparison frame
 		// if reading from comparison file.
-		if ( yuv_cdata[0] == NULL ) {
+		if ( frames == 0  ) {
 			yuv_tdata = yuv_odata[0];  yuv_odata[0] = yuv_data[0]; yuv_data[0] = yuv_tdata;
 			yuv_tdata = yuv_odata[1];  yuv_odata[1] = yuv_data[1]; yuv_data[1] = yuv_tdata;
 			yuv_tdata = yuv_odata[2];  yuv_odata[2] = yuv_data[2]; yuv_data[2] = yuv_tdata;
 		}
+		
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		
-    }
+	}
 	
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
 	
+	if (frames > 0) {
+		free(totali);
+		free(totalo);
+	}
 	chromafree( yuv_data );
 	chromafree( yuv_odata );
 	chromafree( yuv_wdata );
@@ -224,6 +299,40 @@ static int parse_interlacing(char *str)
 	return Y4M_UNKNOWN; /* to avoid compiler warnings */
 }
 
+int read_frame (uint8_t **yuv_frame, char * filename, y4m_stream_info_t in_streaminfo)
+{			
+	
+	y4m_stream_info_t compare_streaminfo;
+	y4m_frame_info_t   compare_frame ;
+	int fdCompare = 0;
+	
+	fdCompare = open (filename,O_RDONLY);
+	if (fdCompare < 0) 
+		return -1; 
+	//fprintf(stderr,"y4m_read_stream_header\n");
+	
+	if (y4m_read_stream_header (fdCompare, &compare_streaminfo) != Y4M_OK)
+		return -2;
+	
+	if (y4m_si_get_framelength(&in_streaminfo) != y4m_si_get_framelength(&compare_streaminfo)) 
+		return -3;
+	
+	
+	y4m_init_frame_info( &compare_frame );
+	if(y4m_read_frame(fdCompare,&compare_streaminfo,&compare_frame,yuv_frame ) != Y4M_OK) {
+		y4m_fini_frame_info( &compare_frame );
+		close (fdCompare);
+		return -4;
+		
+	}
+	y4m_fini_frame_info( &compare_frame );
+	close (fdCompare);
+	
+	
+	
+	
+}
+
 
 // *************************************************************************************
 // MAIN
@@ -235,15 +344,13 @@ int main (int argc, char *argv[])
 	int fdIn = 0 , fdOut=1;
 	y4m_stream_info_t in_streaminfo,out_streaminfo,compare_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
-	const static char *legal_flags = "i:gI:v:h";
-	int fdCompare = 0;
-	y4m_frame_info_t   compare_frame ;
-	char *inputfile;
+	const static char *legal_flags = "gI:v:h";
+	int compare_frames = 0;
 	int graph = 0;
 	int c ;
 	
-	uint8_t *yuv_cdata[3];	
-
+	uint8_t ***yuv_cdata;	
+	
 	yuv_cdata[0] = NULL;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
@@ -259,43 +366,6 @@ int main (int argc, char *argv[])
 			case 'I':
 				src_interlacing = parse_interlacing(optarg);
 				break;
-			case 'i':
-				//fprintf(stderr,"case i\n");
-
-				fdCompare = open (optarg,O_RDONLY);
-				if (fdCompare < 0) {
-					perror ("Opening file");
-					mjpeg_error_exit1 ("Couln't open comparison file");
-				}
-				//fprintf(stderr,"y4m_read_stream_header\n");
-
-				if (y4m_read_stream_header (fdCompare, &compare_streaminfo) != Y4M_OK)
-					mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-				//fprintf(stderr,"chromalloc\n");
-
-					chromalloc(yuv_cdata,&compare_streaminfo);
-				
-			//	fprintf(stderr,"yuv_cdata[0]==NULL\n");
-
-				if (yuv_cdata[0]==NULL) {
-					mjpeg_error_exit1 ("Could'nt allocate memory for comparison frame!");
-				}
-				//fprintf(stderr,"y4m_init_frame_info\n");
-
-				y4m_init_frame_info( &compare_frame );
-				if(y4m_read_frame(fdCompare,&compare_streaminfo,&compare_frame,yuv_cdata ) != Y4M_OK) {
-					mjpeg_error_exit1 ("Could'nt read comparison frame!");
-					chromafree(yuv_cdata);
-					y4m_fini_frame_info( &compare_frame );
-				}
-				y4m_fini_frame_info( &compare_frame );
-				close (fdCompare);
-				
-				//fprintf(stderr,"read comparison frame\n");
-				
-				break;
-				
-				
 			case 'h':
 			case '?':
 				print_usage (argv);
@@ -303,6 +373,9 @@ int main (int argc, char *argv[])
 				break;
 		}
 	}
+	
+	
+	
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
 	
@@ -316,6 +389,29 @@ int main (int argc, char *argv[])
 	// INPUT comes from stdin, we check for a correct file header
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
+	
+	/* Process additional command line arguments */ 
+	
+	// allocate memory for additional match frames
+	
+	
+	
+	if (optind < argc)
+	{
+		
+		compare_frames = argc - optind;
+		if (temporalalloc(&yuv_cdata,in_streaminfo,compare_frames))
+			mjpeg_error_exit1("Cannot allocate memory for comparison frames");
+		
+		c = 0; 
+		while (optind < argc) {
+			if (read_frame(yuv_cdata[c++],argv[optind++],in_streaminfo)) {
+				perror ("read_frame ");
+				mjpeg_error_exit1("error reading comparison frame");
+			}
+		}
+	}
+	
 	
 	
 	// Information output
@@ -338,15 +434,15 @@ int main (int argc, char *argv[])
 	}
 	
 	/* in that function we do all the important work */
-	detect( fdIn,fdOut,&in_streaminfo,&out_streaminfo, src_interlacing,graph,yuv_cdata);
+	detect( fdIn,fdOut,&in_streaminfo,&out_streaminfo, src_interlacing,graph,yuv_cdata,compare_frames);
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	if (!graph) {
 		y4m_fini_stream_info (&out_streaminfo);
 	}
 	
-	if (yuv_cdata[0] != NULL) {
-		chromafree(yuv_cdata);
+	if (compare_frames) {
+		temporalfree(yuv_cdata,compare_frames);
 	}
 	
 	return 0;
