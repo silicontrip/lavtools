@@ -2,33 +2,57 @@
  *  yuvdiff.c
  *  produces a 2d graph showing time vs frame difference.
  *  the idea is that 3:2 pulldown has a distinct frame duplication pattern
- *  .
- *  modified from yuvfps.c by
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani
- *
- 
+ *  . 
  ** <h3>Frame rate conversion detection</h3>
  ** 
- ** <p> Started life similar to yuvaddetect, may even contain disused
- ** code from ad detect.  This program produces an ASCII file suitable
+ ** <p> By default this program produces a video of frame 2 minus frame 1
+ ** frame 3 minus frame 2 and so on.</p>
+ ** <p>The -g option suppresses video output and produces an ASCII file suitable
  ** for plotting in gnuplot of the difference between consecutive frames
- ** or fields.  Suitable for detecting 3-2 pulldown, or any other
+ ** or fields.  This can be used to detect 3-2 pulldown, or any other
  ** pulldown (frame duplication) frame rate conversion.  If the output
  ** is ran through an FFT it can even detect other frequency rate
  ** changes such as 2.39 (25 to 59.94, progressive PAL to interlaced
  ** NTSC) </p>
  ** 
- ** <p> This program cannot remove pulldown.  Try my other program
- ** yuvrfps for frame duplication removal.  I do not know of a way to
+ ** <p> This program does not remove pulldown.  
+ ** yuvrfps can be used for frame duplication removal.  I do not know of a way to
  ** remove frame blended frame rate conversion.  </p>
  **
  ** <p> I have used this extensively to detect pulldown material.  </p>
  **
- ** <p>multiple comparison frame can be used to compare all frames 
- ** in a stream.  Useful for attempting to find the comparison frame in the stream</p>
- ** <p>Will also  search for frames closely matching a black frame.</p>
+ ** <p> This progeam can also be an aid to trimming video. It can compare multiple
+ ** reference frames and produce an ASCII file suitable for plotting.
+ ** The frame with the least difference is the closest matching frame.</p>
+ ** <p>With the -b option it will also  search for frames closely matching a black frame.</p>
+ ** <h4>EXAMPLES</h4>
+ ** <p>To produce a video showing the differences between each frame: <tt> | yuvdiff | </tt> </p>
+ ** <p>To produce an ASCII file showing the differences between each frame for detecting pulldown or frame rate conversion: <tt> |yuvdiff -g > output.txt</tt> </p>
+ ** <p>To search for a reference frame: <tt> | yuvdiff -g search_frame.y4m > output.txt</tt></p>
+ ** <p>To search for multiple reference frames and the black level: <tt> | yuvdiff -g -b  start_frame.y4m end_frame.y4m > output.txt</tt></p>
+ ** <p>The program produces this ASCII output:</p>
+ ** <p>Interlace, with multiple reference files (if -b specified, is always the last column)
+ **<pre>1 20422241 15400627 24882428 
+ **1.5 20482772 15072749 24912090 
+ **2 20436052 15407218 24887759 
+ **2.5 20495250 15077157 24917718 
+ **3 20433069 15413509 24896056 
+ **3.5 20487508 15087745 24917554 
+ **4 20425924 15401108 24869589 
+ **4.5 20502369 15072110 24894271</pre>
+ ** <p>Progressive difference only</p>
+ **<pre>1 1147577
+ **2 1003628
+ **3 1078191
+ **4 1260775
+ **5 1253182
+ **6 1364214
+ **7 1364779
+ **8 1234701
+ **9 1306411
+ **10 1443550
+ **</pre> 
  
- *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
