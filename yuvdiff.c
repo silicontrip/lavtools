@@ -24,9 +24,9 @@
  **
  ** <p> I have used this extensively to detect pulldown material.  </p>
  **
- ** <p>A single comparison frame can be used to compare all frames 
+ ** <p>multiple comparison frame can be used to compare all frames 
  ** in a stream.  Useful for attempting to find the comparison frame in the stream</p>
- 
+ ** <p>Will also  search for frames closely matching a black frame.</p>
  
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -73,8 +73,28 @@ static void print_usage()
 			 "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 			 "\t -I<pbt> Force interlace mode\n"
 			 "\t  <file> a y4m single frame to compare with\n"
+			 "\t -b compare with black (requires -g option)\n"
 			 "\t -h print this help\n"
 			 );
+}
+
+void luma_sum (int *bri, int *bro, 	uint8_t *m[3], y4m_stream_info_t  *in)
+{
+	int l,x;
+	int fds,w;
+	
+	*bri = 0; *bro=0;
+	
+	w = y4m_si_get_width(in);
+	fds = y4m_si_get_plane_length(in,0);
+	// only comparing Luma, less noise, more resolution... blah blah
+	
+	for (l=0; l< fds; l+=w<<1) {
+		for (x=0; x<w; x++) {
+			*bri += m[0][l+x];
+			*bro += m[0][l+x+w];
+		}
+	}
 }
 
 
@@ -200,7 +220,7 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 			// I really need to re write this.
 		//	fprintf(stderr,"frames: %d\n",frames);
 
-			if ( frames == 0) {
+			if (frames == 0) {
 				luma_sum_diff(&bri,&bro,yuv_data,yuv_odata,inStrInfo);
 
 				if (interlacing == Y4M_ILACE_NONE) {
@@ -314,7 +334,7 @@ int read_frame (uint8_t **yuv_frame, char * filename, y4m_stream_info_t in_strea
 	y4m_frame_info_t   compare_frame ;
 	int fdCompare = 0;
 	
-	fprintf(stderr,"read_frame\n");
+//	fprintf(stderr,"read_frame\n");
 	
 	
 	fdCompare = open (filename,O_RDONLY);
@@ -355,15 +375,18 @@ int main (int argc, char *argv[])
 	int fdIn = 0 , fdOut=1;
 	y4m_stream_info_t in_streaminfo,out_streaminfo,compare_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
-	const static char *legal_flags = "gI:v:h";
+	const static char *legal_flags = "bgI:v:h";
 	int compare_frames = 0;
-	int graph = 0;
+	int graph = 0,black=0;
 	int c ;
 	
 	uint8_t ***yuv_cdata;	
 		
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
+			case 'b':
+				black=1;
+				break;
 			case 'g':
 				graph = 1;
 				break;
@@ -408,6 +431,7 @@ int main (int argc, char *argv[])
 	if (optind < argc)
 	{
 		compare_frames = argc - optind;
+		if (black) compare_frames++;
 		//fprintf(stderr,"frames=%d\n",compare_frames);
 
 		if (temporalalloc(&yuv_cdata,&in_streaminfo,compare_frames))
@@ -423,8 +447,17 @@ int main (int argc, char *argv[])
 				mjpeg_error_exit1("error reading comparison frame");
 			}
 		}
+	} else {
+		if (black) {
+		compare_frames = 1;
+		if (temporalalloc(&yuv_cdata,&in_streaminfo,compare_frames))
+			mjpeg_error_exit1("Cannot allocate memory for comparison frames");
+	}
 	}
 	
+	if (black) {
+		chromaset(yuv_cdata[compare_frames-1],&in_streaminfo,16,128,128);
+	}
 	
 	
 	// Information output
