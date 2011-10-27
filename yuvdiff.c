@@ -65,14 +65,14 @@
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuvdiff [-g -v -h -Ip|b|p]\n"
+			 "usage: yuvdiff [-g -v -h -Ip|b|p] [<file1>...<fileN>]\n"
 			 "yuvdiff produces a video showing frame by frame difference\n"
 			 "Or specify a file to compare differences from the first frame of that file\n"
 			 "\n"
 			 "\t -g produce text output suitable for graphing in gnuplot\n"
 			 "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 			 "\t -I<pbt> Force interlace mode\n"
-			 "\t -i <file> a y4m stream to compare with\n"
+			 "\t  <file> a y4m single frame to compare with\n"
 			 "\t -h print this help\n"
 			 );
 }
@@ -83,16 +83,22 @@ void luma_sum_diff  (int *bri, int *bro, 	uint8_t *m[3], uint8_t *n[3], y4m_stre
 	int l,x;
 	int fds,w;
 	
+//	fprintf(stderr,"trace: luma_sum_diff\n");
+
+	
 	*bri = 0; *bro=0;
 	
 	w = y4m_si_get_width(in);
 	fds = y4m_si_get_plane_length(in,0);
 	// only comparing Luma, less noise, more resolution... blah blah
 	
+		//fprintf(stderr,"trace: luma_sum_diff w=%d fds=%d\n",w,fds);
+
+	
 	for (l=0; l< fds; l+=w<<1) {
 		for (x=0; x<w; x++) {
-			bri += abs(m[0][l+x]-n[0][l+x]);
-			bro += abs(m[0][l+x+w]-n[0][l+x+w]);
+			*bri += abs(m[0][l+x]-n[0][l+x]);
+			*bro += abs(m[0][l+x+w]-n[0][l+x+w]);
 		}
 	}
 }
@@ -100,6 +106,8 @@ void luma_sum_diff  (int *bri, int *bro, 	uint8_t *m[3], uint8_t *n[3], y4m_stre
 void diff (uint8_t *m[3],uint8_t *n[3],uint8_t *o[3], y4m_stream_info_t  *in)
 {
 	int l,x,w,cw,ch,frame_data_size;
+	
+	//fprintf(stderr,"trace: diff\n");
 	
 	w = y4m_si_get_width(in);
 	
@@ -182,23 +190,19 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 		
 		// check for read error
-		
+	//	fprintf(stderr,"src: %d\n",src_frame_counter);
 		
 		// perform frame difference.
 		
 		if (graph) {
 			n=0;
-			
-			do {
-				luma_sum_diff(&bri,&bro,yuv_data,yuv_odata,inStrInfo);
-				if (frames > 0) {
-					totali[n] = bri;
-					totalo[n] = bro;
-					chromacpy (yuv_odata,yuv_cdata[++n],inStrInfo);
-				}
-			} while (n < frames);
-			
+			// omg this is such hacky code
+			// I really need to re write this.
+		//	fprintf(stderr,"frames: %d\n",frames);
+
 			if ( frames == 0) {
+				luma_sum_diff(&bri,&bro,yuv_data,yuv_odata,inStrInfo);
+
 				if (interlacing == Y4M_ILACE_NONE) {
 					printf ("%d %d\n",src_frame_counter,bri+bro);
 				} else if (interlacing == Y4M_ILACE_TOP_FIRST) {
@@ -209,6 +213,10 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 					printf ("%d.5 %d\n",src_frame_counter,bri);
 				}
 			} else {
+				for (n=0; n<frames;n++) {
+					luma_sum_diff(&totali[n],&totalo[n],yuv_data,yuv_cdata[n],inStrInfo);
+				}
+				
 				if (interlacing == Y4M_ILACE_NONE) {
 					printf ("%d ",src_frame_counter);
 					for (n=0; n < frames; n++) {
@@ -306,6 +314,9 @@ int read_frame (uint8_t **yuv_frame, char * filename, y4m_stream_info_t in_strea
 	y4m_frame_info_t   compare_frame ;
 	int fdCompare = 0;
 	
+	fprintf(stderr,"read_frame\n");
+	
+	
 	fdCompare = open (filename,O_RDONLY);
 	if (fdCompare < 0) 
 		return -1; 
@@ -350,9 +361,7 @@ int main (int argc, char *argv[])
 	int c ;
 	
 	uint8_t ***yuv_cdata;	
-	
-	yuv_cdata[0] = NULL;
-	
+		
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'g':
@@ -393,15 +402,19 @@ int main (int argc, char *argv[])
 	/* Process additional command line arguments */ 
 	
 	// allocate memory for additional match frames
-	
+
 	
 	
 	if (optind < argc)
 	{
-		
 		compare_frames = argc - optind;
-		if (temporalalloc(&yuv_cdata,in_streaminfo,compare_frames))
+		//fprintf(stderr,"frames=%d\n",compare_frames);
+
+		if (temporalalloc(&yuv_cdata,&in_streaminfo,compare_frames))
 			mjpeg_error_exit1("Cannot allocate memory for comparison frames");
+		
+		//fprintf(stderr,"read frames\n",compare_frames);
+
 		
 		c = 0; 
 		while (optind < argc) {
@@ -427,11 +440,6 @@ int main (int argc, char *argv[])
 		y4m_write_stream_header(fdOut,&out_streaminfo);
 	}
 	
-	if (yuv_cdata[0] != NULL) {
-		if (y4m_si_get_framelength(&in_streaminfo) != y4m_si_get_framelength(&compare_streaminfo)) {
-			mjpeg_error_exit1 ("Comparison stream frame size doesn't match input stream!");
-		}
-	}
 	
 	/* in that function we do all the important work */
 	detect( fdIn,fdOut,&in_streaminfo,&out_streaminfo, src_interlacing,graph,yuv_cdata,compare_frames);
