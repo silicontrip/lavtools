@@ -86,10 +86,10 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvbilateral [-v 0..2]\n"
-			 "\t -w window size (1)"
-			 "\t -b search window size (10)"
-			 "\t -s Sigma (1.0)"
-			 "\t -f Filtering (0.55)"
+			 "\t -w window size (1)\n"
+			 "\t -b search window size (10)\n"
+			 "\t -s Sigma (1.0)\n"
+			 "\t -f Filtering (0.55)\n"
 
 			);
 }

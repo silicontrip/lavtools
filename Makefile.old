@@ -7,7 +7,7 @@ COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
 CODECFLAGS=-DHAVE_AVCODEC_DECODE_VIDEO2 -DHAVE_AVCODEC_DECODE_AUDIO3 -DHAVE_AV_FREE_PACKET
 #CODECFLAGS=-DHAVE_AV_FREE_PACKET
 LDFLAGS=-L/usr/X11/lib -L/usr/local/lib -lmjpegutils -L/opt/local/lib 
-CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/opt/local/include/freetype2
+CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/opt/local/include/freetype3 -I/opt/local/include/glib-2.0
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 #FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
 

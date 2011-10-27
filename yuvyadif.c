@@ -4,6 +4,8 @@
  *  http://silicontrip.net/~mark/lavtools/
  *
 **<p>An implementation of the YADIF deinterlace filter for yuv streams.</p>
+**<h4>Usage</h4>
+**<p>-I force interlace mode t|b. top or bottom field first.</p> 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -40,14 +42,11 @@
 
 #define VERSION "0.1"
 
-#define PRECISION 1024
-
-
-
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuv\n"
+			 "usage: yuvyadif -I t|b\n"
+			 "\t-I interlace mode top first or bottom first\n"
 			 );
 }
 
@@ -124,6 +123,11 @@ next2++;
 }
 
 
+void filter_thread (void *p) {
+	
+}
+
+
 static void filterframe (uint8_t *dst[3], uint8_t ***ref, y4m_stream_info_t *si, int yuv_interlacing)
 {
 	
@@ -148,46 +152,53 @@ static void filterframe (uint8_t *dst[3], uint8_t ***ref, y4m_stream_info_t *si,
 	height2=y4m_si_get_plane_height(si,1);
 	width2=y4m_si_get_plane_width(si,1);
 	
-	
+	int yw = 0;
+	int yw2 = 0;
 	
 	for (y=0; y < height; y++) {
-					
-		if((y ^ parity) & 1){
+		
+		
+		if((y ^ parity) & 1) 
+		{
 
-			prev= &ref[0][0][y*width];
-			cur = &ref[1][0][y*width];
-			next= &ref[2][0][y*width];
-			dst2= &dst[0][y*width];
+			prev= &ref[0][0][yw];
+			cur = &ref[1][0][yw];
+			next= &ref[2][0][yw];
+			dst2= &dst[0][yw];
 			
 			
 			filter_line_c(mode,dst2, prev, cur, next,width,width,parity ^ tff);
 			
 			if (y<height2) {
 				
-				prev= &ref[0][1][y*width2];
-				cur = &ref[1][1][y*width2];
-				next= &ref[2][1][y*width2];
-				dst2= &dst[1][y*width2];
+				prev= &ref[0][1][yw2];
+				cur = &ref[1][1][yw2];
+				next= &ref[2][1][yw2];
+				dst2= &dst[1][yw2];
 				
 				
 				filter_line_c(mode,dst2, prev, cur, next,width2,width2,parity ^ tff);
 				
-				prev= &ref[0][2][y*width2];
-				cur = &ref[1][2][y*width2];
-				next= &ref[2][2][y*width2];
-				dst2= &dst[2][y*width2];
+				prev= &ref[0][2][yw2];
+				cur = &ref[1][2][yw2];
+				next= &ref[2][2][yw2];
+				dst2= &dst[2][yw2];
 				
 				
 				filter_line_c(mode,dst2, prev, cur, next,width2,width2,parity ^ tff);
 
 			}
 		} else {
-			memcpy(&dst[0][y*width], &ref[1][0][y*width], width);
+			memcpy(&dst[0][yw], &ref[1][0][yw], width);
 			if (y<height2) {
-				memcpy(&dst[1][y*width2], &ref[1][1][y*width2], width2);
-				memcpy(&dst[2][y*width2], &ref[1][2][y*width2], width2);
+				memcpy(&dst[1][yw2], &ref[1][1][yw2], width2);
+				memcpy(&dst[2][yw2], &ref[1][2][yw2], width2);
 			}
 		}
+		
+		yw += width;
+		yw2 += width2;
+		
 	}
 	
 }
