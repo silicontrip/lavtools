@@ -3,9 +3,9 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
 
- ** <h4> yuv values </h4>
- ** <p> prints timecode and min/average/max of the yuv channels for each frame</p>
- ** <p> -d to use NTSC drop frame timecode</p>
+** <h4> yuv values </h4>
+** <p> prints timecode, difference and min/average/max of the yuv channels for each frame</p>
+** <p> -d to use NTSC drop frame timecode</p>
 
  *
  *  This program is free software; you can redistribute it and/or modify
