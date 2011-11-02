@@ -13,6 +13,12 @@ int chromalloc(uint8_t *m[3], y4m_stream_info_t *sinfo);
 void chromafree(uint8_t *m[3]);
 
 
+// functions for temporal based filters
+int temporalalloc (uint8_t ****yuv_data, y4m_stream_info_t *sinfo, int length);
+void temporalfree(uint8_t ***yuv_data, int length);
+void temporalshuffle(uint8_t ***yuv_data, int length);
+
+
 // copies plane buffers from n to m (m=n)
 void chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo);
 void copyfield(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo, int which);
