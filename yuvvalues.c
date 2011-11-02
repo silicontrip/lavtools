@@ -51,8 +51,36 @@ static void print_usage()
 			);
 }
 
+// This function stolen from yuvdiff
 
-static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, int fc,int df)
+void luma_sum_diff  (int *bri, int *bro, 	uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t  *in)
+{
+	int l,x;
+	int fds,w;
+	
+	//	fprintf(stderr,"trace: luma_sum_diff\n");
+	
+	
+	*bri = 0; *bro=0;
+	
+	w = y4m_si_get_width(in);
+	fds = y4m_si_get_plane_length(in,0);
+	// only comparing Luma, less noise, more resolution... blah blah
+	
+	//fprintf(stderr,"trace: luma_sum_diff w=%d fds=%d\n",w,fds);
+	
+	
+	for (l=0; l< fds; l+=w<<1) {
+		for (x=0; x<w; x++) {
+			*bri += abs(m[0][l+x]-n[0][l+x]);
+			*bro += abs(m[0][l+x+w]-n[0][l+x+w]);
+		}
+	}
+}
+
+
+
+static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, int fc,int df, int diff)
 {
 	
 	int x,y;
@@ -95,7 +123,7 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, int fc,int df)
 			
 			yuv = m[0][w+x];
 			if (yuv > maxy) maxy=yuv;
-			if (yuv < miny) maxy=yuv;
+			if (yuv < miny) miny=yuv;
 			toty += yuv;
 			
 			if (x<width2 && y<height2) {
@@ -118,8 +146,9 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, int fc,int df)
 	
 	framecount2timecode(si, &tch,&tcm,&tcs,&tcf, fc, &df);
 	
-	printf ("%d %02d:%02d:%02d%c%02d %d %g %d %d %g %d %d %g %d\n",
+	printf ("%d %02d:%02d:%02d%c%02d %g %d %g %d %d %g %d %d %g %d\n",
 			fc,tch,tcm,tcs,df?';':':',tcf,
+			1.0*diff/fs,
 			miny,1.0*toty/fs,maxy,
 			minu,1.0*totu/cfs,maxu,
 			minv,1.0*totv/cfs,maxv);
@@ -130,9 +159,11 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, int fc,int df)
 static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, int df )
 {
 	y4m_frame_info_t   in_frame ;
-	uint8_t            *yuv_data[3] ;
+	uint8_t            *yuv_data[3], *yuv_odata[3] ;
+	uint8_t *yuv_tdata;
 	int                read_error_code ;
 	int                write_error_code ;
+	int odd_diff,even_diff;
 	int frame_count = 1;
 	
 	// Allocate memory for the YUV channels
@@ -140,22 +171,34 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, int df )
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
+	if (chromalloc(yuv_odata,inStrInfo))		
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+
+	
 	/* Initialize counters */
 	
 	write_error_code = Y4M_OK ;
 	
 	y4m_init_frame_info( &in_frame );
+	chromaset(yuv_odata,inStrInfo,16,128,128); // set the compare frame to black.
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_data,inStrInfo,frame_count,df);
+			luma_sum_diff (&odd_diff,&even_diff,yuv_data,yuv_odata,inStrInfo);
+			filterframe(yuv_data,inStrInfo,frame_count,df,odd_diff+even_diff);
 		}
 		
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
+
+		// swap the double buffer
+		yuv_tdata = yuv_odata[0];  yuv_odata[0] = yuv_data[0]; yuv_data[0] = yuv_tdata;
+		yuv_tdata = yuv_odata[1];  yuv_odata[1] = yuv_data[1]; yuv_data[1] = yuv_tdata;
+		yuv_tdata = yuv_odata[2];  yuv_odata[2] = yuv_data[2]; yuv_data[2] = yuv_tdata;
+		
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 		frame_count ++;
 	}
@@ -177,7 +220,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, int df )
 int main (int argc, char *argv[])
 {
 	
-	int verbose = 4; // LOG_ERROR ;
+	int verbose = 1; // LOG_DEBUG ;
 	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
