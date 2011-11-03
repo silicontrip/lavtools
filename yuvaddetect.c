@@ -1,11 +1,30 @@
 /*
-  *  yuvpulldowndetect.c
-  *  produces a 2d graph showing time vs frame difference.
-  *  the idea is that 3:2 pulldown has a distinct frame duplication pattern
-  *  .
-  *  modified from yuvfps.c by
-  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani
-  *
+
+** <h3>Advertisement detection</h3>
+** <p>Most of the functionality of this code has been replaced by yuvvalues.c any further work on this will be focussed there.</p>
+** <h4>INCOMPLETE</h4>
+** 
+** <p> Currently only produces a text file (which can be graphed by
+** gnuplot) of the average lightness of the sourceframes.  The idea
+** is that there is a black fade before and after advertisements.  To
+** produce chapter markers for DVDs from TV.</p>
+** 
+** <h4>RESULTS</h4>
+** <p>
+** <img src="7hd_ad.png">
+** </p> 
+** 
+** <p>
+** From looking at this above graph it appears that this program is doing a frame difference,
+** rather than averaging luma. Which is the same function as yuvdiff.
+** 
+** Now we can quite easily see scene changes, shown as sharp spikes. At about 810 and 1500</p>
+** <p>
+** We can also tell that the video has gone through a frame rate doubling by
+** frame dupliation. Shown by the high frequency component.
+** </p>
+** <p><i>I should move this image down to YUV diff</i></p>
+
   *
   *  This program is free software; you can redistribute it and/or modify
   *  it under the terms of the GNU General Public License as published by
