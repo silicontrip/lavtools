@@ -58,7 +58,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
  * 
  * Returns nothing 
  */ 
-static void put_jpeg_yuv420p_file(FILE *fp, uint8_t *image[3], int width, int height, int quality) 
+static void put_jpeg_yuv420p_file(FILE *fp, uint8_t *image[3], y4m_stream_info_t  *si, int quality) 
 { 
     int i, j; 
 
@@ -68,6 +68,9 @@ static void put_jpeg_yuv420p_file(FILE *fp, uint8_t *image[3], int width, int he
     struct jpeg_compress_struct cinfo; 
     struct jpeg_error_mgr jerr; 
 
+	y4m_ratio_t pixelaspect;
+	int w,h,cw,ch;
+	
     data[0] = y; 
     data[1] = cb; 
     data[2] = cr; 
@@ -77,9 +80,15 @@ static void put_jpeg_yuv420p_file(FILE *fp, uint8_t *image[3], int width, int he
 	
     cinfo.err = jpeg_std_error(&jerr);  // Errors get written to stderr 
 
+	ch = y4m_si_get_plane_height(si,0) / y4m_si_get_plane_height(si,1);
+	cw = y4m_si_get_plane_width(si,0) / y4m_si_get_plane_width(si,1);
+	h = y4m_si_get_plane_height(si,0);
+	w = y4m_si_get_plane_width(si,0);
+	
+	
     jpeg_create_compress(&cinfo); 
-    cinfo.image_width = width; 
-    cinfo.image_height = height; 
+    cinfo.image_width = w; 
+    cinfo.image_height = h; 
     cinfo.input_components = 3; 
     jpeg_set_defaults(&cinfo); 
 
@@ -90,8 +99,14 @@ static void put_jpeg_yuv420p_file(FILE *fp, uint8_t *image[3], int width, int he
 #warning using JPEG_LIB_VERSION >= 70 
     cinfo.do_fancy_downsampling = FALSE;  // Fix segfault with v7 
 #endif 
-    cinfo.comp_info[0].h_samp_factor = 2; 
-    cinfo.comp_info[0].v_samp_factor = 2; 
+	
+	pixelaspect =  y4m_si_get_sampleaspect(si);
+	cinfo.X_density = pixelaspect.n;
+	cinfo.Y_density = pixelaspect.d;
+	
+	
+    cinfo.comp_info[0].h_samp_factor = cw; 
+    cinfo.comp_info[0].v_samp_factor = ch; 
     cinfo.comp_info[1].h_samp_factor = 1; 
     cinfo.comp_info[1].v_samp_factor = 1; 
     cinfo.comp_info[2].h_samp_factor = 1; 
@@ -105,13 +120,13 @@ static void put_jpeg_yuv420p_file(FILE *fp, uint8_t *image[3], int width, int he
 
 //	fprintf (stderr,"jpeg write for j\n");
 	
-    for (j = 0; j < height; j += 16) { 
-	//	fprintf (stderr,"jpeg write for i\n");
+    for (j = 0; j < h; j += 16) { 
         for (i = 0; i < 16; i++) { 
-            y[i] = image[0] + width * (i + j); 
-            if (i % 2 == 0) { 
-                cb[i / 2] = image[1] + width / 2 * ((i + j) / 2); 
-                cr[i / 2] = image[2] + width / 2 * ((i + j) / 2); 
+            y[i] = image[0] + cinfo.image_width * (i + j); 
+			// need to handle other chroma subsampling
+            if (i % ch == 0) { 
+                cb[i / ch] = image[1] + w / cw * ((i + j) / cw); 
+                cr[i / ch] = image[2] + w / cw * ((i + j) / cw); 
             } 
         } 
 	//	fprintf (stderr,"jpeg write raw data\n");
@@ -133,10 +148,12 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuv2jpeg [-f formatstring] [-q quality]\n"
+			 "\t-f format string.  Format of the output file names default frame%%03d.jpg\n"
+			 "\t-q jpeg quality 0-100\n"
 			);
 }
 
-static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
+static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo, int qual, char *format )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
@@ -146,11 +163,10 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	char filename[1024]; // has potential for buffer overflow
 	int frame_count=1;
 
-	int width,height;
 	
 	// to be moved to command line parameters
-	char *format = "frame%03d.jpg";
-	int qual = 95;
+	//char *format = "frame%03d.jpg";
+	//int qual = 95;
 	
 	// Allocate memory for the YUV channels
 	
@@ -164,8 +180,6 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	
-	width = y4m_si_get_plane_width(inStrInfo,0);
-	height = y4m_si_get_plane_height(inStrInfo,0);
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		
@@ -181,7 +195,7 @@ static void filter(  int fdIn  , y4m_stream_info_t  *inStrInfo )
 		//	fprintf(stderr,"call put_jpeg_yuv420p_file\n");
 			
 			if (fh != NULL) {
-				put_jpeg_yuv420p_file(fh,yuv_data,width,height,qual);
+				put_jpeg_yuv420p_file(fh,yuv_data,inStrInfo,qual);
 				fclose (fh);
 			} else {
 				perror ("fopen jpeg file");
@@ -220,7 +234,9 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "hv:";
+	const static char *legal_flags = "q:f:hv:";
+	char *format_string = "frame%03d.jpg";
+	int qual = 95;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -229,7 +245,15 @@ int main (int argc, char *argv[])
 				if (verbose < 0 || verbose > 2)
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
-				
+			case 'q':
+				qual=atoi(optarg);
+				if (qual < 0 || qual > 100)
+					mjpeg_error_exit1 ("Quality  must be [0..100]");
+				break;
+			case 'f':
+				format_string=malloc(strlen(optarg)+1);
+				strcpy(format_string,optarg);
+				break;
 				case 'h':
 				case '?':
 				print_usage (argv);
@@ -260,7 +284,7 @@ int main (int argc, char *argv[])
     
 	y4m_write_stream_header(fdOut,&in_streaminfo);
 	/* in that function we do all the important work */
-	filter(fdIn, &in_streaminfo);
+	filter(fdIn, &in_streaminfo,qual,format_string);
 	y4m_fini_stream_info (&in_streaminfo);
 	
 	return 0;
