@@ -5,6 +5,9 @@
  *  http://silicontrip.net/~mark/lavtools/
 
 ** <p> writes multiple jpeg files from yuvstreams </p>
+** <pre> -q quality 0-100
+** -f filename format string use %d for the frame number 
+** </pre>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -103,7 +106,6 @@ static void put_jpeg_yuv420p_file(FILE *fp, uint8_t *image[3], y4m_stream_info_t
 	pixelaspect =  y4m_si_get_sampleaspect(si);
 	cinfo.X_density = pixelaspect.n;
 	cinfo.Y_density = pixelaspect.d;
-	
 	
     cinfo.comp_info[0].h_samp_factor = cw; 
     cinfo.comp_info[0].v_samp_factor = ch; 
