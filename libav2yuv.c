@@ -482,6 +482,7 @@ static void print_usage()
 			 "\t -s select stream other than stream 0\n"
 			 "\t -o<outputfile> write to file rather than stdout\n"
 			 "\t -r [[[HH:]MM:]SS:]FF-[[[HH:]MM:]SS:]FF playout only these frames\n"
+			 "\t -E enable y4m extensions (may be required if source file is not a common format)\n"
 			 "\t -h print this help\n"
 			 );
 }
@@ -502,7 +503,7 @@ int parseCommandline (int argc, char *argv[],
 {
 	
 	int i;
-	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:v:";
+	const static char *legal_flags = "EwchI:F:A:S:o:s:f:r:e:v:";
 	
 	*aw=0;
 	*sct=CODEC_TYPE_VIDEO;
@@ -518,6 +519,9 @@ int parseCommandline (int argc, char *argv[],
 	// Parse commandline arguments
 	while ((i = getopt (argc, argv, legal_flags)) != -1) {
 		switch (i) {
+			case 'E':
+				y4m_accept_extensions(1); // manual override 
+				break;
 			case 'I':
 				switch (optarg[0]) {
 					case 'P':
@@ -862,7 +866,8 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
 			{
 				// should this be fatal?
-				mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
+				// Yes as it will result in a broken yuv4mpeg stream, and may cause downstream filters to crash.
+				mjpeg_error_exit1("Write header failed: %s", y4m_strerr(write_error_code));
 			} 
 			*header_written = 1;
 		}
