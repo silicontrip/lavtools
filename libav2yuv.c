@@ -506,7 +506,7 @@ int parseCommandline (int argc, char *argv[],
 	const static char *legal_flags = "EwchI:F:A:S:o:s:f:r:e:v:";
 	
 	*aw=0;
-	*sct=CODEC_TYPE_VIDEO;
+	*sct=AVMEDIA_TYPE_VIDEO;
 	*yi = Y4M_UNKNOWN;
 	*ysm = Y4M_UNKNOWN;
 	*fdOut = 1;
@@ -575,7 +575,7 @@ int parseCommandline (int argc, char *argv[],
 				break;	
 			case 'w':
 				*aw=1;
-				*sct=CODEC_TYPE_AUDIO;
+				*sct=AVMEDIA_TYPE_AUDIO;
 				break;
 			case 'c':
 				*con = 1;
