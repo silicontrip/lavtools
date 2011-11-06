@@ -10,12 +10,13 @@ LDFLAGS=-L/usr/X11/lib -L/usr/local/lib -lmjpegutils -L/opt/local/lib
 CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/opt/local/include/freetype3 -I/opt/local/include/glib-2.0
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 #FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
+JPEGFLAGS= -ljpeg
 
 
 TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 		yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
 		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev yuvtemporal yuvtout \
-		yuvyadif yuvnlmeans
+		yuvyadif yuvnlmeans yuvvalues
 
 
 all: $(TARGETS)
@@ -44,8 +45,13 @@ yuvyadif: yuvyadif.o utilyuv.o
 
 yuvnlmeans: yuvnlmeans.o utilyuv.o
 
+yuvvalues: yuvvalues.o utilyuv.o
+
+yuv2jpeg: yuv2jpeg.o utilyuv.o
+	gcc $(LDFLAGS) $(CFLAGS) $(JPEGFLAGS) -o yuv2jpeg utilyuv.o $<
+
 yuvsubtitle: yuvsubtitle.o utilyuv.o
-	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle $<
+	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle utilyuv.o $<
 
 yuvdiag: yuvdiag.o utilyuv.o
 	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag utilyuv.o $<

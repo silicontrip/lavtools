@@ -20,9 +20,6 @@
 **-c <colour> colour in the format y,u,v
 **-u <filename> subtitle file filename
 **</pre>
-
- *  based on code:
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -84,9 +81,15 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvsubtitle\n"
+			 "\t-f <fontfile> path to TTF file.\n"
+			 "\t-s <size> size to render the subtitle\n"
+			 "\t-y <y pos> vertical position on screen\n"
+			 "\t-c <colour> colour in the format y,u,v\n"
+			 "\t-u <filename> subtitle file filename\n"
 			);
 }
 
+// cheap and nasty UTF-8 to UTF-16 decoder
 unsigned int decode_char ( int *p, unsigned char * text)
 {
 	unsigned int sp;
@@ -472,7 +475,6 @@ int read_subs (struct subhead *s, char *filename) {
 		fclose (fn);
 		return -1;
 	}
-	
 	
 	while (fgets(line,maxline,fn) != NULL) {
 	

@@ -1,30 +1,30 @@
 /*
  *  yuvrfps.c
- **<h3>Frame Dropping Frame Rate Converter </h3>
- **<p>
- **Performs frame rate reduction by simple fractional amounts, by
- **dropping 1 out of every X frames or fields.  
- **</p><p>
- **This is to work with progressive 3:2 pulldown files performing conversions such as
- **29.97 to 23.976 similar to yuvkineco or even 30 to 25 fps.  It
- **analyses X frames and finds the least different fram e and drops
- **it, in theory removing any duplicated frames.
- **</p>
- **<p> It is possible that the 3:2 pulldown cadence starts on an interlace frame
- **in which the detection will make all frames interlace (field reversed progressive)
- **this can be corrected by the -s option to start the sequence on a progressive frame.
- **It should be less than the Decimation number.
- **</p>
- **<h4>Usage</h4>
- **<pre>
- **-F <Decimation> reduces X frames to X-1
- **   Common Decimation ratios
- **   5: 29.970 -> 23.976
- **   6: 30 -> 25
- **-f <X[:Y]> force drop frame X (or X:Y fields)
- **-I t|b|p Force interlace mode
- **-s <X> skip X frames. Output X frames unchanged before starting detection.
- **</pre>
+**<h3>Frame Dropping Frame Rate Converter </h3>
+**<p>
+**Performs frame rate reduction by simple fractional amounts, by
+**dropping 1 out of every X frames or fields.  
+**</p><p>
+**This is to work with progressive 3:2 pulldown files performing conversions such as
+**29.97 to 23.976 similar to yuvkineco or even 30 to 25 fps.  It
+**analyses X frames and finds the least different fram e and drops
+**it, in theory removing any duplicated frames.
+**</p>
+**<p> It is possible that the 3:2 pulldown cadence starts on an interlace frame
+**in which the detection will make all frames interlace (field reversed progressive)
+**this can be corrected by the -s option to start the sequence on a progressive frame.
+**It should be less than the Decimation number.
+**</p>
+**<h4>Usage</h4>
+**<pre>
+**-F <Decimation> reduces X frames to X-1
+**   Common Decimation ratios
+**   5: 29.970 -> 23.976
+**   6: 30 -> 25
+**-f <X[:Y]> force drop frame X (or X:Y fields)
+**-I t|b|p Force interlace mode
+**-s <X> skip X frames. Output X frames unchanged before starting detection.
+**</pre>
  
  *
  *  modified from yuvfps.c by
