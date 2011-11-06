@@ -617,7 +617,12 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	AVCodecContext *pCodecCtx;
 	
 	// Open video file
-	if(avformat_open_input_file(pfc, fn, avif, 0, NULL)!=0)
+	
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
+	if(av_open_input_file(pfc, fn, avif, 0, NULL)!=0)
+#else
+	if(avformat_open_input(pfc, fn, avif, NULL)!=0)
+#endif
 		return -1; // Couldn't open file
 	
 	pFormatCtx = *pfc;
@@ -625,14 +630,21 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	//	fprintf (stderr,"av_find_stream_info\n");
 	
 	// Retrieve stream information
-	if(avformat_find_stream_info(pFormatCtx)<0)
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
+	if(av_find_stream_info(pFormatCtx)<0)
+#else
+	if(avformat_find_stream_info(pFormatCtx,NULL)<0)
+#endif
 		return -1; // Couldn't find stream information
 	
 	//	fprintf (stderr,"dump_format\n");
 	
 	// Dump information about file onto standard error
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
+	dump_format(pFormatCtx, 0, fn, 0);
+#else
 	av_dump_format(pFormatCtx, 0, fn, 0);
-	
+#endif
 	// Find the first video stream
 	// not necessarily a video stream but this is legacy code
 	for(i=0; i<pFormatCtx->nb_streams; i++)
@@ -667,7 +679,11 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	}
 	
 	// Open codec
+#if LIBAVCODEC_VERSION_MAJOR < 53 
+	if(avcodec_open(pCodecCtx, *pCodec)<0) {
+#else
 	if(avcodec_open2(pCodecCtx, *pCodec,NULL)<0) {
+#endif
 		mjpeg_error("open_av_file: could not open codec");
 		return -1; // Could not open codec
 	}
