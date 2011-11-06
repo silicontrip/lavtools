@@ -617,7 +617,7 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	AVCodecContext *pCodecCtx;
 	
 	// Open video file
-	if(av_open_input_file(pfc, fn, avif, 0, NULL)!=0)
+	if(avformat_open_input_file(pfc, fn, avif, 0, NULL)!=0)
 		return -1; // Couldn't open file
 	
 	pFormatCtx = *pfc;
@@ -625,13 +625,13 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	//	fprintf (stderr,"av_find_stream_info\n");
 	
 	// Retrieve stream information
-	if(av_find_stream_info(pFormatCtx)<0)
+	if(avformat_find_stream_info(pFormatCtx)<0)
 		return -1; // Couldn't find stream information
 	
 	//	fprintf (stderr,"dump_format\n");
 	
 	// Dump information about file onto standard error
-	dump_format(pFormatCtx, 0, fn, 0);
+	av_dump_format(pFormatCtx, 0, fn, 0);
 	
 	// Find the first video stream
 	// not necessarily a video stream but this is legacy code
@@ -667,7 +667,7 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	}
 	
 	// Open codec
-	if(avcodec_open(pCodecCtx, *pCodec)<0) {
+	if(avcodec_open2(pCodecCtx, *pCodec,NULL)<0) {
 		mjpeg_error("open_av_file: could not open codec");
 		return -1; // Could not open codec
 	}
