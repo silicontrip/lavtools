@@ -482,6 +482,7 @@ static void print_usage()
 			 "\t -s select stream other than stream 0\n"
 			 "\t -o<outputfile> write to file rather than stdout\n"
 			 "\t -r [[[HH:]MM:]SS:]FF-[[[HH:]MM:]SS:]FF playout only these frames\n"
+			 "\t -E enable y4m extensions (may be required if source file is not a common format)\n"
 			 "\t -h print this help\n"
 			 );
 }
@@ -502,7 +503,7 @@ int parseCommandline (int argc, char *argv[],
 {
 	
 	int i;
-	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:v:";
+	const static char *legal_flags = "EwchI:F:A:S:o:s:f:r:e:v:";
 	
 	*aw=0;
 	*sct=AVMEDIA_TYPE_VIDEO;
@@ -518,6 +519,9 @@ int parseCommandline (int argc, char *argv[],
 	// Parse commandline arguments
 	while ((i = getopt (argc, argv, legal_flags)) != -1) {
 		switch (i) {
+			case 'E':
+				y4m_accept_extensions(1); // manual override 
+				break;
 			case 'I':
 				switch (optarg[0]) {
 					case 'P':
@@ -613,7 +617,12 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	AVCodecContext *pCodecCtx;
 	
 	// Open video file
+	
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
 	if(av_open_input_file(pfc, fn, avif, 0, NULL)!=0)
+#else
+	if(avformat_open_input(pfc, fn, avif, NULL)!=0)
+#endif
 		return -1; // Couldn't open file
 	
 	pFormatCtx = *pfc;
@@ -621,14 +630,21 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	//	fprintf (stderr,"av_find_stream_info\n");
 	
 	// Retrieve stream information
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
 	if(av_find_stream_info(pFormatCtx)<0)
+#else
+	if(avformat_find_stream_info(pFormatCtx,NULL)<0)
+#endif
 		return -1; // Couldn't find stream information
 	
 	//	fprintf (stderr,"dump_format\n");
 	
 	// Dump information about file onto standard error
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
 	dump_format(pFormatCtx, 0, fn, 0);
-	
+#else
+	av_dump_format(pFormatCtx, 0, fn, 0);
+#endif
 	// Find the first video stream
 	// not necessarily a video stream but this is legacy code
 	for(i=0; i<pFormatCtx->nb_streams; i++)
@@ -663,7 +679,11 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	}
 	
 	// Open codec
+#if LIBAVCODEC_VERSION_MAJOR < 53 
 	if(avcodec_open(pCodecCtx, *pCodec)<0) {
+#else
+	if(avcodec_open2(pCodecCtx, *pCodec,NULL)<0) {
+#endif
 		mjpeg_error("open_av_file: could not open codec");
 		return -1; // Could not open codec
 	}
@@ -862,7 +882,8 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
 			{
 				// should this be fatal?
-				mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
+				// Yes as it will result in a broken yuv4mpeg stream, and may cause downstream filters to crash.
+				mjpeg_error_exit1("Write header failed: %s", y4m_strerr(write_error_code));
 			} 
 			*header_written = 1;
 		}

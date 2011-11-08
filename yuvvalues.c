@@ -273,6 +273,8 @@ int main (int argc, char *argv[])
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
 	// ***************************************************************
+	
+	y4m_accept_extensions(1); // because we can handle different chroma subsampling
 	// INPUT comes from stdin, we check for a correct file header
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
