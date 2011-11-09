@@ -77,8 +77,7 @@
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuvaddetect [-v -h -Ip|b|p]\n"
-			 "yuvaddetect produces a 2d graph showing time vs frame difference\n"
+			 "usage: yuvilace [-v -h -Ip|b|p]\n"
 			 "\n"
 			 "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 			 "\t -I<pbt> Force interlace mode\n"
@@ -87,10 +86,98 @@ static void print_usage()
 }
 
 
-// read X frames
-// diff each frame (X-1)
-// for 1 to X
-// if frame != diff write frame 
+static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
+	
+	if (j<h-1){
+		o[i+j*w] = abs (p[i+j*w] - p[i+(j+1)*w]) + 128;
+	} else {
+		o[i+j*w] = p[i+j*w];
+	}
+}
+
+static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
+{
+	
+	int x,y;
+	int height,width,height2,width2;
+	
+	height=y4m_si_get_plane_height(si,0);
+	width=y4m_si_get_plane_width(si,0);
+	
+	// I'll assume that the chroma subsampling is the same for both u and v channels
+	height2=y4m_si_get_plane_height(si,1);
+	width2=y4m_si_get_plane_width(si,1);
+	
+	
+	for (y=0; y < height; y++) {
+		for (x=0; x < width; x++) {
+			
+			filterpixel(m[0],n[0],x,y,width,height);
+			
+			if (x<width2 && y<height2) {
+				filterpixel(m[1],n[1],x,y,width2,height2);
+				filterpixel(m[2],n[2],x,y,width2,height2);
+			}
+			
+		}
+	}
+	
+}
+
+
+
+static void vertdiff(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream_info_t  *outStrInfo)
+{
+	y4m_frame_info_t   in_frame ;
+	uint8_t            *yuv_data[3],*yuv_odata[3] ;
+	int                read_error_code ;
+	int                write_error_code ;
+	
+	// Allocate memory for the YUV channels
+	
+	if (chromalloc(yuv_data,inStrInfo))		
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+
+	if (chromalloc(yuv_odata,inStrInfo))		
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+
+	
+	/* Initialize counters */
+	
+	write_error_code = Y4M_OK ;
+	
+	y4m_init_frame_info( &in_frame );
+	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+	
+	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
+		
+		// do work
+		if (read_error_code == Y4M_OK) {
+			filterframe(yuv_odata,yuv_data,inStrInfo);
+			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
+		}
+		
+		y4m_fini_frame_info( &in_frame );
+		y4m_init_frame_info( &in_frame );
+		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+	}
+	// Clean-up regardless an error happened or not
+	y4m_fini_frame_info( &in_frame );
+	
+	free( yuv_data[0] );
+	free( yuv_data[1] );
+	free( yuv_data[2] );
+	
+	free( yuv_odata[0] );
+	free( yuv_odata[1] );
+	free( yuv_odata[2] );
+	
+	
+	
+	if( read_error_code != Y4M_ERR_EOF )
+		mjpeg_error_exit1 ("Error reading from input stream!");
+	
+}
 
 
 static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
@@ -312,7 +399,8 @@ int main (int argc, char *argv[])
 	/* in that function we do all the important work */
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 	
-	detect( fdIn,&in_streaminfo,fdOut,&out_streaminfo);
+//	detect( fdIn,&in_streaminfo,fdOut,&out_streaminfo);
+	vertdiff(fdIn,&in_streaminfo,fdOut,&out_streaminfo);
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	y4m_fini_stream_info (&out_streaminfo);
