@@ -21,6 +21,8 @@
 ** Higher values of R cause more ghosting.  Higher values of D increase the 
 ** search radius, and increase processing time.
 ** </p>
+** <h4>History</h4>
+** <p>6-Nov-2011 added y4m accept extensions. To allow for other chroma subsampling.</p>
  
  
  *
@@ -403,6 +405,7 @@ int main (int argc, char *argv[])
 	// The streaminfo structure is filled in
 	// ***************************************************************
 	// INPUT comes from stdin, we check for a correct file header
+	y4m_accept_extensions(1);
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
