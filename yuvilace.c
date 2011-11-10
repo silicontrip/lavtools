@@ -87,9 +87,13 @@ static void print_usage()
 
 
 static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
+
+	int t;
 	
 	if (j<h-1){
-		o[i+j*w] = abs (p[i+j*w] - p[i+(j+1)*w]) + 128;
+		t = abs(p[i+j*w] - p[i+(j+1)*w]) + 16;
+		//t = t<0?0:t;	
+		o[i+j*w] = t>255?255:t;
 	} else {
 		o[i+j*w] = p[i+j*w];
 	}
