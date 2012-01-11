@@ -9,6 +9,7 @@
 ** from VHS tapes.</p>
 **<p> I have spent a while tuning the detection algorithm, it appears quite effective.
 ** This filter is more useful at removing VHS noise than the tshot filter.  </p>
+**<p>Added a detect only feature which outputs the frame number and 0-1.0 pixel ratio.</p>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -52,7 +53,10 @@
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuv\n"
+			 "usage: yuvtout [-hvdt <threshold> ]\n"
+			 "\t-d detect only, output frame vs % of outlier pixels\n"
+			 "\t-t threshold, higher values mean less detected. defaults to 4\n"
+			 "\t-h help -v verbose <0-2>"
 			 );
 }
 
@@ -69,88 +73,65 @@ int outlier(pixelvalue x, pixelvalue y, pixelvalue z)
 	
 	//fprintf(stderr,"dif: %d %d\n",dif2,dif1);
 	
+	// Will make this configurable by command line option.
 	return dif>4?1:0;
+	
+}
+
+static int detectpixel(uint8_t **p,int chan, int i, int j, int w, int h) {
+	
+	int x;
+	
+	if ((i-1 < 0) || (i+1 > w) || (j-1 < 0) || (j+1 >= h)) {
+		return 0;
+	} else {
+				
+		for (x=-1; x<2; x++)
+		{
+			// detect two pixels above and below (to eliminate interlace artefacts)
+			if ((j-2 >=0) && (j+2 < h)) {
+				if (!outlier(p[chan][(j-2) * w + i+x], p[chan][j * w + i+x], p[chan][(j+2) * w + i+x]))
+					return 0;
+			}
+			
+			if (!outlier(p[chan][(j-1) * w + i+x], p[chan][j * w + i+x], p[chan][(j+1) * w + i+x]))
+				return 0;
+			
+		}
+	}
+	return 1;
 	
 }
 
 
 static void filterpixel(uint8_t **o, uint8_t **p,int chan, int i, int j, int w, int h) {
 	
-	unsigned int sum =0;
 	unsigned int total = 0;
-	int ol=1;
 	int z,y,x;
 	int pixel_loc;
-	
-	// Arg! don't want to temporarily allocate this memory.
-	
-	
+		
 	pixel_loc = j * w + i;	
 	
 	
-	if (  (i-1 < 0) || (i+1 > w) || (j-1 < 0) || (j+1 >= h)) {
-		o[chan][pixel_loc] = p[chan][pixel_loc];
-	} else {
+	// interpolate
+	if (detectpixel(p,chan, i, j,w,h)) {
+				
+		total = (p[chan][(j-1) * w + i] + p[chan][(j+1) * w + i] ) / 2;
 		
-		// detect phase
-
-		for (x=-1; x<2; x++)
-		{
-			
-			if ((j-2 >=0) || (j+2 < h)) {
-				if (!outlier(p[chan][(j-2) * w + i+x], p[chan][j * w + i+x], p[chan][(j+2) * w + i+x]))
-					ol=0;
-			}
-			
-			
-			if (!outlier(p[chan][(j-1) * w + i+x], p[chan][j * w + i+x], p[chan][(j+1) * w + i+x]))
-				ol = 0;
-			
-		//	if (!outlier(p[0][chan][j * w + i+x], p[1][chan][j * w + i+x], p[2][chan][j * w + i+x]))
-		//		ol = 0;
-			
-			
+		if ((j-2 >=0) || (j+2 < h)) {
+			// interlace
+			x = ( p[chan][(j-2) * w + i] + p[chan][(j+2) * w + i]) / 2;
+			total = (x + total) / 2;
 		}
-		// interpolate
-		if (ol) {
-			// might pick the best
-			
-			sum = 255;
-			
-			total = (p[chan][(j-1) * w + i] + p[chan][(j+1) * w + i] ) / 2;
-
-			
-			if ((j-2 >=0) || (j+2 < h)) {
-				// interlace
-			//	sum = abs(p[1][chan][(j-2) * w + i] - p[1][chan][(j+2) * w + i]);
-				x = ( p[chan][(j-2) * w + i] + p[chan][(j+2) * w + i]) / 2;
-				total = (x + total) / 2;
-			}
-			
-			
-			// vertical
-	//		if (abs(p[1][chan][(j-1) * w + i] - p[1][chan][(j+1) * w + i]) < sum) {
-	//			sum = abs(p[1][chan][(j-1) * w + i] - p[1][chan][(j+1) * w + i]);
-	//		}
-			
-			// temporal
-//			if (abs(p[0][chan][j * w + i] - p[2][chan][j * w + i]) < sum) {
-//				sum = abs(p[0][chan][j * w + i] - p[2][chan][j * w + i]);
-//				total = (p[0][chan][j * w + i] + p[2][chan][j * w + i] ) / 2;
-//			}
-			
-			
-			
-			o[chan][pixel_loc] = total;
-			
-			
-			// test mode for marking
-			// o[chan][pixel_loc] = 235;
-			
-		} else {
-			// just copy the pixel
-			o[chan][pixel_loc] = p[chan][pixel_loc];
-		}
+		
+		o[chan][pixel_loc] = total;
+		
+		// test mode for marking
+		// o[chan][pixel_loc] = 235;
+		
+	} else {
+		// just copy the pixel
+		o[chan][pixel_loc] = p[chan][pixel_loc];
 	}
 	
 }
@@ -185,8 +166,48 @@ static void filterframe (uint8_t *m[3], uint8_t **n, y4m_stream_info_t *si)
 	
 }
 
+
+static double detectframe (uint8_t **n, y4m_stream_info_t *si)
+{
+	
+	int x,y;
+	int height,width,height2,width2;
+	
+	int total;
+	
+	int count = 0; 
+	
+	
+	// these are stored here for speed
+	height=y4m_si_get_plane_height(si,0);
+	width=y4m_si_get_plane_width(si,0);
+	
+	// I'll assume that the chroma subsampling is the same for both u and v channels
+	height2=y4m_si_get_plane_height(si,1);
+	width2=y4m_si_get_plane_width(si,1);
+	
+	total = height * width + height2 * width2 + height2 * width2;
+	
+	for (y=0; y < height; y++) {
+		for (x=0; x < width; x++) {
+			
+			count += detectpixel(n,0,x,y,width,height);
+			
+			if (x<width2 && y<height2) {
+				count += detectpixel(n,1,x,y,width2,height2);
+				count += detectpixel(n,2,x,y,width2,height2);
+			}
+			
+		}
+	}
+	
+	return 1.0 * count / total;
+}
+
+
+
 // temporal filter loop
-static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
+static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo , int thresh, int detect)
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
@@ -195,12 +216,14 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 	int                read_error_code ;
 	int                write_error_code ;
 	int c,d;
+	unsigned int counter = 0;
 	
 	// Allocate memory for the YUV channels
 	// may move these off into utility functions
-	if (chromalloc(yuv_odata,inStrInfo))		
-		mjpeg_error_exit1 ("Could'nt allocate memory for the out YUV4MPEG data!");
-	
+	if(!detect) {
+		if (chromalloc(yuv_odata,inStrInfo))		
+			mjpeg_error_exit1 ("Could'nt allocate memory for the out YUV4MPEG data!");
+	}
 	// sanity check!!!
 	if(chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the in YUV4MPEG data!");
@@ -222,8 +245,13 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		
 		// do work
 		if (read_error_code == Y4M_OK) {
-			filterframe(yuv_odata,yuv_data,inStrInfo);
-			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
+			if (detect) {
+				printf ("%d %g\n",counter++,detectframe(yuv_data,inStrInfo));
+			} else {
+				filterframe(yuv_odata,yuv_data,inStrInfo);
+				write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
+
+			}
 		}
 		
 		y4m_fini_frame_info( &in_frame );
@@ -233,8 +261,10 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 	// Clean-up regardless an error happened or not
 	
 	
-	y4m_fini_frame_info( &in_frame );
-	chromafree(yuv_odata);
+//	y4m_fini_frame_info( &in_frame );
+	if (!detect) {
+		chromafree(yuv_odata);
+	}
 	
 	//must free yuv temporal buffer
 	chromafree(yuv_data);
@@ -258,9 +288,9 @@ int main (int argc, char *argv[])
 	y4m_ratio_t frame_rate;
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
-	float sigma;
 	int c ;
-	const static char *legal_flags = "?hv:l:";
+	int threshold = 4, detect = 0;
+	const static char *legal_flags = "?hv:t:d";
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -275,9 +305,13 @@ int main (int argc, char *argv[])
 				print_usage (argv);
 				return 0 ;
 				break;
-			case 'l':
-				length = atoi(optarg);
+			case 't':
+				threshold = atoi(optarg);
 				break;
+			case 'd':
+				detect = 1;
+				break;
+				
 		}
 	}
 	
@@ -304,12 +338,16 @@ int main (int argc, char *argv[])
 	
 	/* in that function we do all the important work */
 	//filterinitialize ();
-	y4m_write_stream_header(fdOut,&in_streaminfo);
+	// sorry for this conditional logic
+	if (!detect) {
+		y4m_write_stream_header(fdOut,&in_streaminfo);
+	}
 	
-	filter(fdIn, fdOut, &in_streaminfo);
+	filter(fdIn, fdOut, &in_streaminfo,threshold,detect);
 	
-	y4m_fini_stream_info (&in_streaminfo);
-	
+	if (!detect) {
+		y4m_fini_stream_info (&in_streaminfo);
+	}
 	return 0;
 }
 /*
