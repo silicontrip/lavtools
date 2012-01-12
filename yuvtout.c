@@ -54,7 +54,7 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvtout [-hvdt <threshold> ]\n"
-			 "\t-d detect only, output frame vs % of outlier pixels\n"
+			 "\t-d detect only, output frame vs %% of outlier pixels\n"
 			 "\t-t threshold, higher values mean less detected. defaults to 4\n"
 			 "\t-h help -v verbose <0-2>"
 			 );
