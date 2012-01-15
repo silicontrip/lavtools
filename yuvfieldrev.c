@@ -129,7 +129,7 @@ int main (int argc, char *argv[])
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
 	int c ;
-	const static char *legal_flags = "hv:";
+	const static char *legal_flags = "hI:v:";
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -138,8 +138,15 @@ int main (int argc, char *argv[])
 				if (verbose < 0 || verbose > 2)
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
+			case 'I':
 				
-				case 'h':
+				fprintf(stderr,"Parsing Interlace");
+				
+				mjpeg_info ("Parsing interlace");
+				
+				yuv_interlacing = parse_interlacing(optarg);
+				break;
+			case 'h':
 				case '?':
 				print_usage (argv);
 				return 0 ;
@@ -162,14 +169,19 @@ int main (int argc, char *argv[])
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
+	//yuv_interlacing = Y4M_ILACE_TOP_FIRST;
 	
 	// Information output
 	mjpeg_info ("yuv (version " VERSION ") is a field reversing utility for yuv streams");
 	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");	
 	
-	
+	if (yuv_interlacing == Y4M_UNKNOWN) {
+		yuv_interlacing = y4m_si_get_interlace(&in_streaminfo);
+	}
+		
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
-	y4m_si_set_interlace(&out_streaminfo, invert_order(y4m_si_get_interlace(&in_streaminfo)));
+	y4m_si_set_interlace(&in_streaminfo, yuv_interlacing);
+	y4m_si_set_interlace(&out_streaminfo, invert_order(yuv_interlacing));
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 	
 	/* in that function we do all the important work */

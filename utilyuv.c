@@ -148,7 +148,7 @@ void copyfield(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo, int which)
 	} else if (which==Y4M_ILACE_BOTTOM_FIRST) {
 		r=1;
 	} else {
-		mjpeg_warn("invalid interlace selected");
+		mjpeg_warn("copyfield() invalid interlace selected (%d)",which);
 	}
 	
 	for (; r < h; r += 2)
