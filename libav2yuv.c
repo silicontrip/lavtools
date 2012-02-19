@@ -1115,7 +1115,11 @@ int main(int argc, char *argv[])
 									newFile=0;
 								}
 							}
+						} else {			
+							avcodec_close(pCodecCtx);
+							av_close_input_file(pFormatCtx);
 						}
+							
 					}
 				}
 				
@@ -1125,6 +1129,7 @@ int main(int argc, char *argv[])
 			}
 			if (!skip) {
 				if (newFile) {
+				//	fprintf (stderr,"not new file\n");
 					stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
 					if (stream == -1) {
 						mjpeg_error("Error with video file: %s",openfile);
@@ -1144,6 +1149,7 @@ int main(int argc, char *argv[])
 						}
 					}
 					if (audioWrite==0) {
+						// fprintf (stderr,"init_video: 1147\n");
 						if (init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame) == -1) {
 							mjpeg_error_exit1("Error initialising video file: %s",openfile);
 							exit (-1);
@@ -1196,13 +1202,14 @@ int main(int argc, char *argv[])
 				while(av_read_frame(pFormatCtx, &packet)>=0 && !finishedit)
 				{
 					
-					// fprintf (stderr,"inside loop until nothing left\n");
+					// fprintf (stderr,"inside loop until nothing left searching for stream %d==%d with %x\n",stream,packet.stream_index,pFormatCtx);
 					
 					
 					// Is this a packet from the desired stream?
 					if(packet.stream_index==stream)
 					{
 						// Decode video frame
+						//fprintf (stderr,"check for audio write\n");
 						if (audioWrite==0) {
 							
 							// fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
@@ -1307,19 +1314,25 @@ int main(int argc, char *argv[])
 						 */
 					}
 				
+					
+					// fprintf (stderr,"free packet\n");
 #ifdef HAVE_AV_FREE_PACKET
 					av_free_packet(&packet);
 #else
 					av_freep(&packet);
 #endif
+					//fprintf (stderr,"end free packet\n");
+
+					//fprintf (stderr,"End Loop : %x  %x\n",pFormatCtx, &packet);
 					
 				}
 			}
 			
 			// Free the packet that was allocated by av_read_frame
 			//	av_free_packet(&packet);
-			avcodec_close(pCodecCtx);
-			av_close_input_file(pFormatCtx);
+			// we need to close this else where.
+		//	avcodec_close(pCodecCtx);
+		//	av_close_input_file(pFormatCtx);
 
 		}
 	
