@@ -126,13 +126,15 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 		return -1;
 	}
 	
-	// fprintf (stderr, "REGEXEC %s\n",tc);
-	
+	//fprintf (stderr, "REGEXEC %s\n",tc);
 	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
+	//fprintf (stderr, "REGEXEC %s\n",tc);
+
 	if ( nummatch != 0) {
 		fprintf (stderr, "parser: error REGEX match failed\n");
 		return -1;
 	}
+	
 	/*
 	 for (f=0; f<num; f++)  {
 	 le =codes[f].rm_eo-codes[f].rm_so;
@@ -173,7 +175,6 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	if (codes[1].rm_eo != 0) 
 		h = atoi(tc+codes[1].rm_so);
 	
-	//	fprintf (stderr," %d - %d - %d - %d \n",h,m,s,f);
 	
 	regfree( &tc_reg );
 	
@@ -182,7 +183,12 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 		return -1;
 	}
 	
+	// why aren't we doing fn64 at this point?
+	// fprintf (stderr," %d - %d - %d - %d \n",h,m,s,f);
+
 	frameNumber =   1.0 * ( h * 3600 + m * 60 + s ) * fps + f;
+	
+	
 	fn = (frameNumber);
 	
 	fn64 = fn;
@@ -1000,6 +1006,7 @@ int main(int argc, char *argv[])
 	int                frame_data_size ;
 	uint8_t            *yuv_data[3] ;      
 	struct SwsContext *img_convert_ctx =NULL;
+	int writeAudioCount=0;
 	
 	y4m_stream_info_t streaminfo;
 	y4m_frame_info_t frameinfo;
@@ -1066,7 +1073,7 @@ int main(int argc, char *argv[])
 				// should allow for multiple edits from the one file.
 				
 				mjpeg_info("running EDL entry: %d %s",edlcounter,edllist[edlcounter].filename);
-				fprintf (stderr,"in: %s out: %s",edllist[edlcounter].in, edllist[edlcounter].out);
+				fprintf (stderr,"in: %s out: %s\n",edllist[edlcounter].in, edllist[edlcounter].out);
 				
 				//fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
 				
@@ -1097,6 +1104,10 @@ int main(int argc, char *argv[])
 							// this means that we've exited early from an edit
 							startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 							endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+							//fprintf (stderr,"samples written : %d\n",writeAudioCount);
+							//fprintf (stderr,"in: %s(%lld) out: %s(%lld) %d frames\n",tc_in,startFrame, tc_out,endFrame,endFrame-startFrame+1);
+							//writeAudioCount = 0;
+
 							if (startFrame == -1 || endFrame == -1) {
 								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 							}
@@ -1178,8 +1189,14 @@ int main(int argc, char *argv[])
 					// now do I remember how NTSC drop frame works?
 					if (tc_in) {
 						startFrame = -1; endFrame = -1;
+						//fprintf (stderr,"in: %s out: %s\n",tc_in, tc_out);
+
 						startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 						endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+					//	fprintf (stderr,"samples written : %d\n",writeAudioCount);
+					//	fprintf (stderr,"in: %s(%lld) out: %s(%lld) %d frames\n",tc_in,startFrame, tc_out,endFrame,endFrame-startFrame+1);
+						//writeAudioCount = 0;
+
 						if (startFrame == -1 || endFrame == -1) {
 							mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 						}
@@ -1271,33 +1288,47 @@ int main(int argc, char *argv[])
 							numSamples = numBytes / BYTES_PER_SAMPLE;
 							
 							if (!tc_in) {
-								write (1, aBuffer, numBytes);
+								
+									writeAudioCount = write (1, aBuffer, numBytes);
+								if (writeAudioCount != numBytes)
+									mjpeg_warn("fewer sample bytes written (1)");
 								
 								// whole decoded frame within range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
-									   sampleCounter+numSamples <= (endFrame+1) * samplesFrame  ) {
-								write (1, aBuffer, numBytes);
+									   sampleCounter+numSamples < (endFrame+1) * samplesFrame  ) {
 								
+
+								writeAudioCount = write (1, aBuffer, numBytes); 
+								if (writeAudioCount != numBytes)
+									mjpeg_warn("fewer sample bytes written (2)");
+
 								// start of buffer outside range, end of buffer in range
 							} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
-									   sampleCounter+numSamples <= (endFrame+1) * samplesFrame ) {
+									   sampleCounter+numSamples < (endFrame+1) * samplesFrame ) {
 								// write a subset
-								
-								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
-								
+
+								//fprintf (stderr, "sample writer: startFrame=%lld sampleCounter=%lld numBytes=%d samplesFrame=%d \n",startFrame, sampleCounter , numBytes, samplesFrame);
+
+								writeAudioCount = write(1,aBuffer+(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+								if (writeAudioCount != numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE)
+									mjpeg_warn("fewer sample bytes written (3)");
+
 								// start of buffer in range, end of buffer outside range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
-									   sampleCounter <= (endFrame+1) * samplesFrame ) {
+									   sampleCounter < (endFrame+1) * samplesFrame ) {
 								// write a subset
-								
-								write(1,aBuffer,((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
-								
+								writeAudioCount = write(1,aBuffer,((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+								if (writeAudioCount != ((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE)
+									mjpeg_warn("fewer sample bytes written (4)");
+
 								// entire range contained within buffer
 							} else if (sampleCounter < startFrame * samplesFrame &&
 									   sampleCounter+numSamples > (endFrame+1) * samplesFrame ) {
 								// write a subset
-								
-								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,((endFrame+1)-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
+								writeAudioCount = write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,((endFrame+1)-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
+								if (writeAudioCount != ((endFrame+1)-startFrame)*samplesFrame*BYTES_PER_SAMPLE)
+									mjpeg_warn("fewer sample bytes written (5)");
+
 							} 
 							sampleCounter += numSamples;
 							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
@@ -1391,6 +1422,7 @@ int main(int argc, char *argv[])
 		mjpeg_info ("%d Frames processed",frameCounter);
 	} else {
 		mjpeg_info ("%d Samples processed",sampleCounter);
+		// fprintf (stderr,"samples written %d\n",writeAudioCount);
 	}
     return 0;
 }
