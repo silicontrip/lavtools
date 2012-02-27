@@ -693,7 +693,11 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 		mjpeg_error("open_av_file: could not open codec");
 		return -1; // Could not open codec
 	}
-	
+		
+#if 0 
+	}
+#endif
+		
 	return avStream;
 }
 
@@ -809,17 +813,28 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				   uint8_t  *yuv_data[3], int fdOut, y4m_frame_info_t *frameinfo, int write, struct SwsContext *img_convert_ctx)
 {
 	
-	int frameFinished,numBytes;
+	int frameFinished=0,numBytes;
 	int write_error_code;
 	int yuv_width[3];
+	int bytesDecoded;
 	
 	//	mjpeg_debug ("decode video");
 	
+	// will this cause dropped frames to be output...?? or simply crash.
+	while (!frameFinished) {
 #ifdef HAVE_AVCODEC_DECODE_VIDEO2
-	avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+	bytesDecoded = avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
 #else
-	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
+	bytesDecoded = avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
 #endif
+	
+	// I'm trying to handle broken video files, but It's causing the audio to lose sync with the video.
+	// Maybe the PTS might help
+	
+		if (bytesDecoded < 0 ) 
+			mjpeg_error ("error decoding frame at PTS: %lld\n", packet->pts);
+	
+		
 	//
 	// Did we get a video frame?
 	// frameFinished does not mean decoder finished, means that the packet can be freed.
@@ -896,7 +911,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	}
 	
 	if (*header_written) {
-		// if (frameFinished) { 
+		 if (frameFinished) { 
 		// appears that if it's not decoded there isn't anything in the ffmpeg buffer
 		// this can cause seg faults.
 		
@@ -926,6 +941,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #endif					
 			avchromacpy(yuv_data,pFrame,streaminfo);
 		}
+		 }
 	} /* frame finished */
 	
 	if (write && *header_written) {
@@ -962,10 +978,11 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #endif
 		 
 	}
+		/*
 	else 
 		mjpeg_warn ("FRAME NOT FINISHED");
-	
-	
+	*/
+	}
 }	
 
 int main(int argc, char *argv[])
@@ -1073,7 +1090,7 @@ int main(int argc, char *argv[])
 				// should allow for multiple edits from the one file.
 				
 				mjpeg_info("running EDL entry: %d %s",edlcounter,edllist[edlcounter].filename);
-				fprintf (stderr,"in: %s out: %s\n",edllist[edlcounter].in, edllist[edlcounter].out);
+				mjpeg_info ("in: %s out: %s\n",edllist[edlcounter].in, edllist[edlcounter].out);
 				
 				//fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
 				
@@ -1307,26 +1324,32 @@ int main(int argc, char *argv[])
 									   sampleCounter+numSamples < (endFrame+1) * samplesFrame ) {
 								// write a subset
 
-								//fprintf (stderr, "sample writer: startFrame=%lld sampleCounter=%lld numBytes=%d samplesFrame=%d \n",startFrame, sampleCounter , numBytes, samplesFrame);
+								fprintf (stderr, "sample writer 3: startFrame=%lld endFrame=%lld sampleCounter=%lld-%lld\n",startFrame*samplesFrame,(1+endFrame)*samplesFrame, sampleCounter,sampleCounter+numSamples);
 
 								writeAudioCount = write(1,aBuffer+(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
 								if (writeAudioCount != numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE)
 									mjpeg_warn("fewer sample bytes written (3)");
+								fprintf (stderr,"Samples written %d\n",writeAudioCount/BYTES_PER_SAMPLE);
 
+								
 								// start of buffer in range, end of buffer outside range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
 									   sampleCounter < (endFrame+1) * samplesFrame ) {
 								// write a subset
+								fprintf (stderr, "sample writer 4: startFrame=%lld endFrame=%lld sampleCounter=%lld-%lld\n",startFrame*samplesFrame,(1+endFrame)*samplesFrame, sampleCounter,sampleCounter+numSamples);
+
 								writeAudioCount = write(1,aBuffer,((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
 								if (writeAudioCount != ((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE)
 									mjpeg_warn("fewer sample bytes written (4)");
+								
+								fprintf (stderr,"Samples written %d\n",writeAudioCount/BYTES_PER_SAMPLE);
 
 								// entire range contained within buffer
 							} else if (sampleCounter < startFrame * samplesFrame &&
 									   sampleCounter+numSamples > (endFrame+1) * samplesFrame ) {
 								// write a subset
-								writeAudioCount = write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,((endFrame+1)-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
-								if (writeAudioCount != ((endFrame+1)-startFrame)*samplesFrame*BYTES_PER_SAMPLE)
+								writeAudioCount = write(1,aBuffer+(startFrame *samplesFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame+1)*samplesFrame*BYTES_PER_SAMPLE);
+								if (writeAudioCount != (endFrame-startFrame+1)*samplesFrame*BYTES_PER_SAMPLE)
 									mjpeg_warn("fewer sample bytes written (5)");
 
 							} 
