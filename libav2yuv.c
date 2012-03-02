@@ -1282,13 +1282,21 @@ int main(int argc, char *argv[])
 								// for some reason when we finish, we skip a frame which is causing syncing problems.
 								// so count it here.
 								// I would like to determine the cause, but this is the work around.
-								frameCounter++;
+								// I think the cause might've been the way I've been decoding the frames
+								// and possibly the way I've been determining the audio cut points.
+								// I'm going to turn it off for now and see if my edits get any better.
+								// Currently I'm considering EDL functionality broken.
+								
+								// frameCounter++;
+								
+								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
+											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+											   yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
+								
 								
 							}
 							
-							if (header_written) {
-								frameCounter++;
-							} 
+							if (header_written) { frameCounter++; } 
 							
 						} else {
 							// decode Audio
@@ -1356,7 +1364,7 @@ int main(int argc, char *argv[])
 							sampleCounter += numSamples;
 							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 							
-							if (sampleCounter > (endFrame+1) * samplesFrame) {
+							if (tc_in && sampleCounter > (endFrame+1) * samplesFrame) {
 								finishedit = 1;
 							}
 							
