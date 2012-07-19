@@ -106,16 +106,29 @@ int main(int argc, char *argv[])
 	}
 
     // Open video file
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
     if(av_open_input_file(&pFormatCtx, argv[1], NULL, 0, NULL)!=0)
+#else
+	if(avformat_open_input(&pFormatCtx, argv[1], NULL,  NULL)!=0)
+#endif
+
         return -1; // Couldn't open file
 
     // Retrieve stream information
-    if(av_find_stream_info(pFormatCtx)<0)
-        return -1; // Couldn't find stream information
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
+	if(av_find_stream_info(pFormatCtx)<0)
+#else
+	if(avformat_find_stream_info(pFormatCtx,NULL)<0)
+#endif
+			return -1; // Couldn't find stream information
 
     // Dump information about file onto standard error
-    dump_format(pFormatCtx, 0, argv[1], 0);
-
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
+	dump_format(pFormatCtx, 0, argv[1], 0);
+#else
+	av_dump_format(pFormatCtx, 0, argv[1], 0);
+#endif
+	
     // Find the first video stream
     videoStream=-1;
 
@@ -146,8 +159,12 @@ int main(int argc, char *argv[])
         return -1; // Codec not found
 
     // Open codec
-    if(avcodec_open(pCodecCtx, pCodec)<0)
-        return -1; // Could not open codec
+#if LIBAVCODEC_VERSION_MAJOR < 52 
+	if(avcodec_open(pCodecCtx, *pCodec)<0) 
+#else
+	if(avcodec_open2(pCodecCtx, *pCodec,NULL)<0) 
+#endif
+			return -1; // Could not open codec
 
 
     // Allocate video frame
@@ -170,9 +187,13 @@ int main(int argc, char *argv[])
         if(packet.stream_index==videoStream)
         {
             // Decode video frame
-            avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, 
-                packet.data, packet.size);
-			
+			// I'm not entirely sure when avcodec_decode_video was deprecated.  most likely earlier than 53
+#if LIBAVCODEC_VERSION_MAJOR < 52 
+            avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet.data, packet.size);
+#else
+			avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
+#endif
+		
             // Did we get a video frame?
             if(frameFinished)
             {
