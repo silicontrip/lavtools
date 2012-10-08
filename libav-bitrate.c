@@ -12,8 +12,8 @@
 //gcc -O3 -I/usr/local/include/ffmpeg -I/usr/local/include/mjpegtools -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
 //
 
-#include <yuv4mpeg.h>
-#include <mpegconsts.h>
+//#include <yuv4mpeg.h>
+//#include <mpegconsts.h>
 
 
 #include <libavcodec/avcodec.h>
@@ -23,42 +23,6 @@
 #include <string.h>
 #include <fcntl.h>
 
-void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
-{
-
-	int y,h,w;
-	int cw,ch;
-
-	
-	w = y4m_si_get_plane_width(sinfo,0);
-	h = y4m_si_get_plane_height(sinfo,0);
-	cw = y4m_si_get_plane_width(sinfo,1);
-	ch = y4m_si_get_plane_height(sinfo,1);
-
-	for (y=0; y<h; y++) {
-
-		memcpy(dst[0]+y*w,(src->data[0])+y*src->linesize[0],w);
-		if (y<ch) {
-			memcpy(dst[1]+y*cw,(src->data[1])+y*src->linesize[1],cw);
-			memcpy(dst[2]+y*cw,(src->data[2])+y*src->linesize[2],cw);
-		}
-	}
-
-}
-
-void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-
-	m[0] = (uint8_t *)malloc( fs );
-	m[1] = (uint8_t *)malloc( cfs);
-	m[2] = (uint8_t *)malloc( cfs);
-
-}
 
 static void print_usage() 
 {
@@ -123,7 +87,7 @@ int main(int argc, char *argv[])
 			return -1; // Couldn't find stream information
 
     // Dump information about file onto standard error
-#if LIBAVFORMAT_VERSION_MAJOR  < 53
+#if LIBAVFORMAT_VERSION_MAJOR < 53
 	dump_format(pFormatCtx, 0, argv[1], 0);
 #else
 	av_dump_format(pFormatCtx, 0, argv[1], 0);
@@ -135,20 +99,27 @@ int main(int argc, char *argv[])
 	stream_size = (int *)malloc(pFormatCtx->nb_streams * sizeof(int));
 
 	for(i=0; i<pFormatCtx->nb_streams; i++) {
-		fprintf (stderr,"stream: %d = %d (%s)\n",i,pFormatCtx->streams[i]->codec->codec_type ,pFormatCtx->streams[i]->codec->codec_name);
+	//	fprintf (stderr,"stream: %d = %d (%s)\n",i,pFormatCtx->streams[i]->codec->codec_type ,pFormatCtx->streams[i]->codec->codec_name);
 		stream_size[i] = 0;
+#if LIBAVFORMAT_VERSION_MAJOR < 53
 		if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
+#else		
+			if(pFormatCtx->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
+#endif
+
 		{
 			videoStream=i;
 			framerate = pFormatCtx->streams[i]->r_frame_rate.num;
-			framerate /= pFormatCtx->streams[i]->r_frame_rate.den;
+			if (pFormatCtx->streams[i]->r_frame_rate.den != 0)
+				framerate /= pFormatCtx->streams[i]->r_frame_rate.den;
+		//	fprintf (stderr,"Video Stream: %d Frame Rate: %d:%d\n",videoStream,pFormatCtx->streams[i]->r_frame_rate.num,pFormatCtx->streams[i]->r_frame_rate.den);
+
 		}
 	}
 
     if(videoStream==-1)
         return -1; // Didn't find a video stream
 
-	fprintf (stderr,"Frame Rate: %g\n",framerate);
 
     // Get a pointer to the codec context for the video stream
     pCodecCtx=pFormatCtx->streams[videoStream]->codec;
@@ -158,11 +129,24 @@ int main(int argc, char *argv[])
     if(pCodec==NULL)
         return -1; // Codec not found
 
+	if (framerate == 0) 
+	{
+	
+		fprintf(stderr,"frame rate %d:%d\n",pCodecCtx->time_base.num,pCodecCtx->time_base.den);
+		framerate = pCodecCtx->time_base.den;
+		if (pCodecCtx->time_base.den != 0)
+			framerate /= pCodecCtx->time_base.num;
+
+	}
+	
+	fprintf (stderr,"Video Stream: %d Frame Rate: %g\n",videoStream,framerate);
+
+	
     // Open codec
 #if LIBAVCODEC_VERSION_MAJOR < 52 
 	if(avcodec_open(pCodecCtx, *pCodec)<0) 
 #else
-	if(avcodec_open2(pCodecCtx, *pCodec,NULL)<0) 
+	if(avcodec_open2(pCodecCtx, pCodec,NULL)<0) 
 #endif
 			return -1; // Could not open codec
 
@@ -194,10 +178,7 @@ int main(int argc, char *argv[])
 			avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
 #endif
 		
-            // Did we get a video frame?
-            if(frameFinished)
-            {
-				//if (!(frame_counter % ave_len)) {
+		//if (!(frame_counter % ave_len)) {
 		// print the statistics in gnuplot friendly format...
 					total_size = 0;
 					for(i=0; i<pFormatCtx->nb_streams; i++) {
@@ -214,7 +195,7 @@ int main(int argc, char *argv[])
 					printf("\n");
 				//}
 				frame_counter++;
-            }
+            
         }
 
         // Free the packet that was allocated by av_read_frame
@@ -229,7 +210,11 @@ int main(int argc, char *argv[])
     avcodec_close(pCodecCtx);
 
     // Close the video file
+#if LIBAVCODEC_VERSION_MAJOR < 54
     av_close_input_file(pFormatCtx);
-
+#else
+	avformat_close_input(&pFormatCtx);
+#endif
+	
     return 0;
 }
