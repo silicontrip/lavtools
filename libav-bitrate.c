@@ -27,7 +27,7 @@
 static void print_usage() 
 {
   fprintf (stderr,
-           "usage: bitrate <filename> [<smoothing window length>]\n"
+           "usage: libav-bitrate <filename> [<smoothing window length>]\n"
            "produces a text bandwidth graph for any media file recognised by libav\n"
            "\n"
          );
@@ -210,7 +210,7 @@ int main(int argc, char *argv[])
     avcodec_close(pCodecCtx);
 
     // Close the video file
-#if LIBAVCODEC_VERSION_MAJOR < 54
+#if LIBAVCODEC_VERSION_MAJOR < 53
     av_close_input_file(pFormatCtx);
 #else
 	avformat_close_input(&pFormatCtx);
