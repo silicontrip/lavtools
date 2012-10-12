@@ -8,7 +8,7 @@
 **</p>
 **<UL>
 **<li>10th Aug 2008 Now supports upper and lower level adjustment for contrast stretching.
-**<li>10th May 2008 Phill Clarke noticed that none of my yuvtools will not compile with mjpegutils RC3.
+**<li>10th May 2008 Phill Clarke noticed that none of my yuvtools will compile with mjpegutils RC3.
 **Due to a change in the mjpeg_logging type. This code has the change that should work under rc3.
 **</li>
 **</ul>
@@ -41,8 +41,8 @@ gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvadjust.c -o yuvadjust
 #include <string.h>
 #include <math.h>
 
-#include <mjpegutils/yuv4mpeg.h>
-#include <mjpegutils/mpegconsts.h>
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVRFPS_VERSION "0.3"
 
@@ -176,12 +176,9 @@ int main (int argc, char *argv[])
 {
 
 	int verbose = 1 ; // LOG_ERROR ?
-	int drop_frames = 0;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
-	int src_interlacing = Y4M_UNKNOWN;
-	y4m_ratio_t src_frame_rate;
 	const static char *legal_flags = "h:c:C:B:W:b:s:u:v:V:";
 	float adj_bri=0,adj_con=1,adj_sat=1,adj_hue=0,adj_u=0,adj_v=0;
 	int c, adj_con_cen = 128;
@@ -246,7 +243,6 @@ int main (int argc, char *argv[])
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 
-	src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 	
 

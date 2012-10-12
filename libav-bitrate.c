@@ -112,18 +112,21 @@ int main(int argc, char *argv[])
 		}
 	}
 
-    if(videoStream==-1)
+    if(videoStream==-1) {
+		free (stream_size);
         return -1; // Didn't find a video stream
-
+	}
 
     // Get a pointer to the codec context for the video stream
     pCodecCtx=pFormatCtx->streams[videoStream]->codec;
 
     // Find the decoder for the video stream
     pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
-    if(pCodec==NULL)
+    if(pCodec==NULL) {
+		free (stream_size);
         return -1; // Codec not found
-
+	}
+		
 	if (framerate == 0) 
 	{
 	
@@ -143,8 +146,10 @@ int main(int argc, char *argv[])
 #else
 	if(avcodec_open2(pCodecCtx, pCodec,NULL)<0) 
 #endif
-			return -1; // Could not open codec
-
+	{
+		free (stream_size);
+		return -1; // Could not open codec
+	}
 
     // Allocate video frame
     pFrame=avcodec_alloc_frame();
@@ -197,6 +202,8 @@ int main(int argc, char *argv[])
         av_free_packet(&packet);
     }
 
+	free(stream_size);
+
 
     // Free the YUV frame
     av_free(pFrame);
@@ -204,7 +211,6 @@ int main(int argc, char *argv[])
     // Close the codec
     avcodec_close(pCodecCtx);
 
-	free(stream_size);
 	
     // Close the video file
 #if LIBAVCODEC_VERSION_MAJOR < 53
