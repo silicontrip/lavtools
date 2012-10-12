@@ -36,7 +36,7 @@ static void print_usage()
 
 int main(int argc, char *argv[])
 {
-    AVFormatContext *pFormatCtx;
+    AVFormatContext *pFormatCtx = NULL;
     int             i, videoStream;
     AVCodecContext  *pCodecCtx;
     AVCodec         *pCodec;

@@ -1,16 +1,17 @@
 
 CC=gcc
-OPT_FLAG=-g
+OPT_FLAG=-g 
 #OPT_FLAG=-O3 -ftree-vectorize
 FREETYPEFLAGS=-L/usr/X11/lib -lfreetype
 COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
 CODECFLAGS=
 #CODECFLAGS=-DHAVE_AV_FREE_PACKET
-LDFLAGS=-L/usr/X11/lib  -L/usr/local/lib -lmjpegutils
-CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  
+LDFLAGS=-L/usr/X11/lib  -L/usr/local/lib 
+CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include/ -I/usr/X11/include/freetype2/
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 #FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
 JPEGFLAGS= -ljpeg
+MJPEGFLAGS= -lmjpegutils
 
 
 TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
@@ -48,31 +49,31 @@ yuvnlmeans: yuvnlmeans.o utilyuv.o
 yuvvalues: yuvvalues.o utilyuv.o
 
 yuv2jpeg: yuv2jpeg.o utilyuv.o
-	gcc $(LDFLAGS) $(CFLAGS) $(JPEGFLAGS) -o yuv2jpeg utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(JPEGFLAGS) -o yuv2jpeg utilyuv.o $<
 
 yuvsubtitle: yuvsubtitle.o utilyuv.o
-	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle utilyuv.o $<
 
 yuvdiag: yuvdiag.o utilyuv.o
-	gcc $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag utilyuv.o $<
+	$(CC)  $(LDFLAGS) $(MJPEGFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag utilyuv.o $<
 
 yuvCIFilter: yuvCIFilter.o utilyuv.o
-	gcc $(LDFLAGS) $(CFLAGS) $(COCOAFLAGS) -o yuvCIFilter $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(COCOAFLAGS) -o yuvCIFilter $<
 
 yuvilace: yuvilace.o  utilyuv.o
-	gcc $(LDFLAGS) $(CFLAGS) -lfftw3 -o yuvilace utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) -lfftw3 -o yuvilace utilyuv.o $<
 
 libav2yuv.o: libav2yuv.c
-	gcc $(FFMPEG_FLAGS) $(CFLAGS) -c -o libav2yuv.o $<
+	$(CC) $(FFMPEG_FLAGS) $(CFLAGS) -c -o libav2yuv.o $<
 
 libav2yuv: libav2yuv.o utilyuv.o
-	gcc $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv utilyuv.o $<
+	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv utilyuv.o $<
 
 libav-bitrate: libav-bitrate.c utilyuv.o
-	gcc $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  $<
+	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  $<
 
 libavmux: libavmux.c utilyuv.o
-	gcc $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $<
+	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $<
 
 clean:
 	 rm -f *.o $(TARGETS)
