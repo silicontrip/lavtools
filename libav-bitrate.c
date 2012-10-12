@@ -41,14 +41,9 @@ int main(int argc, char *argv[])
     AVCodecContext  *pCodecCtx;
     AVCodec         *pCodec;
     AVFrame         *pFrame; 
-    AVFrame         *pFrame444; 
     AVPacket        packet;
     int             frameFinished;
-    int             numBytes;
-    uint8_t         *buffer;
 
-	int write_error_code;
-	int y;
 	int *stream_size;
 	int frame_counter=0;
 	int total_size;
@@ -209,6 +204,8 @@ int main(int argc, char *argv[])
     // Close the codec
     avcodec_close(pCodecCtx);
 
+	free(stream_size);
+	
     // Close the video file
 #if LIBAVCODEC_VERSION_MAJOR < 53
     av_close_input_file(pFormatCtx);

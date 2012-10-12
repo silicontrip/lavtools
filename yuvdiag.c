@@ -98,9 +98,51 @@ void draw_grid (uint8_t *m[], y4m_stream_info_t  *sinfo)
 	int height, width;
 	int skip = 16;
 	int k,l;
+	int p;
 	height = y4m_si_get_plane_height(sinfo,0);	
 	width = y4m_si_get_plane_width(sinfo,0);	
 	
+	for (l=0;l<width;l++)
+		m[0][width * (height/2) + l] = 235;
+	
+	for (l=0;l<height;l++)
+		m[0][width *l + (width/2)] = 235;
+	
+	for (l=0;l<skip;l++) 
+		for (k=0;k<skip;k++)
+		{
+		
+			// l +
+			// k + l*16 + 
+			
+			p = k + l * skip;
+			
+			m[0][(p+(width/2-256)) + l * width] = 235;
+			m[0][(p+(width/2)) + (l+16) * width] = 235;
+
+			m[0][(p+(width/2-256)) + (l+height - 32) * width] = 235;
+			m[0][(p+(width/2)) + (l+height - 16) * width] = 235;
+
+			
+			m[0][l + ((p+(height/2-256)) * width)] = 235;
+			m[0][l + (width-32) + ((p+(height/2-256)) *width )] = 235;
+
+			// yuck hard coded values, but I can't think of another way to calculate 4:3 in 16:9
+			m[0][l + 80 + ((p+(height/2-256)) * width)] = 235;
+			m[0][l + 608 + ((p+(height/2-256)) *width )] = 235;
+
+			m[0][l+96 + ((p+(height/2)) *width)] = 235;
+			m[0][l+ 624 + ((p+(height/2))*width)] = 235;
+
+			
+			
+			m[0][l+16 + ((p+(height/2)) *width)] = 235;
+			m[0][l+(width-16) + ((p+(height/2))*width)] = 235;
+
+			
+		}
+	
+	/*
 	for (l=0;l<width;l+=skip)
 		for (k=0;k<height;k+=skip)
 			m[0][k * width + l] = 235;
@@ -108,7 +150,7 @@ void draw_grid (uint8_t *m[], y4m_stream_info_t  *sinfo)
 	for (l=0;l<height;l+=skip)
 		for (k=0;k<width;k+=skip)
 			m[0][l * width + k] = 235;
-	
+	*/
 }
 
 void draw_luma (uint8_t *m[], y4m_stream_info_t  *sinfo) {
@@ -165,7 +207,7 @@ void draw_luma (uint8_t *m[], y4m_stream_info_t  *sinfo) {
 
 void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h) {
 	
-	int dw,dh;
+	int dw;
 	int dx,dy;
 	
 	//fprintf (stderr,"black_box\n");
@@ -179,51 +221,6 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h) 
 		}
 	}
 }
-
-// deprecated function to read pre-rendered fixed width font
-void read_font(uint8_t **d) {
-	
-	FILE *fd;
-	int y,x;
-	int w,h;
-	char type[8],width[8],height[8],depth[8];
-	
-	//fprintf (stderr,"read_font\n");
-	
-	
-	*d = (uint8_t *) malloc (LINEWIDTH*CHARHEIGHT);
-	
-	fd = fopen ("yuvdiag_font.pbm","r");
-	
-	if (fd != NULL) {
-		
-		// fprintf(stderr,"read_font: fgets\n");
-		
-		fgets(type,7,fd);
-		fgets(width,7,fd);
-		fgets(height,7,fd);
-		fgets(depth,7,fd);
-		
-		
-		w=atoi(width);
-		h=atoi(height);
-		
-		fprintf (stderr,"type: %s width %d height %d depth %s",type,w,h,depth);
-		
-		
-		for (y=0;y<CHARHEIGHT;y++) {
-			
-			// fprintf(stderr,"y: %d\n",y);
-			
-			fread(*d+y*LINEWIDTH,LINEWIDTH,1,fd);
-			fseek(fd,w-LINEWIDTH, SEEK_CUR);
-		}
-		fclose(fd);
-	} else {
-		mjpeg_error_exit1("Cannot open yuvdiag font (./yuvdiag_font.pbm)");
-	}
-	
-}	
 
 void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo, int dropFrame ) {
 	
@@ -248,7 +245,7 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
     FT_UInt glyph_index,error;
 	FT_Glyph  glyph;
 	int dw,dx,dy,cy;
-	int cpos,rpos;
+	int cpos;
 	int ilace;
 	int xoff,yoff;
 	int fbri;
@@ -341,7 +338,6 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname, int frameCounter, int dropFrame ) {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
-	uint8_t				*font_data;
 	int                read_error_code ;
 	int                write_error_code = Y4M_OK;
 	// int frameCounter = 0;
@@ -424,11 +420,10 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 	free( yuv_data[1] );
 	free( yuv_data[2] );
 	
-	free (time);
 	
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 static void channel(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream_info_t  *outStrInfo ) {
@@ -437,8 +432,8 @@ static void channel(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_
 	uint8_t				*yuv_odata[3];
 	int                read_error_code ;
 	int                write_error_code ;
-	int cheight,cwidth,height,width;
-	int oheight,owidth;
+	int cheight,cwidth,width;
+	int owidth;
 	int y;
 	
 	
@@ -457,10 +452,8 @@ static void channel(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_
 	cwidth = y4m_si_get_plane_width(inStrInfo,1);
 	
 	width = y4m_si_get_plane_width(inStrInfo,0);
-	height = y4m_si_get_plane_height(inStrInfo,0);
 	
 	owidth = y4m_si_get_plane_width(outStrInfo,0);
-	oheight = y4m_si_get_plane_height(outStrInfo,0);
 	
 	write_error_code = Y4M_OK ;
 	
@@ -553,8 +546,8 @@ static void chroma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut,
 	uint8_t				*yuv_odata[3];
 	int                read_error_code ;
 	int                write_error_code ;
-	int cheight,cwidth,ocheight,ocwidth;
-	int oheight,owidth;
+	int cheight,cwidth;
+	int owidth;
 	int y,x;
 	
 	
@@ -572,11 +565,8 @@ static void chroma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut,
 	cheight = y4m_si_get_plane_height(inStrInfo,1);
 	cwidth = y4m_si_get_plane_width(inStrInfo,1);
 	
-	ocwidth = y4m_si_get_plane_width(outStrInfo,1);
-	ocheight = y4m_si_get_plane_height(outStrInfo,1);
 	
 	owidth = y4m_si_get_plane_width(outStrInfo,0);
-	oheight = y4m_si_get_plane_height(outStrInfo,0);
 	
 	write_error_code = Y4M_OK ;
 	
@@ -628,7 +618,7 @@ static void luma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y
 	uint8_t				*yuv_odata[3];
 	int                read_error_code ;
 	int                write_error_code ;
-	int cheight,cwidth,height,width;
+	int height,width;
 	int oheight,owidth;
 	int y,x;
 	
@@ -644,8 +634,6 @@ static void luma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y
 	
 	/* Initialize counters */
 	
-	cheight = y4m_si_get_plane_height(inStrInfo,1);
-	cwidth = y4m_si_get_plane_width(inStrInfo,1);
 	
 	width = y4m_si_get_plane_width(inStrInfo,0);
 	height = y4m_si_get_plane_height(inStrInfo,0);
@@ -700,10 +688,10 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 	uint8_t				*yuv_odata[3];
 	int                read_error_code ;
 	int                write_error_code ;
-	int cheight,cwidth,height,width;
+	int height,width;
 	int oheight,owidth;
 	int y,x;
-	int hist[256],max,choice;
+	int hist[256],max;
 	
 	
 	// Allocate memory for the YUV channels
@@ -744,7 +732,8 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 					// fprintf (stderr,"U: %d V: %d\n",yuv_data[1][y*cwidth+x],yuv_data[2][y*cwidth+x]);
 					hist[yuv_data[0][y*width+x]] ++;
 				}
-			max = hist[0]; choice = 0;
+			max = hist[0]; 
+			int choice = 0;
 			for (x=0; x< owidth; x++) {
 				if (hist[x]>max) {
 					max = hist[x];

@@ -349,7 +349,6 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 {
 
 	int sec;
-	int dropFrames,timeBase,totalMinutes;
 	y4m_ratio_t fr;
 	
 	fr = y4m_si_get_framerate(si);
@@ -359,7 +358,7 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 		if (df) {
 			if ( fabs(29.97 - (1.0 * fr.n / fr.d )) < 0.001){
 				// TODO: this only works for 29.97
-				totalMinutes = 60 * h + m;
+				int totalMinutes = 60 * h + m;
 				fr.n += fr.d - (fr.n % fr.d);
 				// 2 skipped frames per minute, excluding the 10 minute divisible ones.
 				return sec * fr.n / fr.d - 2 * (totalMinutes - totalMinutes / 10);
@@ -383,15 +382,13 @@ void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,
 {
 	
 	y4m_ratio_t fr;
-	int d,n,ofc;
-	int smpted, smptem;
 	//	fprintf (stderr,"string_tc\n");
 	
 	fr = y4m_si_get_framerate (si);
 		
 	if (fr.n % fr.d) {
 		
-		n = fr.n;
+		int n = fr.n;
 		
 		// round up to integer frame rate
 		// non drop calculation.
@@ -404,8 +401,8 @@ void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,
 
 			if ( fabs(29.97 - (1.0 * n / fr.d )) < 0.001){
 				// the correct SMPTE algorithm for 29.97
-				smpted = fc / 17982;
-				smptem = fc % 17982;
+				int smpted = fc / 17982;
+				int smptem = fc % 17982;
 				fc +=  18*smpted + 2*((smptem - 2) / 1798);
 			} else {
 				// this algorithm is not the correct SMPTE algorithm. 
