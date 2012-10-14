@@ -228,16 +228,13 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	y4m_stream_info_t in_streaminfo ;
 	int c ;
 	const static char *legal_flags = "q:f:hv:";
-	char *format_string = "frame%03d.jpg";
+	char *format_string =  NULL;
+	char *default_format_string = "frame%03d.jpg";
 	int qual = 95;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
@@ -264,6 +261,11 @@ int main (int argc, char *argv[])
 		}
 	}
 	
+	if (format_string == NULL) {
+		format_string=malloc(strlen(default_format_string)+1);
+		strcpy(format_string,default_format_string);
+	}
+	
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
 	
@@ -279,15 +281,14 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuv (version " VERSION ") is a general deinterlace/interlace utility for yuv streams");
+	mjpeg_info ("yuv (version " VERSION ") is a tool for converting yuv streams into jpeg files.");
 	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
-	// mjpeg_info ("yuvcropdetect -h for help");
 	
     
-	y4m_write_stream_header(fdOut,&in_streaminfo);
 	/* in that function we do all the important work */
 	filter(fdIn, &in_streaminfo,qual,format_string);
-	y4m_fini_stream_info (&in_streaminfo);
+	
+	free(format_string);
 	
 	return 0;
 }

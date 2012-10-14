@@ -51,7 +51,7 @@ yuvnlmeans: yuvnlmeans.o utilyuv.o
 yuvvalues: yuvvalues.o utilyuv.o
 
 yuv2jpeg: yuv2jpeg.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(JPEGFLAGS) -o yuv2jpeg utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(JPEGFLAGS) -o yuv2jpeg utilyuv.o $<
 
 yuvsubtitle: yuvsubtitle.o utilyuv.o
 	$(CC) $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle utilyuv.o $<
