@@ -116,7 +116,8 @@ int main(int argc, char *argv[])
 				// And tell the user of their error.
 				programSettings.ave_len=(int)strtol(optarg, (char **)NULL, 10);
 				if (errno == EINVAL) {
-					fprintf(stderr,"Value is not numeric\n");
+					fprintf(stderr,"Smoothing value is invalid\n");
+					print_usage();
 					return -1;
 				}
 				
@@ -127,12 +128,22 @@ int main(int argc, char *argv[])
 			case 'i':
 				programSettings.output_interval=(int)strtol(optarg, (char **)NULL, 10);
 				if (errno == EINVAL) {
-					fprintf(stderr,"Value is not numeric\n");
+					fprintf(stderr,"Interval is invalid\n");
+					print_usage();
+
 					return -1;
 				}
 				break;
 			case 'I':
 				programSettings.output_interval_seconds=strtod(optarg, (char **)NULL);
+				
+				if (programSettings.output_interval_seconds == 0) {
+					fprintf(stderr,"Interval Seconds is invalid\n");
+					print_usage();
+
+					return -1;
+				}
+				
 				break;
 			case 'h':
 			case '*':
@@ -155,7 +166,7 @@ int main(int argc, char *argv[])
 	if (argv[1] == NULL) 
 	{
 		fprintf(stderr,"Error: No filename.\n");
-		print_usage(argv);
+		print_usage();
 		return -1; // Couldn't open file
 	}
 	
@@ -338,7 +349,11 @@ int main(int argc, char *argv[])
         }
 		
         // Free the packet that was allocated by av_read_frame
-        av_free_packet(&packet);
+#if LIBAVCODEC_VERSION_MAJOR < 52 
+		av_freep(&packet);
+#else
+		av_free_packet(&packet);
+#endif
     }
 	
 	free(stream_size);
