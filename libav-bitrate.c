@@ -225,7 +225,7 @@ int main(int argc, char *argv[])
 	}
 	
     if(videoStream==-1) {
-		free (stream_size);
+		free (stream_size); free (stream_min); free (stream_max); free (stream_ave);
         return -1; // Didn't find a video stream
 	}
 	
@@ -235,7 +235,7 @@ int main(int argc, char *argv[])
     // Find the decoder for the video stream
     pCodec=avcodec_find_decoder(pCodecCtx->codec_id);
     if(pCodec==NULL) {
-		free (stream_size);
+		free (stream_size); free (stream_min); free (stream_max); free (stream_ave);
         return -1; // Codec not found
 	}
 	
@@ -261,7 +261,7 @@ int main(int argc, char *argv[])
 		if(avcodec_open2(pCodecCtx, pCodec,NULL)<0) 
 #endif
 		{
-			free (stream_size);
+			free (stream_size); free (stream_min); free (stream_max); free (stream_ave);
 			return -1; // Could not open codec
 		}
 	
@@ -373,6 +373,7 @@ int main(int argc, char *argv[])
 					stream_max[i]*8*framerate/ programSettings.output_interval);
 		}
 	}
-	
+	free (stream_min); free (stream_max); free (stream_ave);
+
     return 0;
 }
