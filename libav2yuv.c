@@ -1455,9 +1455,6 @@ int main(int argc, char *argv[])
 		// fprintf (stderr,"samples written %d\n",writeAudioCount);
 	}
 	if(edllist!=NULL) 
-	{
-		fprintf (stderr,"Freeing edllist\n");
 		free(edllist);
-	}
     return 0;
 }
