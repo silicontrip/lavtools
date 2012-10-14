@@ -1,17 +1,17 @@
 /* libav-bitrate
  * adapted from
  * avcodec_sample.0.4.9.cpp
-
-** <h3>Bitrate graph producer</h3>
-** <p>Produces an ASCII file suitable for plotting in gnuplot of the
-** bitrate per frame.  Also includes a rolling average algorithm that
-** helps smooth out differences between I frame, P frame and B frames.
-** Constant bitrate is not so constant.  Requires about 50 frames
-** rolling average window to get an idea of the average bitrate.</p>
-**
-** <p> using a post processing tool such as octave to average the graph 
-** may be useful</p>
-**
+ 
+ ** <h3>Bitrate graph producer</h3>
+ ** <p>Produces an ASCII file suitable for plotting in gnuplot of the
+ ** bitrate per frame.  Also includes a rolling average algorithm that
+ ** helps smooth out differences between I frame, P frame and B frames.
+ ** Constant bitrate is not so constant.  Requires about 50 frames
+ ** rolling average window to get an idea of the average bitrate.</p>
+ **
+ ** <p> using a post processing tool such as octave to average the graph 
+ ** may be useful</p>
+ **
  
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -29,7 +29,7 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
  
-*/
+ */
 
 /* this program is a purely libav implementation, no requirement for mjpegutils */
 //#include <yuv4mpeg.h>
@@ -63,8 +63,12 @@ struct settings {
 	char output_stderr;
 	int output_interval;
 	double 	 output_interval_seconds;
-
+	
 };
+
+void free_streams () {
+	
+}
 
 int main(int argc, char *argv[])
 {
@@ -76,11 +80,17 @@ int main(int argc, char *argv[])
     AVPacket        packet;
     int             frameFinished;
 	
-	int *stream_size;
+	int *stream_size=NULL;
+	int *stream_max=NULL;
+	int *stream_min=NULL;
+	double *stream_ave=NULL;
+	int total_max=0, total_min=INT32_MAX;
+	double total_ave=0;
+	int numberStreams;
 	int frame_counter=0;
-	int total_size;
+	int total_size=0;
 	int tave=0;
-
+	
 	struct settings programSettings;
 	
 	
@@ -91,9 +101,11 @@ int main(int argc, char *argv[])
 	programSettings.output_stderr=0;
 	programSettings.output_interval=1;
 	programSettings.output_interval_seconds=0;
-
+	
+	
+	// parse commandline options
 	const static char *legal_flags = "s:i:I:eh";
-
+	
 	int c;
 	
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
@@ -102,16 +114,25 @@ int main(int argc, char *argv[])
 				// been programming in java too much recently
 				// I want to catch a number format exception here
 				// And tell the user of their error.
-				programSettings.ave_len=atoi(optarg);
+				programSettings.ave_len=(int)strtol(optarg, (char **)NULL, 10);
+				if (errno == EINVAL) {
+					fprintf(stderr,"Value is not numeric\n");
+					return -1;
+				}
+				
 				break;
 			case 'e':
 				programSettings.output_stderr=1;
 				break;
 			case 'i':
-				programSettings.output_interval=atoi(optarg);
+				programSettings.output_interval=(int)strtol(optarg, (char **)NULL, 10);
+				if (errno == EINVAL) {
+					fprintf(stderr,"Value is not numeric\n");
+					return -1;
+				}
 				break;
 			case 'I':
-				programSettings.output_interval_seconds=atof(optarg);
+				programSettings.output_interval_seconds=strtod(optarg, (char **)NULL);
 				break;
 			case 'h':
 			case '*':
@@ -130,14 +151,24 @@ int main(int argc, char *argv[])
 	
     // Register all formats and codecs
     av_register_all();
-		
+	
+	if (argv[1] == NULL) 
+	{
+		fprintf(stderr,"Error: No filename.\n");
+		print_usage(argv);
+		return -1; // Couldn't open file
+	}
+	
     // Open video file
 #if LIBAVFORMAT_VERSION_MAJOR  < 53
     if(av_open_input_file(&pFormatCtx, argv[1], NULL, 0, NULL)!=0)
 #else
 		if(avformat_open_input(&pFormatCtx, argv[1], NULL,  NULL)!=0)
 #endif
+		{
+			fprintf(stderr,"Error: could not open file.\n");
 			return -1; // Couldn't open file
+		}
 	
     // Retrieve stream information
 #if LIBAVFORMAT_VERSION_MAJOR  < 53
@@ -145,7 +176,10 @@ int main(int argc, char *argv[])
 #else
 		if(avformat_find_stream_info(pFormatCtx,NULL)<0)
 #endif
+		{
+			fprintf(stderr,"Error: could not interpret file.\n");
 			return -1; // Couldn't find stream information
+		}
 	
     // Dump information about file onto standard error
 #if LIBAVFORMAT_VERSION_MAJOR < 53
@@ -154,14 +188,27 @@ int main(int argc, char *argv[])
 	av_dump_format(pFormatCtx, 0, argv[1], 0);
 #endif
 	
+	// As this program outputs based on video frames.
     // Find the first video stream
+	// To determine the bitrate. 
     videoStream=-1;
 	
-	stream_size = (int *)malloc(pFormatCtx->nb_streams * sizeof(int));
+	numberStreams = pFormatCtx->nb_streams;
 	
-	for(i=0; i<pFormatCtx->nb_streams; i++) {
+	stream_size = (int *)malloc(numberStreams * sizeof(int));
+	stream_min = (int *)malloc(numberStreams * sizeof(int));
+	stream_max = (int *)malloc(numberStreams * sizeof(int));
+	stream_ave = (double *)malloc(numberStreams * sizeof(double));
+	
+	
+	for(i=0; i<numberStreams; i++) {
 		//	fprintf (stderr,"stream: %d = %d (%s)\n",i,pFormatCtx->streams[i]->codec->codec_type ,pFormatCtx->streams[i]->codec->codec_name);
+		// Initialise statistic counters
 		stream_size[i] = 0;
+		stream_min[i]=INT32_MAX;
+		stream_max[i]=0;
+		stream_ave[i] = 0;
+		
 #if LIBAVFORMAT_VERSION_MAJOR < 53
 		if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
 #else		
@@ -194,19 +241,17 @@ int main(int argc, char *argv[])
 	
 	if (framerate == 0) 
 	{
-		
 		//fprintf(stderr,"frame rate %d:%d\n",pCodecCtx->time_base.num,pCodecCtx->time_base.den);
 		framerate = pCodecCtx->time_base.den;
 		if (pCodecCtx->time_base.den != 0)
 			framerate /= pCodecCtx->time_base.num;
-		
 	}
 	
 	if (programSettings.output_interval_seconds >0)
 		programSettings.output_interval = programSettings.output_interval_seconds * framerate;
-
 	
-//	fprintf (stderr,"Video Stream: %d Frame Rate: %g\n",videoStream,framerate);
+	
+	//	fprintf (stderr,"Video Stream: %d Frame Rate: %g\n",videoStream,framerate);
 	
 	
     // Open codec
@@ -230,6 +275,7 @@ int main(int argc, char *argv[])
     {
 		stream_size[packet.stream_index] += packet.size;
 		
+		
         // Is this a packet from the video stream?
         if(packet.stream_index==videoStream)
         {
@@ -241,40 +287,54 @@ int main(int argc, char *argv[])
 			avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, &packet);
 #endif
 			
-			//if (!(frame_counter % ave_len)) {
-			// print the statistics in gnuplot friendly format...
-			total_size = 0;
-			for(i=0; i<pFormatCtx->nb_streams; i++) {
-				total_size += stream_size[i];
-			}
-			// if (tave == -1) { tave = total_size; }
-			tave = ((tave * (programSettings.ave_len-1)) + total_size) / programSettings.ave_len / programSettings.output_interval;
-			
 			if (counter_interval++ >= programSettings.output_interval) {
+				
+				//if (!(frame_counter % ave_len)) {
+				// print the statistics in gnuplot friendly format...
+				total_size=0;
+				for(i=0; i<numberStreams; i++) { total_size += stream_size[i]; }
+				// if (tave == -1) { tave = total_size; }
+				
+				tave = ((tave * (programSettings.ave_len-1)) + total_size) / programSettings.ave_len / programSettings.output_interval;
+				
+				if(total_min > total_size) 
+					total_min = total_size;
+				
+				if(total_max < total_size) 
+					total_max = total_size;
+				
+				total_ave += total_size;
+				
+				
 				printf ("%f ",frame_counter/framerate);
-				if (programSettings.output_stderr==1) 
-					fprintf (stderr,"%f ",frame_counter/framerate);
-
 				printf ("%f ",tave*8*framerate);
-				if (programSettings.output_stderr==1) 
-					fprintf (stderr,"%f ",tave*8*framerate);
-
-				for(i=0; i<pFormatCtx->nb_streams; i++) {
+				
+				total_size = 0;
+				
+				for(i=0; i<numberStreams; i++) {
+					
+					// double rate = stream_size[i]*8*framerate/ programSettings.output_interval;
+					
+					if(stream_min[i] > stream_size[i]) 
+						stream_min[i] = stream_size[i];
+					
+					if(stream_max[i] < stream_size[i]) 
+						stream_max[i] = stream_size[i];
+					
+					stream_ave[i] += stream_size[i];
+					
+					
 					printf ("%f ",stream_size[i]*8*framerate/ programSettings.output_interval);
-					if (programSettings.output_stderr==1) 
-						fprintf (stderr,"%f ",stream_size[i]*8*framerate/ programSettings.output_interval);
-
+					
 					stream_size[i]=0;
 				}
 				printf("\n");
-
-				if (programSettings.output_stderr==1) 
-					fprintf(stderr,"\n");
-			//}
+				
+				//}
 				counter_interval = 1;
             }
 			frame_counter++;
-
+			
         }
 		
         // Free the packet that was allocated by av_read_frame
@@ -297,6 +357,22 @@ int main(int argc, char *argv[])
 #else
 	avformat_close_input(&pFormatCtx);
 #endif
+	
+	// Print statistics
+	
+	if (programSettings.output_stderr) 
+	{
+		fprintf(stderr,"%20s %20s %20s %20s\n","Stream","Min Bitrate","Average bitrate","Max bitrate");
+		
+		fprintf(stderr,"%20s %20f %20f %20f\n","Total",total_min*8*framerate/ programSettings.output_interval,
+				total_ave * 8*framerate/ programSettings.output_interval/(frame_counter/programSettings.output_interval),
+				total_max*8*framerate/ programSettings.output_interval);
+		for(i=0; i<numberStreams; i++) {
+			fprintf(stderr,"%20d %20f %20f %20f\n",i,stream_min[i]*8*framerate/ programSettings.output_interval,
+					stream_ave[i] *8*framerate/ programSettings.output_interval/(frame_counter/programSettings.output_interval),
+					stream_max[i]*8*framerate/ programSettings.output_interval);
+		}
+	}
 	
     return 0;
 }
