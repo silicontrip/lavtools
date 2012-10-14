@@ -112,7 +112,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	//	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
 	
 	regex_t tc_reg;
-	int h=0,m=0,s=0,f=0,le,off,fn;
+	int h=0,m=0,s=0,f=0,fn;
 	size_t num=8;
 	regmatch_t codes[8];
 	int nummatch;
@@ -229,7 +229,7 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	size_t num=10;
 	regmatch_t codes[10];
 	int rc,f;
-	int le,off;
+
 	char *va;
 	
 	// char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
@@ -292,7 +292,7 @@ int edlcount (FILE *file, int *maxline, int *lines)
 {
 	
 	int c;
-	int max=0;
+
 	int count=0;
 	
 	*maxline=0;
@@ -793,7 +793,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 int manual_write_yuv (uint8_t *m[3], y4m_stream_info_t *sinfo) {
 	
 	int fs,cfs;
-	int r=0;
+
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
 	
@@ -815,17 +815,18 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 	
 	int frameFinished=0,numBytes;
 	int write_error_code;
-	int yuv_width[3];
+
 	int bytesDecoded;
 	
 	//	mjpeg_debug ("decode video");
 	
 	// will this cause dropped frames to be output...?? or simply crash.
 	while (!frameFinished) {
-#ifdef HAVE_AVCODEC_DECODE_VIDEO2
-	bytesDecoded = avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+#if LIBAVCODEC_VERSION_MAJOR < 52
+		bytesDecoded = avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
 #else
-	bytesDecoded = avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
+		bytesDecoded = avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+
 #endif
 	
 	// I'm trying to handle broken video files, but It's causing the audio to lose sync with the video.
@@ -956,7 +957,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		mjpeg_debug ("Stream info length: %d chroma: %d",y4m_si_get_framelength(streaminfo),y4m_si_get_chroma(streaminfo));
 		
 		
-		if ((write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data) != Y4M_OK)) 
+		if (((write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data)) != Y4M_OK)) 
 			mjpeg_error("Write frame failed: %s", y4m_strerr(write_error_code));
 		
 	}
@@ -969,12 +970,10 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		/*
 		 mjpeg_warn("freeing packet: %x",packet);
 		 */
-#ifdef HAVE_AV_FREE_PACKET
-		//mjpeg_warn ("using av_free_packet");
-		av_free_packet(packet);
-#else
-		//mjpeg_warn ("using av_freep");
+#if LIBAVCODEC_VERSION_MAJOR < 52 
 		av_freep(packet);
+#else
+		av_free_packet(packet);
 #endif
 		 
 	}
@@ -987,7 +986,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 
 int main(int argc, char *argv[])
 {
-    AVFormatContext *pFormatCtx;
+    AVFormatContext *pFormatCtx=NULL;
 	AVInputFormat *avif = NULL;
     AVCodecContext  *pCodecCtx;
     AVCodec         *pCodec;
@@ -1019,8 +1018,8 @@ int main(int argc, char *argv[])
 	char *openfile;
 	int edlfiles,edlcounter;
 	struct edlentry *edllist = NULL;
-	int y,skip=0;
-	int                frame_data_size ;
+	int skip=0;
+
 	uint8_t            *yuv_data[3] ;      
 	struct SwsContext *img_convert_ctx =NULL;
 	int writeAudioCount=0;
@@ -1300,10 +1299,10 @@ int main(int argc, char *argv[])
 							
 						} else {
 							// decode Audio
-#ifdef HAVE_AVCODEC_DECODE_AUDIO3
-							avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
-#else
+#if LIBAVCODEC_VERSION_MAJOR < 53
 							avcodec_decode_audio2(pCodecCtx, aBuffer, &numBytes, packet.data, packet.size);
+#else
+							avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
 #endif
 							//
 							
@@ -1378,10 +1377,10 @@ int main(int argc, char *argv[])
 				
 					
 					// fprintf (stderr,"free packet\n");
-#ifdef HAVE_AV_FREE_PACKET
-					av_free_packet(&packet);
-#else
+#if LIBAVCODEC_VERSION_MAJOR < 52 
 					av_freep(&packet);
+#else
+					av_free_packet(&packet);
 #endif
 					//fprintf (stderr,"end free packet\n");
 
@@ -1430,12 +1429,12 @@ int main(int argc, char *argv[])
 	}
 	mjpeg_debug("Freeing av_packet");
 
-#ifdef HAVE_AV_FREE_PACKET
-                av_free_packet(&packet);
+#if LIBAVCODEC_VERSION_MAJOR < 52 
+	av_freep(&packet);
 #else
-                av_freep(&packet);
+	av_free_packet(&packet);
 #endif
-
+	
 
 	// END of file loop
 
@@ -1454,6 +1453,11 @@ int main(int argc, char *argv[])
 	} else {
 		mjpeg_info ("%d Samples processed",sampleCounter);
 		// fprintf (stderr,"samples written %d\n",writeAudioCount);
+	}
+	if(edllist!=NULL) 
+	{
+		fprintf (stderr,"Freeing edllist\n");
+		free(edllist);
 	}
     return 0;
 }
