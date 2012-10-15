@@ -1,10 +1,10 @@
 /*
-** <h3>broadcast levels</h3>
+ ** <h3>broadcast levels</h3>
  * copyright (c) 2010 Mark Heath mjpeg0 @ silicontrip dot net 
  * http://silicontrip.net/~mark/lavtools/
  *
-**<p> Converts full swing levels to broadcast swing for file which have been incorrectly labelled.</p>
-** <p> Performs clipping, scaling or detection of out of range Luma values (16-235)</P>
+ **<p> Converts full swing levels to broadcast swing for file which have been incorrectly labelled.</p>
+ ** <p> Performs clipping, scaling or detection of out of range Luma values (16-235)</P>
  *
  * This file is part of FFmpeg.
  *
@@ -167,7 +167,7 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 	// Broadcast swing levels, min and max
 	int min=16;
 	int max=235;
-	int luma;
+	int luma,chromab,chromar;
 	int i,j;
 	
 	if (lctx->frames == 0) {
@@ -185,13 +185,18 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 		// or permanently
 		
 		// copy chroma
-		memcpy((out->data[1]+(y>>lctx->vsub)*out->linesize[1]),(in->data[1]+(y>>lctx->vsub)*in->linesize[1]),in->linesize[1]*(h>>lctx->vsub));
-		memcpy((out->data[2]+(y>>lctx->vsub)*out->linesize[2]),(in->data[2]+(y>>lctx->vsub)*in->linesize[2]),in->linesize[2]*(h>>lctx->vsub));
+		// now scaling chroma too
+		//memcpy((out->data[1]+(y>>lctx->vsub)*out->linesize[1]),(in->data[1]+(y>>lctx->vsub)*in->linesize[1]),in->linesize[1]*(h>>lctx->vsub));
+		//memcpy((out->data[2]+(y>>lctx->vsub)*out->linesize[2]),(in->data[2]+(y>>lctx->vsub)*in->linesize[2]),in->linesize[2]*(h>>lctx->vsub));
 		
 		
 		for (j=0; j<h; j++) {
 			for (i=0;i<link->w;i++) {
 				luma = *((in->data[0])+(j+y)*in->linesize[0]+i);
+				 if (!(j%(1<<lctx->vsub) && i%(1<<lctx->hsub))) {
+					 chromab=*((in->data[1])+((j+y)>>lctx->vsub)*in->linesize[1]+(i>>lctx->hsub));
+					 chromar=*((in->data[2])+((j+y)>>lctx->vsub)*in->linesize[2]+(i>>lctx->hsub));
+				 }
 				
 				// should put some strategy here rather than this conditional logic
 				
@@ -212,17 +217,66 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 						luma = min;
 
 					}
+					if (chromab >max) {
+						if (lctx->frames >0) {
+							av_log(ctx, AV_LOG_WARNING, "Out of range level detected. Filter locked. (%d)\n",chromab);
+							lctx->frames = -1;  // continue permanently
+						}
+						chromab = max;
+
+					}
+					if (chromab < min) {
+						if (lctx->frames >0) {
+							av_log(ctx, AV_LOG_WARNING, "Out of range level detected. Filter locked. (%d)\n",chromab);
+							lctx->frames = -1;  // continue permanently
+						}
+						chromab = min;
+
+					}
+					if (chromar >max) {
+						if (lctx->frames >0) {
+							av_log(ctx, AV_LOG_WARNING, "Out of range level detected. Filter locked. (%d)\n",chromar);
+							lctx->frames = -1;  // continue permanently
+						}
+						chromar = max;
+
+					}
+					if (chromar < min) {
+						if (lctx->frames >0) {
+							av_log(ctx, AV_LOG_WARNING, "Out of range level detected. Filter locked. (%d)\n",chromar);
+							lctx->frames = -1;  // continue permanently
+						}
+						chromar = min;
+
+					}
 					
 					
 				} else if (lctx->mode == 2) { // scale
 					
-					if (luma >max || luma < min) 
+					if (luma >max || luma < min)  {
 						if (lctx->frames >0) {
 							av_log(ctx, AV_LOG_WARNING, "Out of range level detected. Filter locked. (%d)\n",luma);
 							lctx->frames = -1;  // continue permanently
 						}
 					
-					luma= luma * (max-min) / 255 + min  ;
+						luma= luma * (max-min) / 255 + min  ;
+					}
+					if (chromab >max || chromab < min)  {
+						if (lctx->frames >0) {
+							av_log(ctx, AV_LOG_WARNING, "Out of range level detected. Filter locked. (%d)\n",chromab);
+							lctx->frames = -1;  // continue permanently
+						}
+					
+						chromab= chromab * (max-min) / 255 + min  ;
+					}
+					if (chromar >max || chromar < min)  {
+						if (lctx->frames >0) {
+							av_log(ctx, AV_LOG_WARNING, "Out of range level detected. Filter locked. (%d)\n",chromar);
+							lctx->frames = -1;  // continue permanently
+						}
+					
+						chromar= chromar * (max-min) / 255 + min  ;
+					}
 					
 				} else if (lctx->mode == 1) { // detect
 					// scan, we will stop after frames number of frames
@@ -238,12 +292,10 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 				
 				// do I need to perform Chroma compression?
 				
-				/*
 				 if (!(j%(1<<lctx->vsub) && i%(1<<lctx->hsub))) {
-				 *((out->data[1])+((j+y)>>lctx->vsub)*out->linesize[1]+(i>>lctx->hsub))=*((in->data[1])+((j+y)>>lctx->vsub)*in->linesize[1]+(i>>lctx->hsub));
-				 *((out->data[2])+((j+y)>>lctx->vsub)*out->linesize[2]+(i>>lctx->hsub))=*((in->data[2])+((j+y)>>lctx->vsub)*in->linesize[2]+(i>>lctx->hsub));
+					 *((out->data[1])+((j+y)>>lctx->vsub)*out->linesize[1]+(i>>lctx->hsub))=chromab;
+					 *((out->data[2])+((j+y)>>lctx->vsub)*out->linesize[2]+(i>>lctx->hsub))=chromar;
 				 }
-				 */
 			}
 		}
 	}
@@ -252,8 +304,6 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 	
     avfilter_draw_slice(link->dst->outputs[0], y, h, slice_dir);
 }
-
-
 
 
 AVFilter avfilter_vf_broadcast = {
