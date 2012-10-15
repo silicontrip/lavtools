@@ -130,7 +130,7 @@ int main(int argc, char *argv[])
 				if (*error || programSettings.output_interval<1) {
 					fprintf(stderr,"Interval is invalid\n");
 					print_usage();
-
+					
 					return -1;
 				}
 				break;
@@ -140,7 +140,7 @@ int main(int argc, char *argv[])
 				if (*error || programSettings.output_interval_seconds <= 0) {
 					fprintf(stderr,"Interval Seconds is invalid\n");
 					print_usage();
-
+					
 					return -1;
 				}
 				
@@ -155,7 +155,7 @@ int main(int argc, char *argv[])
 	
 	
 	optind--;
-	argc -= optind;
+	// argc -= optind;
 	argv += optind;
 	
 	//fprintf (stderr, "optind = %d. Trying file: %s\n",optind,argv[1]);
@@ -258,7 +258,7 @@ int main(int argc, char *argv[])
 			framerate /= pCodecCtx->time_base.num;
 	}
 	
-
+	
 	
 	if (programSettings.output_interval_seconds >0)
 		if (INT32_MAX / framerate > programSettings.output_interval_seconds)
@@ -328,8 +328,6 @@ int main(int argc, char *argv[])
 				printf ("%f ",frame_counter/framerate);
 				printf ("%f ",tave*8*framerate);
 				
-				total_size = 0;
-				
 				for(i=0; i<numberStreams; i++) {
 					
 					// double rate = stream_size[i]*8*framerate/ programSettings.output_interval;
@@ -397,6 +395,6 @@ int main(int argc, char *argv[])
 		}
 	}
 	free (stream_min); free (stream_max); free (stream_ave);
-
+	
     return 0;
 }
