@@ -27,9 +27,6 @@
  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 // minimum number of pixels needed to detect interlace.
 #define PIXELS 4
@@ -43,8 +40,9 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
+#include "utilyuv.h"
 
 #define YUVDE_VERSION "1.6.1"
 
@@ -154,7 +152,7 @@ int int_detect2 (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	int i,w,h,t;
 	int m1,m2,m3,m4;
 	
-	int mean=0;
+	//int mean=0;
 	
 	// mjpeg_warn("int_detect");
 		
@@ -205,10 +203,9 @@ int int_detect (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	uint8_t luma[PIXELS];
 	int hp = PIXELS/2;
 	int i,w,h;
-	int hfd=0 ,lfd=0;
 	
-	int ar,ai,br,bi,cr,ci,dr,di;
-	int a,b,c,d;
+	int br,bi,cr;
+	int b,c;
 	
 	// mjpeg_warn("int_detect");
 	
@@ -362,20 +359,21 @@ uint8_t scalar_interpolate (uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3) {
 static void deint_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 {
 	
-	int w,h,cw,ch,cwr,chr,xcwr,ychr,ychrn,ychrp,ychrcw;
-	int ychrn2,ychrp2;
-	int tluma, tchromu,tchromv;
-	int chroma_posp,chroma_posn;
-	int chroma_posp2,chroma_posn2;
-	
-	
+	int w,h,cw;
 	
 	h = fd->plane_height_luma; 
 	w = fd->plane_width_luma;
-	ch = fd->plane_height_chroma; 
+//	ch = fd->plane_height_chroma; 
 	cw = fd->plane_width_chroma;
 	
 	if (y<=h) { 
+		
+		int cwr,chr,xcwr,ychr,ychrn,ychrp,ychrcw;
+		int ychrn2,ychrp2;
+		int tluma, tchromu,tchromv;
+		int chroma_posp,chroma_posn;
+		int chroma_posp2,chroma_posn2;
+		
 		
 		// most common values for cwr and chr are 1,2 or 4
 		
@@ -476,7 +474,7 @@ static void deint_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensi
 static void merge_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 {
 	
-	int w,h,cw,ch,cwr,chr,xcwr,ychr,ychrcw;
+	int w,h,cw,cwr,chr,xcwr,ychr,ychrcw;
 	int ychr1,ychr2,ychr3,ychr4;
 	int tluma, tchromu,tchromv;
 	int chroma_pos1,chroma_pos2, chroma_pos3,chroma_pos4;
@@ -484,7 +482,7 @@ static void merge_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensi
 	
 	h = fd->plane_height_luma; 
 	w = fd->plane_width_luma;
-	ch = fd->plane_height_chroma; 
+	//ch = fd->plane_height_chroma; 
 	cw = fd->plane_width_chroma;
 	
 	// even y
@@ -616,11 +614,11 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 	// this detection algorithm takes PIXELS vertical pixels and looks for the classic interlace pattern
 	// if interlace is detected the *missing* pixels are interpolated.
 	
-	int x,y,hp;
-	int w,h,cw,ch;
+	int x,y;
+	int w,h;
 	int mark = 0;
 	int full = 0;
-	uint8_t luma[PIXELS];
+	//uint8_t luma[PIXELS];
 	
 //	mjpeg_warn("deint_frame");
 	
@@ -786,7 +784,6 @@ static void depro(  int fdIn
 	uint8_t            *yuv_data[3] ;
 	uint8_t            *yuv_o1data[3] ;
 	uint8_t            *yuv_o2data[3] ;
-	int                frame_data_size ;
 	int                read_error_code ;
 	int                write_error_code ;
 	int interlaced = -1;            //=Y4M_ILACE_NONE for not-interlaced scaling, =Y4M_ILACE_TOP_FIRST or Y4M_ILACE_BOTTOM_FIRST for interlaced scaling
@@ -795,7 +792,6 @@ static void depro(  int fdIn
 	// Allocate memory for the YUV channels
 	interlaced = y4m_si_get_interlace(outStrInfo);
 	h = y4m_si_get_height(inStrInfo) ; w = y4m_si_get_width(inStrInfo);
-	frame_data_size = h * w;
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
@@ -928,7 +924,6 @@ int main (int argc, char *argv[])
 	y4m_ratio_t frame_rate;
 	int interlaced,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
-	int fullframe=0;
 	int c ;
 	const static char *legal_flags = "I:v:i:pchfm:";
 	

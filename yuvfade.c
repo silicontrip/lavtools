@@ -23,18 +23,14 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVFPS_VERSION "0.1"
 
@@ -165,7 +161,7 @@ int main (int argc, char *argv[])
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate, src_frame_rate ;
+	y4m_ratio_t  src_frame_rate ;
 	
 	const static char *legal_flags = "f:c:v:h";
 	int c ;

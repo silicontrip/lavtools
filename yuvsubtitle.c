@@ -38,9 +38,6 @@
 gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -50,8 +47,8 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #include <ft2build.h>
@@ -94,13 +91,13 @@ unsigned int decode_char ( int *p, unsigned char * text)
 {
 	unsigned int sp;
 	
-	char special[3];
 	sp = text[*p];
 //	 mjpeg_debug ("encoded character %d",sp);
 	
 	// try for a uri style special characters
 
 	if (sp == '%') {
+		char special[3];
 		strncpy(special,&text[*p+1],2);
 		special[2] = '\0';
 		*p+=2;
@@ -110,7 +107,7 @@ unsigned int decode_char ( int *p, unsigned char * text)
 		//	mjpeg_debug("decode UTF dual character");
 
 			sp = ((sp & 31) << 6) + (text[*p+1] & 63);
-			*p++;
+			(*p)++;
 		}
 	} else if ((sp & 240) == 224) {
 		
@@ -140,14 +137,10 @@ void ftdims (int *px, int *py, int *lines, FT_Face face, unsigned char * text) {
 
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
-	FT_UInt       glyph_index;
-	int           pen_x, pen_y,n,max,topmax=0,rowmax=0;
-	char special[5];
-	unsigned int sp;
-	uint8_t x,y,z,w;
+	int           pen_x,n,max,topmax=0,rowmax=0;
+	unsigned int sp;	
 	
-	
-	pen_x = 0; max = 0; pen_y = 0;
+	pen_x = 0; max = 0; 
 	for ( n = 0; n < strlen(text); n++ ) {
 		
 		sp = decode_char(&n,text);
@@ -224,15 +217,10 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, uns
 {
 	
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
-	FT_UInt       glyph_index;
-	int           pen_x,  n,x,y;	
-	int error;
+	int pen_x,  n;	
 	int twidth,theight,lines=0;
-	uint8_t bri;
-	uint8_t piy,piu,piv;
 	int cx,cy;
 	int width;
-	char special[5];
 	int sp;
 	
 	mjpeg_debug ("text: %s\n",text);
@@ -426,7 +414,6 @@ void edlcount (FILE *file, int *maxline, int *lines)
 {
 	
 	int c;
-	int max=0;
 	int count=0;
 	
 	*maxline=0;
@@ -509,14 +496,12 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 1; 
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
+	y4m_stream_info_t in_streaminfo ;
 	int height=16;
 	int c, pen_y;
+	
 	const static char *legal_flags = "hv:f:s:y:c:u:";
 	FT_Library  library;
 	FT_Face     face;

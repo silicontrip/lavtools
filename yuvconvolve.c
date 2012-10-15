@@ -21,9 +21,6 @@
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -33,8 +30,8 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVRFPS_VERSION "0.1"
 
@@ -104,7 +101,7 @@ int parse_matrix (char *mstr, int *marr)
 {
 
 	int digits=1;
-	float dim;
+	//float dim;
 	char *tok;
 	
 		fprintf (stderr,"parse_matrix (%s)\n",mstr);
@@ -134,7 +131,7 @@ int parse_matrix (char *mstr, int *marr)
 	}
 	fprintf (stderr,"\nparse_matrix dim = \n");
 
-	dim = sqrt (digits);
+	//dim = sqrt (digits);
 	
 	// if (dim != integer) {mjpeg_warn("not a square number of matrix points"); return 0 }
 	
@@ -154,8 +151,6 @@ int *mat, int div, int mlen)
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3],*yuv_odata[3];	
-
-	int                y_frame_data_size, uv_frame_data_size ;
 	int                read_error_code ;
 	int                write_error_code ;
 	int                src_frame_counter ;
@@ -278,12 +273,9 @@ int main (int argc, char *argv[])
 {
 
 	int verbose = 4; // LOG_ERROR ;
-	int drop_frames = 0;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
-	int src_interlacing = Y4M_UNKNOWN;
-	y4m_ratio_t src_frame_rate;
 	const static char *legal_flags = "d:m:V:";
 	int c, *matrix,matlen;
 	float divisor=0;

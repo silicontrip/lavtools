@@ -42,8 +42,8 @@ gcc yuvaifps.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvaifps
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVFPS_VERSION "0.1"
 

@@ -46,9 +46,6 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -58,8 +55,8 @@
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVRFPS_VERSION "0.1"
 
@@ -127,7 +124,6 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int                frame_data_size ;
 	int                read_error_code ;
 	int                write_error_code ;
-	int                src_frame_counter ;
 	int *bri, *bro,l=0,f=0,mini=0,mino=0,dropmo=0,dropmi=0,x,w,h;
 	
 	// Allocate memory for the YUV channels
@@ -149,7 +145,6 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	write_error_code = Y4M_OK ;
 	
-	src_frame_counter = 0 ;
 	
 	// initialise and read the first number of frames
 	for (f=0; f <= skip; f++) {
@@ -164,7 +159,6 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[f] );
-	//	++src_frame_counter ;
 	}
 	
 	// f should be drop_frames + 1
@@ -292,6 +286,8 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
     }
 	// Clean-up regardless an error happened or not
 	
+	free(bro); free(bri);
+	
 	y4m_fini_frame_info( &in_frame );
 	
 	for (f=0; f<=drop_frames; f++) {
@@ -304,6 +300,8 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo,
 		mjpeg_error_exit1 ("Error reading from input stream!");
 	if( write_error_code != Y4M_OK )
 		mjpeg_error_exit1 ("Error writing output stream!");
+	
+	
 	
 }
 

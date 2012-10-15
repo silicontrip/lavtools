@@ -55,8 +55,8 @@ ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils utily
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 
@@ -173,7 +173,7 @@ int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
 	int i=0,j;
 	int pix[MEANXSIZE][MEANYSIZE];
 	int tpix = 0,apix;
-	int cpix,sdpix=0;
+	int cpix;
 	int l,m,count=0;
 	float fapix,fsdpix=0;
 	
@@ -218,17 +218,11 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 {
 
 	int w,h,x,y,le;
-	int cw,ch;
 	int pix[7];
-	int dif,diff,difa,difb;
 	
 	h = y4m_si_get_plane_height(si,t1);
 	w = y4m_si_get_plane_width(si,t1);
 
-	ch = y4m_si_get_plane_height(si,t1);
-	cw = y4m_si_get_plane_width(si,t1);
-
-	
 	for(y=0;y<h;y++) {
 		for (x=0;x<w;x++) {
 			
@@ -276,11 +270,6 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	uint8_t				*yuv_tdata[3];
 	int                read_error_code  = Y4M_OK;
 	int                write_error_code = Y4M_OK ;
-	int                src_frame_counter ;
-	int x,y,w,h,cw,ch;
-
-	h = y4m_si_get_plane_height(inStrInfo,0);
-	ch = y4m_si_get_plane_height(inStrInfo,1);
 
 	chromalloc(yuv_data[0],inStrInfo);
 	chromalloc(yuv_data[1],inStrInfo);
@@ -367,14 +356,11 @@ int main (int argc, char *argv[])
 {
 
 	int verbose = 1 ; // LOG_ERROR ?
-	int drop_frames = 0;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
-	int src_interlacing = Y4M_UNKNOWN;
-	y4m_ratio_t src_frame_rate;
 	const static char *legal_flags = "v:m:s:cya";
-	int max_shift = 0, search = 0;
+	int max_shift = 0;
 	int cl=3;
 	int c,adp=0;
 

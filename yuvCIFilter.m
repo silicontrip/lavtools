@@ -27,8 +27,8 @@ gcc -I/usr/local/include/mjpegtools -L/usr/local/lib -lmjpegutils -framework Qua
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #import <Foundation/NSAutoreleasePool.h>
 #import <QuartzCore/QuartzCore.h>

@@ -43,9 +43,6 @@
  gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -55,8 +52,8 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define VERSION "0.1"
@@ -115,7 +112,7 @@ unsigned int similarity(int p, int s) {
 static void filterinitialize () {
 	
 	// int center;
-	int x,y,i;
+	int x,i;
 	
 	this.kernelRadius = this.sigmaD>this.sigmaR?this.sigmaD * 2:this.sigmaR * 2;
 	this.kernelRadius = this.kernelRadius / PRECISION;
@@ -336,7 +333,8 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 	
 	y4m_fini_frame_info( &in_frame );
 	chromafree(yuv_odata);
-	
+	chromafree(yuv_data);
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
 	
@@ -349,13 +347,9 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	y4m_stream_info_t in_streaminfo ;
 	float sigma;
 	int c ;
 	const static char *legal_flags = "?hv:r:d:";

@@ -35,15 +35,15 @@ ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils yuvhs
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVRFPS_VERSION "0.3"
 
 static void print_usage() 
 {
   fprintf (stderr,
-	   "usage: yuvadjust -m <max shift> -s <search length>\n"
+	   "usage: yuvhsync -m <max shift> -s <search length>\n"
 		"\n"
 	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 		);

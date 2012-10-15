@@ -42,10 +42,6 @@
  **</p>
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -56,8 +52,8 @@
 
 #include "utilyuv.h"
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include <ft2build.h>
 #include FT_FREETYPE_H
 #include FT_GLYPH_H
@@ -304,6 +300,7 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 	
 }
 
+/*
 void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,int y,char *time) {
 	
 	int dw,dx,dy;
@@ -334,6 +331,7 @@ void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,
 	}
 	
 }
+*/
 
 static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, char *fontname, int frameCounter, int dropFrame ) {
 	y4m_frame_info_t   in_frame ;
@@ -733,11 +731,9 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 					hist[yuv_data[0][y*width+x]] ++;
 				}
 			max = hist[0]; 
-			int choice = 0;
 			for (x=0; x< owidth; x++) {
 				if (hist[x]>max) {
 					max = hist[x];
-					choice = x;
 				}
 			}
 			//	mjpeg_debug("max: %d choice %d",max,choice);

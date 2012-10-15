@@ -70,9 +70,6 @@
 
   */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -82,8 +79,10 @@
 #include <strings.h>
 #include <fcntl.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
+
+#include "utilyuv.h"
 
 #define YUVPRO_VERSION "0.1"
 
@@ -304,9 +303,7 @@ int main (int argc, char *argv[])
 	int detect=0,verbose = 4; // LOG_ERROR ;
 	int fdIn = 0 ;
 	int fdWM = 0 ;
-	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	int brightness=128;
 	int multiple=MUL_SCALE;
 	int upper=0,lower=0,frames=-1;
 
@@ -366,6 +363,10 @@ int main (int argc, char *argv[])
 	if (detect) 
 		detectwm( fdIn,&in_streaminfo, frames );
 	else {
+		int fdOut = 1 ;
+		int brightness=128;
+
+		
 		y4m_init_stream_info (&out_streaminfo);
 		y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 		y4m_write_stream_header(fdOut,&out_streaminfo);

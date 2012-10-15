@@ -28,9 +28,6 @@
  gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -40,8 +37,8 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define VERSION "0.1"
@@ -80,12 +77,11 @@ int outlier(pixelvalue x, pixelvalue y, pixelvalue z)
 
 static int detectpixel(uint8_t **p,int chan, int i, int j, int w, int h) {
 	
-	int x;
 	
 	if ((i-1 < 0) || (i+1 > w) || (j-1 < 0) || (j+1 >= h)) {
 		return 0;
 	} else {
-				
+		int x;		
 		for (x=-1; x<2; x++)
 		{
 			// detect two pixels above and below (to eliminate interlace artefacts)
@@ -106,8 +102,6 @@ static int detectpixel(uint8_t **p,int chan, int i, int j, int w, int h) {
 
 static void filterpixel(uint8_t **o, uint8_t **p,int chan, int i, int j, int w, int h) {
 	
-	unsigned int total = 0;
-	int z,y,x;
 	int pixel_loc;
 		
 	pixel_loc = j * w + i;	
@@ -115,11 +109,13 @@ static void filterpixel(uint8_t **o, uint8_t **p,int chan, int i, int j, int w, 
 	
 	// interpolate
 	if (detectpixel(p,chan, i, j,w,h)) {
-				
+		unsigned int total = 0;
+
 		total = (p[chan][(j-1) * w + i] + p[chan][(j+1) * w + i] ) / 2;
 		
 		if ((j-2 >=0) || (j+2 < h)) {
 			// interlace
+			int x;
 			x = ( p[chan][(j-2) * w + i] + p[chan][(j+2) * w + i]) / 2;
 			total = (x + total) / 2;
 		}
@@ -215,7 +211,6 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo , int t
 	uint8_t				**temp_yuv;
 	int                read_error_code ;
 	int                write_error_code ;
-	int c,d;
 	unsigned int counter = 0;
 	
 	// Allocate memory for the YUV channels
@@ -281,13 +276,9 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int length=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	y4m_stream_info_t in_streaminfo ;
 	int c ;
 	int threshold = 4, detect = 0;
 	const static char *legal_flags = "?hv:t:d";

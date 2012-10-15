@@ -68,10 +68,6 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <stdlib.h>
@@ -80,9 +76,10 @@
 
 #include <fcntl.h>
 
+#include "utilyuv.h"
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVFPS_VERSION "0.1"
 
@@ -102,6 +99,7 @@ static void print_usage()
 			 );
 }
 
+/*
 void luma_sum (int *bri, int *bro, 	uint8_t *m[3], y4m_stream_info_t  *in)
 {
 	int l,x;
@@ -120,7 +118,7 @@ void luma_sum (int *bri, int *bro, 	uint8_t *m[3], y4m_stream_info_t  *in)
 		}
 	}
 }
-
+*/
 
 void luma_sum_diff  (int *bri, int *bro, 	uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t  *in)
 {
@@ -187,12 +185,11 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 	
 	uint8_t            *yuv_tdata ;
 	
-	int                frame_data_size ;
 	int                read_error_code ;
 	int                write_error_code ;
 	int                src_frame_counter ;
-	int w,h,x,cw,ch,n;
-	int bri=0, bro=0,l=0;
+	int n;
+	int bri=0, bro=0;
 	int *totali,*totalo;
 	
 	// Allocate memory for the YUV channels
@@ -397,7 +394,7 @@ int main (int argc, char *argv[])
 	
 	int verbose = 4; // LOG_ERROR ;
 	int fdIn = 0 , fdOut=1;
-	y4m_stream_info_t in_streaminfo,out_streaminfo,compare_streaminfo;
+	y4m_stream_info_t in_streaminfo,out_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
 	const static char *legal_flags = "bgI:v:h";
 	int compare_frames = 0;

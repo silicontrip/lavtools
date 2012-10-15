@@ -1,5 +1,5 @@
 /*
- *  generic.c
+ *  yuvvalues.c
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
 
@@ -38,9 +38,6 @@
 gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -50,8 +47,8 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define VERSION "0.1"
@@ -234,13 +231,8 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 1; // LOG_DEBUG ;
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
-	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	y4m_stream_info_t in_streaminfo ;
 	int c ;
 	int drop_frame=0;
 	const static char *legal_flags = "hv:d";

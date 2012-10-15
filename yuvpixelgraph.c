@@ -1,5 +1,5 @@
 /*
- *  generic.c
+ *  yuvpixelgraph.c
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
@@ -26,9 +26,6 @@
 gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -38,8 +35,8 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define YUV_VERSION "0.1"
@@ -49,41 +46,6 @@ static void print_usage()
 	fprintf (stderr,
 			 "usage: yuv\n"
 			);
-}
-
-static void filterpixel(uint8_t *o, uint8_t *p, int i, int j, int w, int h) {
-
-	o[i+j*w] = p[i+j*w];
-	
-}
-
-static void filterframe (uint8_t *m[3], uint8_t *n[3], y4m_stream_info_t *si)
-{
-	
-	int x,y;
-	int height,width,height2,width2;
-	
-	height=y4m_si_get_plane_height(si,0);
-	width=y4m_si_get_plane_width(si,0);
-	
-	// I'll assume that the chroma subsampling is the same for both u and v channels
-	height2=y4m_si_get_plane_height(si,1);
-	width2=y4m_si_get_plane_width(si,1);
-	
-	
-	for (y=0; y < height; y++) {
-		for (x=0; x < width; x++) {
-			
-			filterpixel(m[0],n[0],x,y,width,height);
-			
-			if (x<width2 && y<height2) {
-				filterpixel(m[1],n[1],x,y,width2,height2);
-				filterpixel(m[2],n[2],x,y,width2,height2);
-			}
-			
-		}
-	}
-	
 }
 
 
@@ -141,13 +103,9 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	y4m_stream_info_t in_streaminfo ;
 	int c ;
 	const static char *legal_flags = "hv:";
 	

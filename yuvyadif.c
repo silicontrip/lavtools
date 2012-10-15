@@ -3,9 +3,9 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
-**<p>An implementation of the YADIF deinterlace filter for yuv streams.</p>
-**<h4>Usage</h4>
-**<p>-I force interlace mode t|b. top or bottom field first.</p> 
+ **<p>An implementation of the YADIF deinterlace filter for yuv streams.</p>
+ **<h4>Usage</h4>
+ **<p>-I force interlace mode t|b. top or bottom field first.</p> 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -24,9 +24,6 @@
  gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -36,8 +33,8 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define VERSION "0.1"
@@ -87,7 +84,7 @@ if(score < spatial_score){\
 spatial_score= score;\
 spatial_pred= (cur[-refs  +j] + cur[+refs  -j])>>1;\
 
-	CHECK(-1) CHECK(-2) }} }}
+		CHECK(-1) CHECK(-2) }} }}
 CHECK( 1) CHECK( 2) }} }}
 
 if(p_mode<2){
@@ -123,15 +120,10 @@ next2++;
 }
 
 
-void filter_thread (void *p) {
-	
-}
-
-
 static void filterframe (uint8_t *dst[3], uint8_t ***ref, y4m_stream_info_t *si, int yuv_interlacing)
 {
 	
-	int x,y;
+	int y;
 	int height,width,height2,width2;
 	
 	uint8_t *prev, *cur, *next, *dst2;
@@ -160,7 +152,7 @@ static void filterframe (uint8_t *dst[3], uint8_t ***ref, y4m_stream_info_t *si,
 		
 		if((y ^ parity) & 1) 
 		{
-
+			
 			prev= &ref[0][0][yw];
 			cur = &ref[1][0][yw];
 			next= &ref[2][0][yw];
@@ -186,7 +178,7 @@ static void filterframe (uint8_t *dst[3], uint8_t ***ref, y4m_stream_info_t *si,
 				
 				
 				filter_line_c(mode,dst2, prev, cur, next,width2,width2,parity ^ tff);
-
+				
 			}
 		} else {
 			memcpy(&dst[0][yw], &ref[1][0][yw], width);
@@ -300,14 +292,9 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int length=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
-	float sigma;
+	y4m_stream_info_t in_streaminfo ;
 	int c ;
 	const static char *legal_flags = "?hv:I:";
 	
@@ -363,7 +350,7 @@ int main (int argc, char *argv[])
 	
 	y4m_si_set_interlace(&in_streaminfo, Y4M_ILACE_NONE);
 	y4m_write_stream_header(fdOut,&in_streaminfo);
-
+	
 	
 	// Information output
 	mjpeg_info ("yuvyadif (version " VERSION ") is an implementation of the yadif filter for yuv streams");

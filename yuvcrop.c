@@ -24,9 +24,6 @@
  * gcc yuvcrop.c -I/sw/include/mjpegtools -L/sw/lib -lmjpegutils -o yuvcrop
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 // minimum number of pixels needed to detect interlace.
 #define DEFAULT_TOLERANCE 6
@@ -40,8 +37,9 @@
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
+#include "utilyuv.h"
 
 #define YUVDE_VERSION "0.1"
 
@@ -62,57 +60,6 @@ static void print_usage()
 			 );
 }
 
-// Allocate a uint8_t frame
-int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	m[0] = (uint8_t *)malloc( fs );
-	m[1] = (uint8_t *)malloc( cfs);
-	m[2] = (uint8_t *)malloc( cfs);
-	
-	if( !m[0] || !m[1] || !m[2]) {
-		return -1;
-	} else {
-		return 0;
-	}
-	
-}
-
-//Copy a uint8_t frame
-int chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	memcpy (m[0],n[0],fs);
-	memcpy (m[1],n[1],cfs);
-	memcpy (m[2],n[2],cfs);
-	
-}
-
-// returns the opposite field ordering
-int invert_order(int f)
-{
-	switch (f) {
-			
-		case Y4M_ILACE_TOP_FIRST:
-			return Y4M_ILACE_BOTTOM_FIRST;
-		case Y4M_ILACE_BOTTOM_FIRST:
-			return Y4M_ILACE_TOP_FIRST;
-		case Y4M_ILACE_NONE:
-			return Y4M_ILACE_NONE;
-		default:
-			return Y4M_UNKNOWN;
-	}
-}
 
 static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int tol )
 {
@@ -122,7 +69,7 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 	int                read_error_code ;
 	int frame = 0;
 	int width,height;	
-	int cwidth,cheight;	
+	int cwidth;	
 	int atop=0, abottom=0, aleft=0, aright=0;
 
 	
@@ -136,7 +83,8 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 	fprintf(stderr,"detecting...\n");
 	
 	height = y4m_si_get_plane_height(inStrInfo,0) ; width = y4m_si_get_plane_width(inStrInfo,0);
-	cheight = y4m_si_get_plane_height(inStrInfo,1) ; cwidth = y4m_si_get_plane_width(inStrInfo,1);
+	//cheight = y4m_si_get_plane_height(inStrInfo,1) ; 
+	cwidth = y4m_si_get_plane_width(inStrInfo,1);
 
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
@@ -145,11 +93,12 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 	aright=width;	
 	
 	while( Y4M_ERR_EOF != read_error_code ) {
-		int top=height, bottom=0, left=width, right=0;
+		int top=height, left=width;
 
 		frame ++;
 		if (read_error_code == Y4M_OK) {
 			// do work
+			int bottom=0, right=0;
 			int x;
 			int y;
 			
@@ -303,7 +252,7 @@ static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned in
 
 	int y,h,w;
 	int cw,ch;	
-	int cx,cy;
+	int cy;
 	int dh,clw,crw,crx;
 	
 	w = y4m_si_get_plane_width(sinfo,0);
@@ -313,7 +262,7 @@ static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned in
 	
 	dh = h/ch;
 	
-	cx = a[0]/(w/cw);
+	//cx = a[0]/(w/cw);
 	cy = a[1]/(h/ch);
 	
 	clw = a[0]/(w/cw);
@@ -421,10 +370,6 @@ int main (int argc, char *argv[])
 	const static char *legal_flags = "cma:C:T:v:h?";
 	int i; 
 
-	
-	char colourarg[ARGLEN_COLOUR];
-	char areaarg[ARGLEN_AREA]; 
-	
 	// default colour (black)
 	colour[0]=16;
 	colour[1]=128;
