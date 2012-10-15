@@ -43,6 +43,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 
 static void print_usage() 
@@ -53,6 +54,7 @@ static void print_usage()
 			 "\t -e print to stderr also\n"
 			 "\t -i <output interval> defaults to one frame. (min 1)\n"
 			 "\t -I <output interval> in seconds. Overrides -i. (larger than 0)\n"
+			 "\t -P print progress bar.\n"
 			 "produces a text bandwidth graph for any media file recognised by libav\n"
 			 "\n"
 			 );
@@ -61,6 +63,7 @@ static void print_usage()
 struct settings {
 	int ave_len;
 	char output_stderr;
+	char output_progress;
 	int output_interval;
 	double 	 output_interval_seconds;
 	
@@ -92,8 +95,8 @@ int main(int argc, char *argv[])
 	int tave=0;
 	
 	struct settings programSettings;
-	
-	
+	struct stat fileStat;
+	off_t total_file_size;
 	double framerate;
 	
 	// default settings
@@ -101,10 +104,11 @@ int main(int argc, char *argv[])
 	programSettings.output_stderr=0;
 	programSettings.output_interval=1;
 	programSettings.output_interval_seconds=0;
-	
+	programSettings.output_progress=0;
+
 	
 	// parse commandline options
-	const static char *legal_flags = "s:i:I:eh";
+	const static char *legal_flags = "s:i:I:ePh";
 	
 	int c;
 	char *error=NULL;
@@ -125,6 +129,10 @@ int main(int argc, char *argv[])
 			case 'e':
 				programSettings.output_stderr=1;
 				break;
+			case 'P':
+				programSettings.output_progress=1;
+				break;
+
 			case 'i':
 				programSettings.output_interval=(int)strtol(optarg, &error, 10);
 				if (*error || programSettings.output_interval<1) {
@@ -169,6 +177,14 @@ int main(int argc, char *argv[])
 		print_usage();
 		return -1; // Couldn't open file
 	}
+	
+	
+	if (programSettings.output_progress) {
+		stat(argv[1], &fileStat);
+		// check for return error
+		progress_init(0,fileStat.st_size);
+	}
+	
 	
     // Open video file
 #if LIBAVFORMAT_VERSION_MAJOR  < 53
@@ -289,12 +305,17 @@ int main(int argc, char *argv[])
 	
 	int counter_interval=0;
 	
+	
+	total_file_size=0;
 	// Loop until nothing read
     while(av_read_frame(pFormatCtx, &packet)>=0)
     {
 		stream_size[packet.stream_index] += packet.size;
 		
-		
+		if (programSettings.output_progress) {
+			total_file_size += packet.size;
+			progress_loadBar(total_file_size);
+		}
         // Is this a packet from the video stream?
         if(packet.stream_index==videoStream)
         {

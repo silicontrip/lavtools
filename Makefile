@@ -71,8 +71,8 @@ libav2yuv.o: libav2yuv.c
 libav2yuv: libav2yuv.o utilyuv.o
 	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv utilyuv.o $<
 
-libav-bitrate: libav-bitrate.c 
-	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  $<
+libav-bitrate: libav-bitrate.c progress.o
+	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  progress.o $<
 
 libavmux: libavmux.c 
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $<
