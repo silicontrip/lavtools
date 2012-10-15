@@ -49,10 +49,10 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: libav-bitrate [-s <smoothing window length>] [-e] [-i <output interval>] [-I <output interval>] <filename>\n"
-			 "\t -s <window length> smoothing window length in frames\n"
+			 "\t -s <window length> smoothing window length in frames (min 1)\n"
 			 "\t -e print to stderr also\n"
-			 "\t -i <output interval> defaults to one frame.\n"
-			 "\t -I <output interval> in seconds. Overrides -i.\n"
+			 "\t -i <output interval> defaults to one frame. (min 1)\n"
+			 "\t -I <output interval> in seconds. Overrides -i. (larger than 0)\n"
 			 "produces a text bandwidth graph for any media file recognised by libav\n"
 			 "\n"
 			 );
@@ -107,15 +107,15 @@ int main(int argc, char *argv[])
 	const static char *legal_flags = "s:i:I:eh";
 	
 	int c;
-	
+	char *error=NULL;
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 's':
 				// been programming in java too much recently
 				// I want to catch a number format exception here
 				// And tell the user of their error.
-				programSettings.ave_len=(int)strtol(optarg, (char **)NULL, 10);
-				if (errno == EINVAL) {
+				programSettings.ave_len=(int)strtol(optarg, &error, 10);
+				if (*error || programSettings.ave_len < 1) {
 					fprintf(stderr,"Smoothing value is invalid\n");
 					print_usage();
 					return -1;
@@ -126,8 +126,8 @@ int main(int argc, char *argv[])
 				programSettings.output_stderr=1;
 				break;
 			case 'i':
-				programSettings.output_interval=(int)strtol(optarg, (char **)NULL, 10);
-				if (errno == EINVAL) {
+				programSettings.output_interval=(int)strtol(optarg, &error, 10);
+				if (*error || programSettings.output_interval<1) {
 					fprintf(stderr,"Interval is invalid\n");
 					print_usage();
 
@@ -135,9 +135,9 @@ int main(int argc, char *argv[])
 				}
 				break;
 			case 'I':
-				programSettings.output_interval_seconds=strtod(optarg, (char **)NULL);
+				programSettings.output_interval_seconds=strtod(optarg, &error);
 				
-				if (programSettings.output_interval_seconds == 0) {
+				if (*error || programSettings.output_interval_seconds <= 0) {
 					fprintf(stderr,"Interval Seconds is invalid\n");
 					print_usage();
 
@@ -258,9 +258,17 @@ int main(int argc, char *argv[])
 			framerate /= pCodecCtx->time_base.num;
 	}
 	
-	if (programSettings.output_interval_seconds >0)
-		programSettings.output_interval = programSettings.output_interval_seconds * framerate;
+
 	
+	if (programSettings.output_interval_seconds >0)
+		if (INT32_MAX / framerate > programSettings.output_interval_seconds)
+		{
+			programSettings.output_interval = programSettings.output_interval_seconds * framerate;
+		} else {
+			fprintf(stderr,"Interval seconds too large\n");
+			free (stream_size); free (stream_min); free (stream_max); free (stream_ave);
+			return -1; 
+		}
 	
 	//	fprintf (stderr,"Video Stream: %d Frame Rate: %g\n",videoStream,framerate);
 	

@@ -1,5 +1,5 @@
 
-CC=gcc
+CC?=gcc
 OPT_FLAG=-g 
 #OPT_FLAG=-O3 -ftree-vectorize
 FREETYPEFLAGS=-L/usr/X11/lib -lfreetype
@@ -54,16 +54,16 @@ yuv2jpeg: yuv2jpeg.o utilyuv.o
 	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(JPEGFLAGS) -o yuv2jpeg utilyuv.o $<
 
 yuvsubtitle: yuvsubtitle.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle utilyuv.o $<
 
 yuvdiag: yuvdiag.o utilyuv.o
 	$(CC)  $(LDFLAGS) $(MJPEGFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag utilyuv.o $<
 
 yuvCIFilter: yuvCIFilter.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(COCOAFLAGS) -o yuvCIFilter $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(COCOAFLAGS) -o yuvCIFilter $<
 
 yuvilace: yuvilace.o  utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) -lfftw3 -o yuvilace utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) -lfftw3 -o yuvilace utilyuv.o $<
 
 libav2yuv.o: libav2yuv.c
 	$(CC) $(FFMPEG_FLAGS) $(CFLAGS) -c -o libav2yuv.o $<
@@ -71,10 +71,10 @@ libav2yuv.o: libav2yuv.c
 libav2yuv: libav2yuv.o utilyuv.o
 	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv utilyuv.o $<
 
-libav-bitrate: libav-bitrate.c utilyuv.o
+libav-bitrate: libav-bitrate.c 
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  $<
 
-libavmux: libavmux.c utilyuv.o
+libavmux: libavmux.c 
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $<
 
 clean:
