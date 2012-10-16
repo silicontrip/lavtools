@@ -2,7 +2,103 @@
  *  yuvdeinterlace.c
  *  deinterlace  2004 Mark Heath <mjpeg at silicontrip.org>
  *  converts interlaced source material into progressive by doubling the frame rate and adaptively interpolating required pixels.
- *
+ 
+**<h3>Double frame rate de-interlacer</h3>
+**
+**<p>A non destructive deinterlacer.  Converts to a double frame
+**rate, progressive yuv stream for further processing
+**by temporal based non interlace aware filters.  
+**Then re-interlaced or frame rate converted before encoding.</P>
+**
+**<p>This program uses an experimental detection algorithm to detect interlaced
+**pixels and then uses cubic interpolation to replace pixels that are suffering
+**comb effect.  Image data is not lost as the frame rate is doubled.  This 
+**adaptive algorithm is quite effective, however not ideal.  Noisy artefacts 
+**may be apparent in (some) most material.
+**</P>
+**<p>
+**I have been looking into implimenting a 4 point DFT on the data and
+**looking at the amplitude of the high (/2) frequency component.  This has lead
+**to better results but appears to still have issues at the boundary of
+**interlace and non interlace material.
+**</p>
+**<p>
+**The above code could be extended to an arbitary number of pixels, comparing
+**the /2 (interlace) frequency with the /4 frequency.</p>
+**<p>
+**This release of the code I have played with comparing both the high frequency
+**and the next frequency component.  The high frequency shows areas of interlace
+**however also detects edges.  The second frequency component detects edges.
+**By balancing these two results, by trial and error, I beleive to have come up
+**with a better detection algorithm.   However  non interpolated interlace artefacts
+**are still apparent.  This is the best results so far.
+**</p>
+**<p>
+**Just when I thought I tuned the DFT algorithm to the best parameters.  I came up
+**with another method that simply looked for a &quot;greater than, smaller than, greater
+**than&quot; pattern and as a result are now detecting interlace much more accurately than
+**before.  I also added an additional test on the AC value to eliminate non noticable 
+**interlace (or noise).  This version is now available.
+**</p>
+**<p>
+**I am extremely happy with the results.  Although not perfect, there are false positives,
+**and a few false negatives.  Of course I will be fine tuning this filter even more over
+**time.  For now I would use it as part of a yuv filter chain for my production videos.
+**</p>
+**<p> I have implemented a YUV filter of yadif de-interlacer. I beleive it produces better 
+**results than this filter.  I am ceasing work on this filter.  Unless some novel de-interlace
+**algorithm comes out.</p>
+**
+**<h4>TODO</h4>
+**<p>
+**Write a pixel merging algorithm for conversion of 25i material to 25p (rather than 50p).<br>
+**Look at ways to perform anti-aliasing for fixing up nearest neighbour de-interlace filters. These sorts of filters
+**should be shot, as it's quite easy to write a linear interpolator, not to difficult to write a cubic interpolator,
+**and look I just wrote an adaptive type de-interlacer.  I can't believe I saw this kind of de-interlace filter used
+**on an episode of Top Gear the other night.  Disgraceful!<br>
+**Provide a screenshot...
+**</p>
+**
+**<h4>Ideas</h4>
+**
+**<p> I have been experimenting with training a neural net to *learn*
+**what the missing pixel may be from the surrounding pixels.  My
+**first attempts have not worked, if it is trained from images with
+**many uphill lines, then uphill interpolation looks fantastic but
+**downhill is very jaggered.</p>
+**
+**<p> I am thinking about increasing the number of hidden layers in
+**the neural net to see if it improves interpolation.  The code is
+**in java, I'll just need some encouragement to look at it again.</p>
+**
+**<p>
+**This part of the code would replace the cubic interpolator.  
+**Detection would still be separate algorithm, however comparing
+**the interpolated pixel with the real pixel and replacing the real
+**pixel with the interpolated if it is different by a threshold amount.
+**May prove a better algorithm.
+**</p>
+**
+**<UL> 
+**
+**<li>29th April 2008 Tuned the DFT parameters to optimal. However artefacts are still apparent.</li>
+**<li>13th April 2008 Implemented a 4 point DFT interlace detection algorithm.</li>
+**<li>10th April 2008 Implemented a cubic interpolation algorithm. Do you know
+**how hard it is to find programmatic information about this on the web?
+**<li>6th April 2008 Optimised the code for better performance.</li>
+**<li>October 2007 Changed the code to an adaptive deinterlace filter. With linear interpolation.  The re-interlace code is probably not needed as my yuvafps does a better job.</li>
+**<li> 26th April 2005.  Fixed a bug which incorrectly detected
+**the end of file, creating more frames in the output.</li>
+**<li>9th April 2005 New features which now produces a full height
+**frame, by line duplication.  Also contains code from yuvdeprogress,
+**to re-interlace the stream.</li> 
+**
+**</ul>
+**
+**<h4>Example</h4> 
+**<p> by default yuvdeinterlace will double the frame rate and convert fields
+**into full height frames. No arguments needed.</P>
+
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-PatiÒo Barbolani <barbolani at jazzfree.com>
  *
