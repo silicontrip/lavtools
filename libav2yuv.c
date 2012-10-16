@@ -3,35 +3,86 @@
 // adapted from
 // avcodec_sample.0.4.9.cpp
 
-// A small sample program that shows how to use libavformat and libavcodec to
-// read video from a file.
-//
-// This version is for the 0.4.9-pre1 release of ffmpeg. This release adds the
-// av_read_frame() API call, which simplifies the reading of video frames 
-// considerably. 
-//
-// gcc -O3 -I/usr/local/include -I/usr/local/include/mjpegtools -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
-// quadrant gcc -O3 -I/sw/include -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv 
-// gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
-//
-// valgrind build
-
-gcc -g -I/opt/local/include -I/usr/local/include/mjpegtools libav2yuv.c -c
-gcc -g -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.o -o libav2yuv
-dsymutil libav2yuv
-
-// I really should put history here
-// 5th Jul 2010 - Force framerate command line argument not parsed correctly
-// 5th Apr 2009 - First regression test passed.  EDL version.
-// 18th Mar 2009 - Audio range fixed, sample accurate.
-// 17th Mar 2009 - Multifile version.
-// 4th Feb 2009 - Range version. Audio range not working
-// 2nd Feb 2009 - Audio writing version.
-// 7th July 2008 - Added Force Format option 
-// 4th July 2008 - Added Aspect Ratio Constants
-// 3rd July 2008 - Will choose the first stream found if no stream is specified  
-// 24th Feb 2008 - Found an unexpected behaviour where frames were being dropped. libav said that no frame was decoded. Have output the previous frame in this instance.
-//
+**<h3>Anything to YUV</h3>
+**<p>
+**Tested the EDL mode of this program.  Discovered what appears to be
+**a bug in the libav library in which frames are unexpectedly dropped.
+**I have attempted to work around the bug, however it appears to be filetype
+**specific.  Currently m2v files work accurately.  Use this with the
+**updated yuvdiag tool to stamp your video for EDL file creation.  Or
+**use a frame accurate video player.
+**</p>
+**<p>This is a very simple generic anything to yuv tool, using the
+**libav library from ffmpeg. It supports any video file that libav
+**supports (which includes WMV3s now!!!) it can be used to replace
+**the -vo yuv4mpeg option of mplayer or the -f yuv4mpegpipe option
+**of ffmpeg.  The tool can also override yuv header values, in the
+**case of incorrect aspect ratio or interlacing etc.  And will perform
+**simple chroma subsampling conversion, if the source file is not in
+**the desired chroma subsampling mode.  </p>
+**
+**<p>
+**This release now includes an EDL file parser, for joining or editing
+**files. This is a first working version is not optimised and may contain bugs.
+**I hope to have more testing over the next few months. See sample EDL file
+**below.
+**</P>
+**<p>
+**Now uses sws_scaler for chroma resampling rather than the deprecated img_convert,
+**So will compile with the newer version of FFMPEG.  Also have provision for decode_audio3
+**and decode_video2 which has appeared in the latest ffmpeg snapshot.
+**</p>
+**
+**<p>I use this regularily for file conversions, so I hope the code
+**is quite mature, with a thorough set of options and help.  Any bugs
+**should be picked up quickly.  </p>
+**<p>As I do want this to be a one program fits all for yuv video conversion
+**any bugs or issues you have with the software I would like to hear about
+**so I can make this the best software.</p>
+**
+**<h4>EXAMPLE</h4> <p> <tt> libav2yuv strangefile.avi | y4m-yuvfilter
+**| ffmpeg -f yuv4mpegpipe -i - -vcodec whatever wantedfile.avi</tt>
+**</p>
+**
+**<h4>HISTORY</h4> <p> <ul> 
+**<li>9 July 2010. Fixed a major memory leak when concatenating multiple files (eg large number of jpeg frames)
+**<li>5 July 2010. Discovered that the SW_SCALER wasn't implemented (or that the changes were lost) Correctly implemented SW_SCALER version. Also added Mono and 420jpeg chroma modes.
+**<li>13 May 2009. SWS_SCALER version
+**<li>5 Apr 2009. First release of the EDL.
+**<li>2 Feb 2009. First release of the PCM writer version (use the -w flag)
+**<li>23 Feb 2008.  Found a bug that would
+**cause frames to be dropped.  Determined that the AV decode function
+**is decoding data but not saying the frame is finished.  I have not
+**been able to find why it is exhibiting this behaviour.  I have
+**worked around this behaviour by outputting the previous frame when
+**the frame is not finished.  I am not sure if this causes issues
+**with non frame based, packet based files (such as mpeg) </li> </ul>
+**<p>
+**<pre>
+**# <filename|tag>  <EditMode>  <TransitionType>[num]  [duration]  [srcIn]  [srcOut]  [recIn]  [recOut]
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_01.mpg VA C 0:0:0:0 0:4:9:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_02.mpg VA C 0:0:0:0 0:3:39:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_03.mpg VA C 0:0:0:0 0:2:38:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_04.mpg VA C 0:0:0:0 0:3:9:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_05.mpg VA C 0:0:0:0 0:4:39:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_06.mpg VA C 0:0:0:0 0:4:9:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_07.mpg VA C 0:0:0:0 0:2:9:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_08.mpg VA C 0:0:0:0 0:3:9:0
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_09.mpg VA C 0:0:0:0 0:3:38:15
+**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_10.mpg VA C 0:0:0:0 0:5:46:0
+**</pre>
+**</p>
+**<p>
+**The fields are:
+**<ul>
+**<li>Filename, the full or relative path to the movie asset.
+**<li>Editmode; Audio, video or both. Use the Audio or video from the movie asset.
+**<li>Transition type; Currently C only (cut) may include more in future.
+**<li>Source In; Timestamp indicating the first frame to write.
+**<li>Source Out; Timestamp indicating the last frame to write. (An in and out of 0:0:0:0 will write 1 frame)
+**</ul>
+**</p>
+**
 */
 
 /* Possible inclusion for EDL
