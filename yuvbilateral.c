@@ -3,12 +3,25 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- ** a spacial bilateral filter
- *
- **  Bilateral filter  based on code from:
- **  http://user.cs.tu-berlin.de/~eitz/bilateral_filtering/
- * 
- *
+
+**<h3>Bilateral spacial filter</h3>
+**
+**<p> performs a bilateral filter over the video. Is horribly slow, and a little
+**too agressive.</p>
+**
+**<p>Based on code from <a href="http://user.cs.tu-berlin.de/~eitz/bilateral_filtering/">m.eitz</a> </p>
+**
+**<h4>EXAMPLE</h4>
+**<p>Useful options are:</p>
+**<pre>
+**-D 3
+**-R 3
+**</pre>
+**<p>
+**Higher values of R cause more smearing.  Higher values of D increase the 
+**search radius, and increase processing time.
+**</p>
+
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
