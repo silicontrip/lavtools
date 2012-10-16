@@ -1,5 +1,5 @@
 
-CC?=gcc
+CC ?= gcc
 OPT_FLAG=-g 
 #OPT_FLAG=-O3 -ftree-vectorize
 FREETYPEFLAGS=-L/usr/X11/lib -lfreetype
@@ -7,7 +7,7 @@ COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
 CODECFLAGS=
 #CODECFLAGS=-DHAVE_AV_FREE_PACKET
 LDFLAGS=-L/usr/X11/lib  -L/usr/local/lib 
-CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include/ -I/usr/X11/include/freetype2/ 
+CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 #FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
 JPEGFLAGS= -ljpeg
