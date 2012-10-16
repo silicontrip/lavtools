@@ -3,6 +3,21 @@
  *  detect/crop/matte  2004 Mark Heath <mjpeg at silicontrip.org>
  *  detects colour matting and then remove it. 
  *  Either by removing the pixels or painting them with a solid colour.
+
+**<h3>Crop, Matte and Matte detection</h3>
+**<p>
+**Used to detect matting in yuv sources.
+**It can also be used to crop and matte a yuv video stream.</p>
+**
+**<p>
+**Cropping makes the destination video frame dimensions smaller, while matting will keep the
+**video the same size, but replace pixels with a solid colour.
+**</P>
+**
+**<h4>RESULTS</h4>
+**
+**<? news::imageinline("lavtools/yuvcrop",-1); ?>
+**
  *
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
