@@ -11,7 +11,7 @@ CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 #FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
 JPEGFLAGS= -ljpeg
-MJPEGFLAGS= -lmjpegutils
+MJPEGFLAGS= -lmjpegutils utilyuv.o
 
 
 TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
@@ -51,25 +51,25 @@ yuvnlmeans: yuvnlmeans.o utilyuv.o
 yuvvalues: yuvvalues.o utilyuv.o
 
 yuv2jpeg: yuv2jpeg.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(JPEGFLAGS) -o yuv2jpeg utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(JPEGFLAGS) -o yuv2jpeg $<
 
 yuvsubtitle: yuvsubtitle.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle  $<
 
 yuvdiag: yuvdiag.o utilyuv.o
-	$(CC)  $(LDFLAGS) $(MJPEGFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag utilyuv.o $<
+	$(CC)  $(LDFLAGS) $(MJPEGFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag  $<
 
 yuvCIFilter: yuvCIFilter.o utilyuv.o
 	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(COCOAFLAGS) -o yuvCIFilter $<
 
 yuvilace: yuvilace.o  utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) -lfftw3 -o yuvilace utilyuv.o $<
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) -lfftw3 -o yuvilace  $<
 
 libav2yuv.o: libav2yuv.c
 	$(CC) $(FFMPEG_FLAGS) $(CFLAGS) -c -o libav2yuv.o $<
 
 libav2yuv: libav2yuv.o utilyuv.o
-	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv utilyuv.o $<
+	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv $<
 
 libav-bitrate: libav-bitrate.c progress.o
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  progress.o $<

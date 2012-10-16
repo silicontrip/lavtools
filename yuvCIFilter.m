@@ -1,5 +1,176 @@
 /*
  *  yuvCIFilter.c
+**<h3>YUV Core Image Filter</h3>
+**<p>
+**This allows Core Image filters to operate on yuv streams.
+**</p>
+**
+**<p>
+**Obviously this program only works under OSX.
+**</p>
+**
+**<h4>Example</h4>
+**<p>
+**To choose a Core Image filter use the -f option:
+**<tt> | yuvCIFilter -f CILineScreen | </tt>
+**</p>
+**
+**<p>
+**Default filter settings are shown:
+**<pre>
+**{CILineScreen {
+**    inputAngle = 0;
+**    inputCenter = [150 150];
+**    inputImage = <null>;
+**    inputSharpness = 0.7;
+**    inputWidth = 6;
+**}}
+**</pre>
+**<p>
+**Any of the filter settings can be changed using the -i option:
+**<tt>yuvCIFilter -f CILineScreen -i inputAngle=45.0</tt>
+**</p>
+**<p>
+**Multiple settings are separated by a comma:
+**<tt>yuvCIFilter -f CILineScreen -i inputAngle=45.0,inputWidth=12.0</tt>
+**</p>
+**<p>
+**Some settings require a space and will need to be quoted on the command line.
+**</P>
+**
+**<p>
+**A list of filters is obtained by giving an invalid filtername to the -f
+**option (such as help)
+**</p>
+**<p>
+**<pre>
+**CIAdditionCompositing
+**CIAffineClamp
+**CIAffineTile
+**CIAffineTransform
+**CIAreaAverage
+**CIAreaHistogram
+**CIAreaMaximum
+**CIAreaMaximumAlpha
+**CIAreaMinimum
+**CIAreaMinimumAlpha
+**CIBarsSwipeTransition
+**CIBlendWithMask
+**CIBloom
+**CIBoxBlur
+**CIBumpDistortion
+**CIBumpDistortionLinear
+**CICheckerboardGenerator
+**CICircleSplashDistortion
+**CICircularScreen
+**CICircularWrap
+**CICMYKHalftone
+**CIColorBlendMode
+**CIColorBurnBlendMode
+**CIColorControls
+**CIColorCube
+**CIColorDodgeBlendMode
+**CIColorInvert
+**CIColorMap
+**CIColorMatrix
+**CIColorMonochrome
+**CIColorPosterize
+**CIColumnAverage
+**CIComicEffect
+**CIConstantColorGenerator
+**CICopyMachineTransition
+**CICrop
+**CICrystallize
+**CIDarkenBlendMode
+**CIDifferenceBlendMode
+**CIDiscBlur
+**CIDisintegrateWithMaskTransition
+**CIDisplacementDistortion
+**CIDissolveTransition
+**CIDotScreen
+**CIEdges
+**CIEdgeWork
+**CIEightfoldReflectedTile
+**CIExclusionBlendMode
+**CIExposureAdjust
+**CIFalseColor
+**CIFlashTransition
+**CIFourfoldReflectedTile
+**CIFourfoldRotatedTile
+**CIFourfoldTranslatedTile
+**CIGammaAdjust
+**CIGaussianBlur
+**CIGaussianGradient
+**CIGlassDistortion
+**CIGlassLozenge
+**CIGlideReflectedTile
+**CIGloom
+**CIHardLightBlendMode
+**CIHatchedScreen
+**CIHeightFieldFromMask
+**CIHexagonalPixellate
+**CIHoleDistortion
+**CIHueAdjust
+**CIHueBlendMode
+**CIKaleidoscope
+**CILanczosScaleTransform
+**CILenticularHaloGenerator
+**CILightenBlendMode
+**CILinearGradient
+**CILineOverlay
+**CILineScreen
+**CILuminosityBlendMode
+**CIMaskToAlpha
+**CIMaximumComponent
+**CIMaximumCompositing
+**CIMedianFilter
+**CIMinimumComponent
+**CIMinimumCompositing
+**CIModTransition
+**CIMotionBlur
+**CIMultiplyBlendMode
+**CIMultiplyCompositing
+**CINoiseReduction
+**CIOpTile
+**CIOverlayBlendMode
+**CIPageCurlTransition
+**CIParallelogramTile
+**CIPerspectiveTile
+**CIPerspectiveTransform
+**CIPinchDistortion
+**CIPixellate
+**CIPointillize
+**CIRadialGradient
+**CIRandomGenerator
+**CIRippleTransition
+**CIRowAverage
+**CISaturationBlendMode
+**CIScreenBlendMode
+**CISepiaTone
+**CIShadedMaterial
+**CISharpenLuminance
+**CISixfoldReflectedTile
+**CISixfoldRotatedTile
+**CISoftLightBlendMode
+**CISourceAtopCompositing
+**CISourceInCompositing
+**CISourceOutCompositing
+**CISourceOverCompositing
+**CISpotColor
+**CISpotLight
+**CIStarShineGenerator
+**CIStripesGenerator
+**CISunbeamsGenerator
+**CISwipeTransition
+**CITorusLensDistortion
+**CITriangleTile
+**CITwelvefoldReflectedTile
+**CITwirlDistortion
+**CIUnsharpMask
+**CIVortexDistortion
+**CIWhitePointAdjust
+**CIZoomBlur
+**</pre>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -74,75 +245,6 @@ static void list_filters()
 		fprintf (stderr,"%s\n",[o UTF8String] );
 }
 
-
-// Allocate a uint8_t frame
-int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	m[0] = (uint8_t *)malloc( fs );
-	m[1] = (uint8_t *)malloc( cfs);
-	m[2] = (uint8_t *)malloc( cfs);
-	
-	if( !m[0] || !m[1] || !m[2]) {
-		return -1;
-	} else {
-		return 0;
-	}
-	
-}
-
-//Copy a uint8_t frame
-int chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	memcpy (m[0],n[0],fs);
-	memcpy (m[1],n[1],cfs);
-	memcpy (m[2],n[2],cfs);
-	
-}
-
-// set a solid colour for a uint8_t frame
-set_colour(uint8_t *m[], y4m_stream_info_t  *sinfo, int y, int u, int v )
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	memset (m[0],y,fs);
-	memset (m[1],u,cfs);
-	memset (m[2],v,cfs);
-	
-}
-
-
-// returns the opposite field ordering
-int invert_order(int f)
-{
-	switch (f) {
-		
-		case Y4M_ILACE_TOP_FIRST:
-			return Y4M_ILACE_BOTTOM_FIRST;
-		case Y4M_ILACE_BOTTOM_FIRST:
-			return Y4M_ILACE_TOP_FIRST;
-		case Y4M_ILACE_NONE:
-			return Y4M_ILACE_NONE;
-		default:
-			return Y4M_UNKNOWN;
-	}
-}
-
 /* looks like I need to write my own RGB - YUV converter
 
 * ITU-R 601 for SDTV:
@@ -191,7 +293,6 @@ int argbYUV(uint8_t **m, NSBitmapImageRep *bit, y4m_stream_info_t *si)
 	d=[bit bitmapData];
 	bpp=[bit bytesPerRow];
 
-
 // Allocate a yuv444 buffer
 
 	fs = y4m_si_get_plane_length(si,0);
@@ -205,7 +306,6 @@ int argbYUV(uint8_t **m, NSBitmapImageRep *bit, y4m_stream_info_t *si)
 	}
 
 // convert to YUV444
-
 
 	for (y=0; y< height; y++) {
 		for(x=0; x<width; x++) {
