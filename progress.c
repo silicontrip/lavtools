@@ -49,6 +49,22 @@ static inline void progress_comma_print (long n)
 	
 }
 
+static inline void progress_human_read_print_double(double n) 
+{
+	
+	char *suffix=" kMGTPEZY";
+	int log=0;
+	double base=n;
+	while (base > 1000) {
+		base /= 1000;
+		log++;
+	}
+	
+	fprintf(stderr,"%3.3f%c",base,suffix[log]);
+	
+}
+
+
 static inline void progress_human_read_print(long n) 
 {
 
@@ -88,7 +104,7 @@ inline void progress_loadBar(off_t bytes)
 	//fprintf (stderr,"width: %d\n",c);
 	
     // Show the percentage complete.
-	//fprintf (stderr,"\033[F\033[J");
+	fprintf (stderr,"\033\n[F\033[J");
 
     fprintf(stderr,"%3d%% [", (int)(ratio*100) );
 	
