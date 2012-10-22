@@ -245,6 +245,63 @@ static void list_filters()
 		fprintf (stderr,"%s\n",[o UTF8String] );
 }
 
+
+
+/* Convert an NSImage into a CVPixelBufferRef */
+
+// - (CVPixelBufferRef)fastImageFromNSImage:(NSImage *)image
+
+
+
+CVPixelBufferRef fastImageFromNSImage(NSImage *image) 
+{
+	CVPixelBufferRef buffer = NULL;
+	
+	// config
+	size_t width = [image size].width;
+	size_t height = [image size].height;
+	size_t bitsPerComponent = 8; // *not* CGImageGetBitsPerComponent(image);
+	CGColorSpaceRef cs = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
+	CGBitmapInfo bi = kCGImageAlphaNoneSkipFirst; // *not* CGImageGetBitmapInfo(image);
+	NSDictionary *d = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:YES], kCVPixelBufferCGImageCompatibilityKey, [NSNumber numberWithBool:YES], 
+					   kCVPixelBufferCGBitmapContextCompatibilityKey, nil];
+	
+	// create pixel buffer
+	CVPixelBufferCreate(kCFAllocatorDefault, width, height, kYUVSPixelFormat, (CFDictionaryRef)d, &buffer);
+	CVPixelBufferLockBaseAddress(buffer, 0);
+	void *rasterData = CVPixelBufferGetBaseAddress(buffer);
+	size_t bytesPerRow = CVPixelBufferGetBytesPerRow(buffer);
+	
+	// context to draw in, set to pixel buffer's address
+	CGContextRef ctxt = CGBitmapContextCreate(rasterData, width, height, bitsPerComponent, bytesPerRow, cs, bi);
+	if(ctxt == NULL){
+		NSLog(@"could not create context");
+		return NULL;
+	}
+	
+	// draw
+	NSGraphicsContext *nsctxt = [NSGraphicsContext graphicsContextWithGraphicsPort:ctxt flipped:NO];
+	[NSGraphicsContext saveGraphicsState];
+	[NSGraphicsContext setCurrentContext:nsctxt];
+	[image compositeToPoint:NSMakePoint(0.0, 0.0) operation:NSCompositeCopy];
+	[NSGraphicsContext restoreGraphicsState];
+	
+	CVPixelBufferUnlockBaseAddress(buffer, 0);
+	CFRelease(ctxt);
+	
+	return buffer;
+}
+
+CVPixelBufferRef fastImageFromNSImageRep (NSBitmapImageRep *imageRep)
+{
+	
+	NSImage * image = [[NSImage alloc] initWithSize:[imageRep size]];
+	[image addRepresentation: imageRep];
+	return  fastImageFromNSImage(image);
+	
+}
+
+
 /* looks like I need to write my own RGB - YUV converter
 
 * ITU-R 601 for SDTV:
@@ -375,6 +432,7 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 	// I assume that plane 0 is larger or equal to the other planes
 	
 	pixelFormat=CVPixelBufferGetPixelFormatType(cf);
+	// NSLog(@"pixel Format: %c%c%c%c", pixelFormat>>24,(pixelFormat>>16)&0xff,(pixelFormat>>8)&0xff,pixelFormat&0xff);
 	switch (pixelFormat) {
 			
 		case 'y420':
@@ -396,7 +454,7 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 				
 			}
 			break;
-			case 'yuvs':
+			case kYUVSPixelFormat:
 			
 			h = CVPixelBufferGetHeight(cf);
 			w = CVPixelBufferGetWidth(cf);
@@ -407,18 +465,44 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 			// NSLog(@"yuvCVcopy: BytesPerRow: %d %dx%d size: %d",b,w,h,sz);
 			
 			//optimise this, do want.
+			
+			int w2 = w>>1;
+			
 			for(y=0; y< h; y++ ) {
-				for(x=0; x< (w>>1); x++ ) {
+				int uv=0, iuv=0;
+				// it is worth this if statement
+				if (y4m_si_get_interlace(si) == Y4M_ILACE_NONE) {
+					 uv = (y>>1) * w2;
+				} else {
+					// I think this interlacing algorithm is correct.
+
+					 iuv = (((y>>2)<<1) + (y % 2)) * w2;
+				}
+				// some optimsations
+				int cy = 0;
+				int yb = y * b;
+				for(x=0; x< w2; x++ ) {
+					
+					// some optimsations
+					int ybx4 = (x << 2) + yb;
 					
 					// planar vs packed, it's such a religious argument.
-					cy0 = m[0][(x<<1) + y * w];
-					cy1 = m[0][(x<<1) + 1 + y * w];
+					
+				//	cy0 = m[0][(x<<1) + y * w];
+				//	cy1 = m[0][(x<<1) + 1 + y * w];
+
+					// some optimsations
+					cy0 = m[0][cy++];
+					cy1 = m[0][cy++];
 					
 					//  assuming 420 sub sampling
 					if (y4m_si_get_interlace(si) == Y4M_ILACE_NONE) {
 						// Progressive, 1,1,2,2,3,3,4,4
-						cu = m[1][x + (y>>1) * (w>>1)];					
-						cv = m[2][x + (y>>1) * (w>>1)];
+						
+						int xuv = x + uv;
+						
+						cu = m[1][xuv];					
+						cv = m[2][xuv];
 					} else {
 						// Interlaced, 1,2,1,2,3,4,3,4
 						// 0,1,2,3,4,5,6,7  y
@@ -429,17 +513,18 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 						// 0,0,1,1,2,2,3,3 >>1
 						// 0,1,1,2,2,3,3,4 >>1 + %2
 						
-						// I think this interlacing algorithm is correct.
-						cu = m[1][x + (((y>>2)<<1) + (y % 2)) * (w>>1)];					
-						cv = m[2][x + (((y>>2)<<1) + (y % 2)) * (w>>1)];
+						int xiuv = x + iuv;
+
+						cu = m[1][xiuv];					
+						cv = m[2][xiuv];
 					}
 					
 					// lets see if this is correct
 			//		NSLog(@"yuvCVcopy: %d %dx%d",b,y,x);
-					buffer[y * b + (x << 2)] = cy0;
-					buffer[y * b + (x << 2)  + 1] = cu;
-					buffer[y * b + (x << 2) + 2] = cy1;
-					buffer[y * b + (x << 2) + 3] = cv;
+					buffer[ybx4] = cy0;
+					buffer[ybx4 + 1] = cu;
+					buffer[ybx4 + 2] = cy1;
+					buffer[ybx4 + 3] = cv;
 				}
 			}
 			break;
