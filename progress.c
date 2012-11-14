@@ -104,7 +104,7 @@ inline void progress_loadBar(off_t bytes)
 	//fprintf (stderr,"width: %d\n",c);
 	
     // Show the percentage complete.
-	fprintf (stderr,"\033\n[F\033[J");
+	// fprintf (stderr,"\033\n[F\033[J");
 
     fprintf(stderr,"%3d%% [", (int)(ratio*100) );
 	
