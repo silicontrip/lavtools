@@ -60,16 +60,16 @@
 **<p>
 **<pre>
 **# <filename|tag>  <EditMode>  <TransitionType>[num]  [duration]  [srcIn]  [srcOut]  [recIn]  [recOut]
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_01.mpg VA C 0:0:0:0 0:4:9:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_02.mpg VA C 0:0:0:0 0:3:39:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_03.mpg VA C 0:0:0:0 0:2:38:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_04.mpg VA C 0:0:0:0 0:3:9:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_05.mpg VA C 0:0:0:0 0:4:39:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_06.mpg VA C 0:0:0:0 0:4:9:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_07.mpg VA C 0:0:0:0 0:2:9:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_08.mpg VA C 0:0:0:0 0:3:9:0
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_09.mpg VA C 0:0:0:0 0:3:38:15
-**/Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_10.mpg VA C 0:0:0:0 0:5:46:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_01.mpg VA C 0:0:0:0 0:4:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_02.mpg VA C 0:0:0:0 0:3:39:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_03.mpg VA C 0:0:0:0 0:2:38:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_04.mpg VA C 0:0:0:0 0:3:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_05.mpg VA C 0:0:0:0 0:4:39:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_06.mpg VA C 0:0:0:0 0:4:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_07.mpg VA C 0:0:0:0 0:2:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_08.mpg VA C 0:0:0:0 0:3:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_09.mpg VA C 0:0:0:0 0:3:38:15
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_10.mpg VA C 0:0:0:0 0:5:46:0
 **</pre>
 **</p>
 **<p>
