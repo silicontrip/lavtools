@@ -376,11 +376,11 @@ const char *av_get_field_order(enum AVFieldOrder field_order)
 const char *av_get_media_type_string(enum AVMediaType media_type)
 {
 	    switch (media_type) {
-			    case AVMEDIA_TYPE_VIDEO:      return "video";
-			    case AVMEDIA_TYPE_AUDIO:      return "audio";
-			    case AVMEDIA_TYPE_DATA:       return "data";
-			    case AVMEDIA_TYPE_SUBTITLE:   return "subtitle";
-			    case AVMEDIA_TYPE_ATTACHMENT: return "attachment";
+			    case AVMEDIA_TYPE_VIDEO:      return "VIDEO";
+			    case AVMEDIA_TYPE_AUDIO:      return "AUDIO";
+			    case AVMEDIA_TYPE_DATA:       return "DATA";
+			    case AVMEDIA_TYPE_SUBTITLE:   return "SUBTITLE";
+			    case AVMEDIA_TYPE_ATTACHMENT: return "ATTACHMENT";
 			    default:                      return NULL;
 		    }
 	}
@@ -418,9 +418,10 @@ int main (int argc, char **argv)
 {
 	AVCodecContext *codec_ctx = NULL;
 
+	char * container = NULL;
     AVFormatContext *fmt_ctx = NULL;
     AVDictionaryEntry *tag = NULL;
-    int ret;
+    int ret,i;
 
     if (argc != 2) {
         printf("usage: %s <input_file>\n"
@@ -436,12 +437,28 @@ int main (int argc, char **argv)
 	if ((ret=avformat_find_stream_info(fmt_ctx,NULL))<0)
 		return ret;
 	
+	while ((tag = av_dict_get(fmt_ctx->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
+        printf("%s=%s\n", tag->key, tag->value);
+		if (strcmp(tag->key,"major_brand")==0) {
+				// mp4 or mov
+			if (strcmp(tag->value,"qt")==0) {
+					container = "mov";
+			}
+			if (strcmp(tag->value,"mp42")==0) {
+					container = "mp4";
+			}
+		}
+	}
 	
-	printf ("FORMAT_NAME=%s\n",fmt_ctx->iformat->name);
-
+	if (container == NULL) {
+		printf ("FORMAT_NAME=%s\n",fmt_ctx->iformat->name);
+	} else {
+		printf ("FORMAT_NAME=%s\n",container);
+	}
+	
 	printf("%s=%d\n","STREAMS",fmt_ctx->nb_streams);
 	
-	for(int i=0; i<fmt_ctx->nb_streams; i++) {
+	for( i=0; i<fmt_ctx->nb_streams; i++) {
 	
 		codec_ctx = fmt_ctx->streams[i]->codec;
 
@@ -452,8 +469,10 @@ int main (int argc, char **argv)
 	//	printf ("STREAM_%d_PROFILE=%d\n",i,codec_ctx->profile);
 
 		if (fmt_ctx->streams[i]->codec->codec_type == AVMEDIA_TYPE_VIDEO) {
-			printf("STREAM_%s_AFPS=%d:%d\n",stream_type,fmt_ctx->streams[i]->avg_frame_rate.num,fmt_ctx->streams[i]->avg_frame_rate.den);
-			printf("STREAM_%s_FPS=%d:%d\n",stream_type,fmt_ctx->streams[i]->r_frame_rate.num,fmt_ctx->streams[i]->r_frame_rate.den);
+			printf("STREAM_%s_AFPS_RATIO=%d:%d\n",stream_type,fmt_ctx->streams[i]->avg_frame_rate.num,fmt_ctx->streams[i]->avg_frame_rate.den);
+			printf("STREAM_%s_FPS_RATIO=%d:%d\n",stream_type,fmt_ctx->streams[i]->r_frame_rate.num,fmt_ctx->streams[i]->r_frame_rate.den);
+			printf("STREAM_%s_FPS=%f\n",stream_type,1.0*fmt_ctx->streams[i]->r_frame_rate.num/fmt_ctx->streams[i]->r_frame_rate.den);
+
 			printf ("STREAM_%s_WIDTH=%d\n",stream_type,codec_ctx->width);
 			printf ("STREAM_%s_HEIGHT=%d\n",stream_type,codec_ctx->height);
 			printf ("STREAM_%s_PIX_FMT=%s\n",stream_type,av_get_pix_fmt_name(codec_ctx->pix_fmt));
@@ -477,8 +496,6 @@ int main (int argc, char **argv)
 
 	}
 	
-    while ((tag = av_dict_get(fmt_ctx->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
-        printf("%s=%s\n", tag->key, tag->value);
 
     avformat_free_context(fmt_ctx);
     return 0;
