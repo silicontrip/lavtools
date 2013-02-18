@@ -30,6 +30,18 @@
 #include "avfilter.h"
 #include <strings.h>
 
+/* time
+2010-02-25
+ 0735-0740 mask to AVFrame
+ 1800-1822 mask to AVFrame
+ 
+ 2010-02-26
+ 0818-0853 config file read
+ 1707-1748 config file and interval display
+ 2100-2116 config file debug. 
+ 2116- interval code
+*/
+
 typedef struct
 {
 	
@@ -41,6 +53,7 @@ typedef struct
 	int fr_num;
 	int fr_dem;
 	AVFrame  *pFrame;
+// it appears that maskFrame is erased
 	AVFrame  *maskFrame;
 	
 } OverlayContext;
@@ -57,6 +70,9 @@ static av_cold void uninit(AVFilterContext *ctx)
 	if (ovl->imageName)
 		av_free(ovl->imageName);
 		
+		
+	av_log(ctx, AV_LOG_DEBUG, "uninit().\n");
+
 	ovl->imageName = NULL;
 	ovl->pFrame = NULL;
 	ovl->maskFrame = NULL;
@@ -75,7 +91,9 @@ static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
 	ovl->printH = -1;
 	ovl->printON = -1;
 	off = -1;
-		
+	
+	av_log(ctx, AV_LOG_DEBUG, "init(). %s\n",args);
+	
     if (args) { 
 	
 		for (int i=0; i < strlen(args); i++)
@@ -101,10 +119,12 @@ static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
 				rewind(fd);
 				
 				while(!feof(fd)) {
-					//scan through all lines
-
+				
 					fscanf(fd,"%s %s\n",key,val);
-										
+					
+					av_log(ctx,AV_LOG_INFO," read: %s %s\n",key,val);
+					
+					//scan through all lines
 					if (!strcasecmp("filename",key)){
 						strcpy(ovl->imageName,val);
 					} else 
@@ -160,6 +180,8 @@ static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
 	 if (off != -1 && ovl->printON != -1) 
 		ovl->printINT = off + ovl->printON;
 	 
+	av_log(ctx,AV_LOG_DEBUG, "init(). %s X %d, Y %d, H %d, W %d\n",ovl->imageName, ovl->printX,ovl->printY,ovl->printH,ovl->printW);
+
 	 //  check incorrect combination of parameters
 	 if (ovl->printW < 0 && ovl->printH > 0) {
 		av_log(ctx, AV_LOG_ERROR, "Height without Width specified.\n");
@@ -184,14 +206,28 @@ static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
 }
 
 static int query_formats(AVFilterContext *ctx)
-{		
+{
+/*
+    AVFilterFormats *formats;
+    enum PixelFormat pix_fmt;
+    int ret;
+*/	
+		
     enum PixelFormat pix_fmts[] = {
         PIX_FMT_YUV444P,  PIX_FMT_YUV422P,  PIX_FMT_YUV420P,
         PIX_FMT_YUVJ444P, PIX_FMT_YUVJ422P, PIX_FMT_YUVJ420P,	
         PIX_FMT_NONE
     };
 
+	av_log(ctx, AV_LOG_DEBUG, "query_formats().\n");
+
     avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
+
+	av_log(ctx, AV_LOG_DEBUG, "query_formats(). exit\n");
+
+=======
+    avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
+>>>>>>> 9352602216821a58f0dd66bbd3014117ebafa534:vf_watermark.c
     return 0;
 }
 
@@ -227,7 +263,7 @@ static int config_props(AVFilterLink *outlink)
 //	av_log(ctx,AV_LOG_INFO,"hsub: %d vsub: %d iformat: %d oformat %d\n",ovl->hsub,ovl->vsub,inlink->format,outlink->format);
 
 	if ((ovl->printX % (1<<ovl->hsub) && ovl->hsub!=1)||(ovl->printY % (1<<ovl->vsub) && ovl->vsub!=1)) {
-			av_log(ctx, AV_LOG_ERROR, "Cannot use this position with this chroma subsampling. Chroma plane does not align. (Watermark may look distorted)\n");
+			av_log(ctx, AV_LOG_ERROR, "Cannot use this position with this chroma subsampling. Chroma plane will not align. (continuing with unaligned chroma planes, your watermark may look distorted)\n");
 	}
 
 	// open overlay image 
@@ -291,7 +327,10 @@ static int config_props(AVFilterLink *outlink)
 	
 	av_read_frame(pFormatCtx, &packet);
 	avcodec_decode_video2(pCodecCtx, overlay, &frameFinished, &packet);
+
+	// will always be GRAY8
 	
+	// should be all or nothing, so no real need to test both
 	// testing both incase one was missed.
 	if (ovl->printW == -1 || ovl->printH == -1)
 	{
@@ -315,6 +354,7 @@ static int config_props(AVFilterLink *outlink)
 	
 	av_log(ctx,AV_LOG_DEBUG,"mask linesize %d\n",ovl->maskFrame->linesize[0]);
 	
+	// copy the alpha mask, it appears to be getting lost during sws_scale
 	/*	copy the alpha mask, it appears to be getting lost during sws_scale
 		copy the alpha if it exists and then scale it. */
 	ovl->mask=0;
@@ -324,13 +364,20 @@ static int config_props(AVFilterLink *outlink)
 		pCodecCtx->pix_fmt == PIX_FMT_BGRA)
 	{
 
+		// copy the alpha if it exists and then scale it.
 		int alpha = 0;
 		if (pCodecCtx->pix_fmt == PIX_FMT_RGBA || pCodecCtx->pix_fmt == PIX_FMT_BGRA) { alpha = 3; }
 		
-		for (int y=0; y < pCodecCtx->height; y++)
-			for (int x=0; x < pCodecCtx->width; x++) 
+		for (int y=0; y < pCodecCtx->height; y++) {
+			// memcpy((tempMask->data[0] + y * tempMask->linesize[0]),
+			for (int x=0; x < pCodecCtx->width; x++) {
 				*(tempMask->data[0] + y * tempMask->linesize[0] + x ) = *(overlay->data[0] + y * overlay->linesize[0] + x* 4 + alpha);
-			
+			}
+		}
+		// scale and copy
+		
+		av_log(ctx,AV_LOG_DEBUG," in: %dx%d, out %dx%d\n",pCodecCtx->width, pCodecCtx->height,ovl->printW, ovl->printH);
+		
 		// scale & copy, even if we don't scale, we still need to copy
 				
 		sws=sws_getContext(pCodecCtx->width, pCodecCtx->height, PIX_FMT_GRAY8, 
@@ -340,12 +387,18 @@ static int config_props(AVFilterLink *outlink)
 		sws_scale(sws, tempMask->data, tempMask->linesize, 0, pCodecCtx->height, 
 				  ovl->maskFrame->data, ovl->maskFrame->linesize);
 				  
-		ovl->mask = 1;
+				  ovl->mask = 1;
 
 	}
+	
+	av_log(ctx,AV_LOG_DEBUG, "config_props() sws_getContext\n");
 
+	
+	av_log(ctx,AV_LOG_DEBUG,"inlink format %d, png format %d\n",inlink->format,pCodecCtx->pix_fmt);
+	
 	// convert to output frame format.
 
+	
 	sws=sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, 
 					   ovl->printW, ovl->printH, inlink->format,
 					   SWS_BILINEAR, NULL, NULL, NULL);

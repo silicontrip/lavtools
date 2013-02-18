@@ -3,12 +3,25 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- * a spacial bilateral filter
- *
- *  Bilateral filter  based on code from:
- *  http://user.cs.tu-berlin.de/~eitz/bilateral_filtering/
- * 
- *
+
+**<h3>Bilateral spacial filter</h3>
+**
+**<p> performs a bilateral filter over the video. Is horribly slow, and a little
+**too agressive.</p>
+**
+**<p>Based on code from <a href="http://user.cs.tu-berlin.de/~eitz/bilateral_filtering/">m.eitz</a> </p>
+**
+**<h4>EXAMPLE</h4>
+**<p>Useful options are:</p>
+**<pre>
+**-D 3
+**-R 3
+**</pre>
+**<p>
+**Higher values of R cause more smearing.  Higher values of D increase the 
+**search radius, and increase processing time.
+**</p>
+
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
  *  the Free Software Foundation; either version 2 of the License, or
@@ -23,12 +36,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
-gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
-
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -38,8 +46,8 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define VERSION "0.1"
@@ -70,8 +78,8 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvbilateral -r sigmaR -d sigmaD [-v 0..2]\n"
-			 "\t -r sigmaR set the "
-			 "\t -r sigmaD set the "
+			 "\t -r sigmaR set the similarity distance\n"
+			 "\t -r sigmaD set the search radius\n"
 
 			);
 }
@@ -248,13 +256,9 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	y4m_stream_info_t in_streaminfo ;
 	int c ;
 	const static char *legal_flags = "v:hr:d:i";
 	

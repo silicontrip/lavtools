@@ -2,7 +2,103 @@
  *  yuvdeinterlace.c
  *  deinterlace  2004 Mark Heath <mjpeg at silicontrip.org>
  *  converts interlaced source material into progressive by doubling the frame rate and adaptively interpolating required pixels.
- *
+ 
+**<h3>Double frame rate de-interlacer</h3>
+**
+**<p>A non destructive deinterlacer.  Converts to a double frame
+**rate, progressive yuv stream for further processing
+**by temporal based non interlace aware filters.  
+**Then re-interlaced or frame rate converted before encoding.</P>
+**
+**<p>This program uses an experimental detection algorithm to detect interlaced
+**pixels and then uses cubic interpolation to replace pixels that are suffering
+**comb effect.  Image data is not lost as the frame rate is doubled.  This 
+**adaptive algorithm is quite effective, however not ideal.  Noisy artefacts 
+**may be apparent in (some) most material.
+**</P>
+**<p>
+**I have been looking into implimenting a 4 point DFT on the data and
+**looking at the amplitude of the high (/2) frequency component.  This has lead
+**to better results but appears to still have issues at the boundary of
+**interlace and non interlace material.
+**</p>
+**<p>
+**The above code could be extended to an arbitary number of pixels, comparing
+**the /2 (interlace) frequency with the /4 frequency.</p>
+**<p>
+**This release of the code I have played with comparing both the high frequency
+**and the next frequency component.  The high frequency shows areas of interlace
+**however also detects edges.  The second frequency component detects edges.
+**By balancing these two results, by trial and error, I beleive to have come up
+**with a better detection algorithm.   However  non interpolated interlace artefacts
+**are still apparent.  This is the best results so far.
+**</p>
+**<p>
+**Just when I thought I tuned the DFT algorithm to the best parameters.  I came up
+**with another method that simply looked for a &quot;greater than, smaller than, greater
+**than&quot; pattern and as a result are now detecting interlace much more accurately than
+**before.  I also added an additional test on the AC value to eliminate non noticable 
+**interlace (or noise).  This version is now available.
+**</p>
+**<p>
+**I am extremely happy with the results.  Although not perfect, there are false positives,
+**and a few false negatives.  Of course I will be fine tuning this filter even more over
+**time.  For now I would use it as part of a yuv filter chain for my production videos.
+**</p>
+**<p> I have implemented a YUV filter of yadif de-interlacer. I beleive it produces better 
+**results than this filter.  I am ceasing work on this filter.  Unless some novel de-interlace
+**algorithm comes out.</p>
+**
+**<h4>TODO</h4>
+**<p>
+**Write a pixel merging algorithm for conversion of 25i material to 25p (rather than 50p).<br>
+**Look at ways to perform anti-aliasing for fixing up nearest neighbour de-interlace filters. These sorts of filters
+**should be shot, as it's quite easy to write a linear interpolator, not to difficult to write a cubic interpolator,
+**and look I just wrote an adaptive type de-interlacer.  I can't believe I saw this kind of de-interlace filter used
+**on an episode of Top Gear the other night.  Disgraceful!<br>
+**Provide a screenshot...
+**</p>
+**
+**<h4>Ideas</h4>
+**
+**<p> I have been experimenting with training a neural net to *learn*
+**what the missing pixel may be from the surrounding pixels.  My
+**first attempts have not worked, if it is trained from images with
+**many uphill lines, then uphill interpolation looks fantastic but
+**downhill is very jaggered.</p>
+**
+**<p> I am thinking about increasing the number of hidden layers in
+**the neural net to see if it improves interpolation.  The code is
+**in java, I'll just need some encouragement to look at it again.</p>
+**
+**<p>
+**This part of the code would replace the cubic interpolator.  
+**Detection would still be separate algorithm, however comparing
+**the interpolated pixel with the real pixel and replacing the real
+**pixel with the interpolated if it is different by a threshold amount.
+**May prove a better algorithm.
+**</p>
+**
+**<UL> 
+**
+**<li>29th April 2008 Tuned the DFT parameters to optimal. However artefacts are still apparent.</li>
+**<li>13th April 2008 Implemented a 4 point DFT interlace detection algorithm.</li>
+**<li>10th April 2008 Implemented a cubic interpolation algorithm. Do you know
+**how hard it is to find programmatic information about this on the web?
+**<li>6th April 2008 Optimised the code for better performance.</li>
+**<li>October 2007 Changed the code to an adaptive deinterlace filter. With linear interpolation.  The re-interlace code is probably not needed as my yuvafps does a better job.</li>
+**<li> 26th April 2005.  Fixed a bug which incorrectly detected
+**the end of file, creating more frames in the output.</li>
+**<li>9th April 2005 New features which now produces a full height
+**frame, by line duplication.  Also contains code from yuvdeprogress,
+**to re-interlace the stream.</li> 
+**
+**</ul>
+**
+**<h4>Example</h4> 
+**<p> by default yuvdeinterlace will double the frame rate and convert fields
+**into full height frames. No arguments needed.</P>
+
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-PatiÒo Barbolani <barbolani at jazzfree.com>
  *
@@ -27,9 +123,6 @@
  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 // minimum number of pixels needed to detect interlace.
 #define PIXELS 4
@@ -43,8 +136,9 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
+#include "utilyuv.h"
 
 #define YUVDE_VERSION "1.6.1"
 
@@ -92,6 +186,7 @@ static void print_usage()
 			 "\t\t 2: deinterlace to half height double framerate. (only good for spacial filters)\n"
 			 "\t\t 3: deinterlace to full height same frame rate. (Merges both fields into one)\n"
 			 "\t\t 4: Interlace to full height half frame rate. (re-interlace)\n" 
+			 "\t\t 5: deinterlace to full height same frame rate. (Drops one field)\n"
 			 "\t -I[t|b|p] force interlace mode\n"
 			 "\t -f deinterlace entire frame (no adaptive detection)\n"
 			 "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
@@ -99,29 +194,11 @@ static void print_usage()
 			 );
 }
 
-// Allocate a uint8_t frame
-int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	m[0] = (uint8_t *)malloc(fs);
-	m[1] = (uint8_t *)malloc(cfs);
-	m[2] = (uint8_t *)malloc(cfs);
-	
-	if( !m[0] || !m[1] || !m[2]) {
-		return -1;
-	} else {
-		return 0;
-	}
-	
-}
 
-//Copy a uint8_t frame
-int chromacpy(uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
+//Copy a uint8_t frame 
+// The frame dimensions version.
+
+int chromacpyfd(uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 {
 	
 	int fs,cfs;
@@ -135,21 +212,6 @@ int chromacpy(uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 	
 }
 
-// returns the opposite field ordering
-int invert_order(int f)
-{
-	switch (f) {
-			
-		case Y4M_ILACE_TOP_FIRST:
-			return Y4M_ILACE_BOTTOM_FIRST;
-		case Y4M_ILACE_BOTTOM_FIRST:
-			return Y4M_ILACE_TOP_FIRST;
-		case Y4M_ILACE_NONE:
-			return Y4M_ILACE_NONE;
-		default:
-			return Y4M_UNKNOWN;
-	}
-}
 
 int_detect3 (int x, int y,uint8_t *m[3],frame_dimensions *fd)
 {
@@ -186,7 +248,7 @@ int int_detect2 (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	int i,w,h,t;
 	int m1,m2,m3,m4;
 	
-	int mean=0;
+	//int mean=0;
 	
 	// mjpeg_warn("int_detect");
 		
@@ -237,10 +299,9 @@ int int_detect (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	uint8_t luma[PIXELS];
 	int hp = PIXELS/2;
 	int i,w,h;
-	int hfd=0 ,lfd=0;
 	
-	int ar,ai,br,bi,cr,ci,dr,di;
-	int a,b,c,d;
+	int br,bi,cr;
+	int b,c;
 	
 	// mjpeg_warn("int_detect");
 	
@@ -394,20 +455,21 @@ uint8_t scalar_interpolate (uint8_t v0, uint8_t v1, uint8_t v2, uint8_t v3) {
 static void deint_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 {
 	
-	int w,h,cw,ch,cwr,chr,xcwr,ychr,ychrn,ychrp,ychrcw;
-	int ychrn2,ychrp2;
-	int tluma, tchromu,tchromv;
-	int chroma_posp,chroma_posn;
-	int chroma_posp2,chroma_posn2;
-	
-	
+	int w,h,cw;
 	
 	h = fd->plane_height_luma; 
 	w = fd->plane_width_luma;
-	ch = fd->plane_height_chroma; 
+//	ch = fd->plane_height_chroma; 
 	cw = fd->plane_width_chroma;
 	
 	if (y<=h) { 
+		
+		int cwr,chr,xcwr,ychr,ychrn,ychrp,ychrcw;
+		int ychrn2,ychrp2;
+		int tluma, tchromu,tchromv;
+		int chroma_posp,chroma_posn;
+		int chroma_posp2,chroma_posn2;
+		
 		
 		// most common values for cwr and chr are 1,2 or 4
 		
@@ -508,7 +570,7 @@ static void deint_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensi
 static void merge_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 {
 	
-	int w,h,cw,ch,cwr,chr,xcwr,ychr,ychrcw;
+	int w,h,cw,cwr,chr,xcwr,ychr,ychrcw;
 	int ychr1,ychr2,ychr3,ychr4;
 	int tluma, tchromu,tchromv;
 	int chroma_pos1,chroma_pos2, chroma_pos3,chroma_pos4;
@@ -516,7 +578,7 @@ static void merge_pixels (int x, int y,uint8_t *m[3],uint8_t *n[3],frame_dimensi
 	
 	h = fd->plane_height_luma; 
 	w = fd->plane_width_luma;
-	ch = fd->plane_height_chroma; 
+	//ch = fd->plane_height_chroma; 
 	cw = fd->plane_width_chroma;
 	
 	// even y
@@ -648,11 +710,11 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 	// this detection algorithm takes PIXELS vertical pixels and looks for the classic interlace pattern
 	// if interlace is detected the *missing* pixels are interpolated.
 	
-	int x,y,hp;
-	int w,h,cw,ch;
+	int x,y;
+	int w,h;
 	int mark = 0;
 	int full = 0;
-	uint8_t luma[PIXELS];
+	//uint8_t luma[PIXELS];
 	
 //	mjpeg_warn("deint_frame");
 	
@@ -660,14 +722,14 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 	h = fd->plane_height_luma; 
 	w = fd->plane_width_luma;
 	
-	chromacpy(m,n,fd);
-	chromacpy(l,n,fd);
+	chromacpyfd(m,n,fd);
+	chromacpyfd(l,n,fd);
 	
 	mark = getMark();
 	full = getFullframe();
 	
 	for (x=0; x<w; x++) {
-		for (y=0; y<h; y+=2) {
+		for (y=0; y<h; y++) {
 			// is interpolation required
 			// there may be a more efficient way to de-interlace a full frame
 			if (full != 0 || int_detect3(x,y,n,fd) ) {
@@ -681,10 +743,14 @@ static void deint_frame (uint8_t *l[3], uint8_t *m[3], uint8_t *n[3], frame_dime
 						merge_pixels(x,y,l,n,fd);
 //						merge_pixels(x,y+1,l,n,fd);
 						break;
+					case 5:
+						if (!(y%2)) { deint_pixels(x,y,l,n,fd); }
+						break;
+
 					default:
-						deint_pixels(x,y,l,n,fd);
+						if (!(y%2)) { deint_pixels(x,y,l,n,fd); }
 //deint_pixels(x,y+2,l,n,fd);
-						deint_pixels(x,y+1,m,n,fd);
+						if (y%2) { deint_pixels(x,y,m,n,fd); }
 //						deint_pixels(x,y+3,m,n,fd);
 						break;
 				}
@@ -765,7 +831,7 @@ static void deinterlace(int fdIn,
 			//mjpeg_warn("write");
 			
 			
-			if (getMark() == 3 || getMark() == 1) {
+			if (getMark() == 3 || getMark() == 1 || getMark() == 5) {
 				write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_bdata );
 			} else if (interlaced == Y4M_ILACE_TOP_FIRST) {
 				write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_tdata );
@@ -814,7 +880,6 @@ static void depro(  int fdIn
 	uint8_t            *yuv_data[3] ;
 	uint8_t            *yuv_o1data[3] ;
 	uint8_t            *yuv_o2data[3] ;
-	int                frame_data_size ;
 	int                read_error_code ;
 	int                write_error_code ;
 	int interlaced = -1;            //=Y4M_ILACE_NONE for not-interlaced scaling, =Y4M_ILACE_TOP_FIRST or Y4M_ILACE_BOTTOM_FIRST for interlaced scaling
@@ -823,7 +888,6 @@ static void depro(  int fdIn
 	// Allocate memory for the YUV channels
 	interlaced = y4m_si_get_interlace(outStrInfo);
 	h = y4m_si_get_height(inStrInfo) ; w = y4m_si_get_width(inStrInfo);
-	frame_data_size = h * w;
 	if (chromalloc(yuv_data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
@@ -956,7 +1020,6 @@ int main (int argc, char *argv[])
 	y4m_ratio_t frame_rate;
 	int interlaced,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
 	int height;
-	int fullframe=0;
 	int c ;
 	const static char *legal_flags = "I:v:i:pchfm:";
 	
@@ -1052,6 +1115,7 @@ int main (int argc, char *argv[])
 		case 0: // double frame rate
 			frame_rate.n *= 2 ;
 		case 3: // same height, same frame rate (merge)
+		case 5:
 			if (yuv_interlacing != Y4M_UNKNOWN)
 				y4m_si_set_interlace(&in_streaminfo, yuv_interlacing);
 			

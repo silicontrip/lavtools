@@ -3,7 +3,20 @@
  
  *  black-fade  2004 Mark Heath <mjpeg at silicontrip.org>
  *  will fade a yuv4 stream to black after a specified number of frames
- *
+ 
+** <h3>Black Fade</h3>
+**
+** <p> Will fade the video to black after X number of frames. Uses a
+** trial and error method of fading to black, could be better.</p>
+** 
+** <P>Use this program to give a more professional feel to the
+** downloaded internet videos for converting</p>
+**<pre>
+**usage: yuvfps -c Count -f fadeCount [-v -h]
+**      -c skip this number of frames
+**      -f fade to black for this many frames
+**</pre>
+ 
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Pati<F1>o Barbolani <barbolani at jazzfree.com>
  *
@@ -23,18 +36,14 @@
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
-
 #include <stdio.h>
 #include <sys/types.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <signal.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVFPS_VERSION "0.1"
 
@@ -50,28 +59,7 @@ static void print_usage()
 			 "\t -h print this help\n"
 			 );
 }
-//
-// Resamples the video stream coming from fdIn and writes it
-// to fdOut.
-// There are two variations of the same theme:
-//
-//   Upsampling: frames are duplicated when needed
-//   Downsampling: frames from the original are skipped
-//
-//   Parameters:
-//
-//      fdIn,fdOut : File descriptors for reading and writing the stream
-//      inStream, outStream: stream handlers for the source and destination streams.
-//                           It is assumed that they are correctly initialized from/to
-//                           their respective file I/O streams with the desired sample rates.
-//
-//      src_frame_rate, frame_rate: ratios for source and destination frame rate
-//                           (note that this may not match the information contained
-//                            in the stream itself due to command line options      
-//                           )
-// 
-//  In both cases a Bresenham - style algorithm is used.
-//
+
 static void resample(  int fdIn 
 					 , y4m_stream_info_t  *inStrInfo
 					 , int fdOut
@@ -165,7 +153,7 @@ int main (int argc, char *argv[])
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate, src_frame_rate ;
+	y4m_ratio_t  src_frame_rate ;
 	
 	const static char *legal_flags = "f:c:v:h";
 	int c ;

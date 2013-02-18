@@ -3,35 +3,86 @@
 // adapted from
 // avcodec_sample.0.4.9.cpp
 
-// A small sample program that shows how to use libavformat and libavcodec to
-// read video from a file.
-//
-// This version is for the 0.4.9-pre1 release of ffmpeg. This release adds the
-// av_read_frame() API call, which simplifies the reading of video frames 
-// considerably. 
-//
-// gcc -O3 -I/usr/local/include -I/usr/local/include/mjpegtools -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
-// quadrant gcc -O3 -I/sw/include -I/sw/include/mjpegtools -L/sw/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv 
-// gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.c -o libav2yuv
-//
-// valgrind build
-
-gcc -g -I/opt/local/include -I/usr/local/include/mjpegtools libav2yuv.c -c
-gcc -g -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lavcodec -lavformat -lavutil -lmjpegutils libav2yuv.o -o libav2yuv
-dsymutil libav2yuv
-
-// I really should put history here
-// 5th Jul 2010 - Force framerate command line argument not parsed correctly
-// 5th Apr 2009 - First regression test passed.  EDL version.
-// 18th Mar 2009 - Audio range fixed, sample accurate.
-// 17th Mar 2009 - Multifile version.
-// 4th Feb 2009 - Range version. Audio range not working
-// 2nd Feb 2009 - Audio writing version.
-// 7th July 2008 - Added Force Format option 
-// 4th July 2008 - Added Aspect Ratio Constants
-// 3rd July 2008 - Will choose the first stream found if no stream is specified  
-// 24th Feb 2008 - Found an unexpected behaviour where frames were being dropped. libav said that no frame was decoded. Have output the previous frame in this instance.
-//
+**<h3>Anything to YUV</h3>
+**<p>
+**Tested the EDL mode of this program.  Discovered what appears to be
+**a bug in the libav library in which frames are unexpectedly dropped.
+**I have attempted to work around the bug, however it appears to be filetype
+**specific.  Currently m2v files work accurately.  Use this with the
+**updated yuvdiag tool to stamp your video for EDL file creation.  Or
+**use a frame accurate video player.
+**</p>
+**<p>This is a very simple generic anything to yuv tool, using the
+**libav library from ffmpeg. It supports any video file that libav
+**supports (which includes WMV3s now!!!) it can be used to replace
+**the -vo yuv4mpeg option of mplayer or the -f yuv4mpegpipe option
+**of ffmpeg.  The tool can also override yuv header values, in the
+**case of incorrect aspect ratio or interlacing etc.  And will perform
+**simple chroma subsampling conversion, if the source file is not in
+**the desired chroma subsampling mode.  </p>
+**
+**<p>
+**This release now includes an EDL file parser, for joining or editing
+**files. This is a first working version is not optimised and may contain bugs.
+**I hope to have more testing over the next few months. See sample EDL file
+**below.
+**</P>
+**<p>
+**Now uses sws_scaler for chroma resampling rather than the deprecated img_convert,
+**So will compile with the newer version of FFMPEG.  Also have provision for decode_audio3
+**and decode_video2 which has appeared in the latest ffmpeg snapshot.
+**</p>
+**
+**<p>I use this regularily for file conversions, so I hope the code
+**is quite mature, with a thorough set of options and help.  Any bugs
+**should be picked up quickly.  </p>
+**<p>As I do want this to be a one program fits all for yuv video conversion
+**any bugs or issues you have with the software I would like to hear about
+**so I can make this the best software.</p>
+**
+**<h4>EXAMPLE</h4> <p> <tt> libav2yuv strangefile.avi | y4m-yuvfilter
+**| ffmpeg -f yuv4mpegpipe -i - -vcodec whatever wantedfile.avi</tt>
+**</p>
+**
+**<h4>HISTORY</h4> <p> <ul> 
+**<li>9 July 2010. Fixed a major memory leak when concatenating multiple files (eg large number of jpeg frames)
+**<li>5 July 2010. Discovered that the SW_SCALER wasn't implemented (or that the changes were lost) Correctly implemented SW_SCALER version. Also added Mono and 420jpeg chroma modes.
+**<li>13 May 2009. SWS_SCALER version
+**<li>5 Apr 2009. First release of the EDL.
+**<li>2 Feb 2009. First release of the PCM writer version (use the -w flag)
+**<li>23 Feb 2008.  Found a bug that would
+**cause frames to be dropped.  Determined that the AV decode function
+**is decoding data but not saying the frame is finished.  I have not
+**been able to find why it is exhibiting this behaviour.  I have
+**worked around this behaviour by outputting the previous frame when
+**the frame is not finished.  I am not sure if this causes issues
+**with non frame based, packet based files (such as mpeg) </li> </ul>
+**<p>
+**<pre>
+**# <filename|tag>  <EditMode>  <TransitionType>[num]  [duration]  [srcIn]  [srcOut]  [recIn]  [recOut]
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_01.mpg VA C 0:0:0:0 0:4:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_02.mpg VA C 0:0:0:0 0:3:39:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_03.mpg VA C 0:0:0:0 0:2:38:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_04.mpg VA C 0:0:0:0 0:3:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_05.mpg VA C 0:0:0:0 0:4:39:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_06.mpg VA C 0:0:0:0 0:4:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_07.mpg VA C 0:0:0:0 0:2:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_08.mpg VA C 0:0:0:0 0:3:9:0
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_09.mpg VA C 0:0:0:0 0:3:38:15
+** /Users/d332027/Movies/TheFaceOfTheEnemy/the_face_of_the_enemy_10.mpg VA C 0:0:0:0 0:5:46:0
+**</pre>
+**</p>
+**<p>
+**The fields are:
+**<ul>
+**<li>Filename, the full or relative path to the movie asset.
+**<li>Editmode; Audio, video or both. Use the Audio or video from the movie asset.
+**<li>Transition type; Currently C only (cut) may include more in future.
+**<li>Source In; Timestamp indicating the first frame to write.
+**<li>Source Out; Timestamp indicating the last frame to write. (An in and out of 0:0:0:0 will write 1 frame)
+**</ul>
+**</p>
+**
 */
 
 /* Possible inclusion for EDL
@@ -112,7 +163,7 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	//	char *pattern = "^([0-9]+)(:)([0-9]+)(:)([0-9]+)([:;])([0-9]+)$";
 	
 	regex_t tc_reg;
-	int h=0,m=0,s=0,f=0,le,off,fn;
+	int h=0,m=0,s=0,f=0,fn;
 	size_t num=8;
 	regmatch_t codes[8];
 	int nummatch;
@@ -126,13 +177,15 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 		return -1;
 	}
 	
-	// fprintf (stderr, "REGEXEC %s\n",tc);
-	
+	//fprintf (stderr, "REGEXEC %s\n",tc);
 	nummatch = regexec(&tc_reg, tc, num, codes, 0 );
+	//fprintf (stderr, "REGEXEC %s\n",tc);
+
 	if ( nummatch != 0) {
 		fprintf (stderr, "parser: error REGEX match failed\n");
 		return -1;
 	}
+	
 	/*
 	 for (f=0; f<num; f++)  {
 	 le =codes[f].rm_eo-codes[f].rm_so;
@@ -173,7 +226,6 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 	if (codes[1].rm_eo != 0) 
 		h = atoi(tc+codes[1].rm_so);
 	
-	//	fprintf (stderr," %d - %d - %d - %d \n",h,m,s,f);
 	
 	regfree( &tc_reg );
 	
@@ -182,7 +234,12 @@ int64_t parseTimecodeRE (char *tc, int frn, int frd) {
 		return -1;
 	}
 	
+	// why aren't we doing fn64 at this point?
+	// fprintf (stderr," %d - %d - %d - %d \n",h,m,s,f);
+
 	frameNumber =   1.0 * ( h * 3600 + m * 60 + s ) * fps + f;
+	
+	
 	fn = (frameNumber);
 	
 	fn64 = fn;
@@ -223,7 +280,7 @@ int parseEDLline (char *line, char **fn, char *audio, char *video, char **in, ch
 	size_t num=10;
 	regmatch_t codes[10];
 	int rc,f;
-	int le,off;
+
 	char *va;
 	
 	// char *pattern = "^([^ ]+)( +)([AVBavb]|VA|va)( +)(C)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)( +)([0-9]*:?[0-9]*:?[0-9]*[;:]?[0-9]+)$";
@@ -286,7 +343,7 @@ int edlcount (FILE *file, int *maxline, int *lines)
 {
 	
 	int c;
-	int max=0;
+
 	int count=0;
 	
 	*maxline=0;
@@ -418,7 +475,7 @@ int parseEDL (char *file, struct edlentry **list)
 }
 
 
-void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
+void avchromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 {
 	
 	int y,h,w;
@@ -447,6 +504,7 @@ void chromacpy (uint8_t *dst[3], AVFrame *src, y4m_stream_info_t *sinfo)
 	
 }
 
+/*
 void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 {	
 	int fs,cfs;
@@ -463,7 +521,7 @@ void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 
 	
 }
-
+*/
 static void print_usage() 
 {
 	fprintf (stderr,
@@ -481,6 +539,7 @@ static void print_usage()
 			 "\t -s select stream other than stream 0\n"
 			 "\t -o<outputfile> write to file rather than stdout\n"
 			 "\t -r [[[HH:]MM:]SS:]FF-[[[HH:]MM:]SS:]FF playout only these frames\n"
+			 "\t -E enable y4m extensions (may be required if source file is not a common format)\n"
 			 "\t -h print this help\n"
 			 );
 }
@@ -501,10 +560,10 @@ int parseCommandline (int argc, char *argv[],
 {
 	
 	int i;
-	const static char *legal_flags = "wchI:F:A:S:o:s:f:r:e:v:";
+	const static char *legal_flags = "EwchI:F:A:S:o:s:f:r:e:v:";
 	
 	*aw=0;
-	*sct=CODEC_TYPE_VIDEO;
+	*sct=AVMEDIA_TYPE_VIDEO;
 	*yi = Y4M_UNKNOWN;
 	*ysm = Y4M_UNKNOWN;
 	*fdOut = 1;
@@ -517,6 +576,9 @@ int parseCommandline (int argc, char *argv[],
 	// Parse commandline arguments
 	while ((i = getopt (argc, argv, legal_flags)) != -1) {
 		switch (i) {
+			case 'E':
+				y4m_accept_extensions(1); // manual override 
+				break;
 			case 'I':
 				switch (optarg[0]) {
 					case 'P':
@@ -570,7 +632,7 @@ int parseCommandline (int argc, char *argv[],
 				break;	
 			case 'w':
 				*aw=1;
-				*sct=CODEC_TYPE_AUDIO;
+				*sct=AVMEDIA_TYPE_AUDIO;
 				break;
 			case 'c':
 				*con = 1;
@@ -612,7 +674,12 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	AVCodecContext *pCodecCtx;
 	
 	// Open video file
+	
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
 	if(av_open_input_file(pfc, fn, avif, 0, NULL)!=0)
+#else
+	if(avformat_open_input(pfc, fn, avif, NULL)!=0)
+#endif
 		return -1; // Couldn't open file
 	
 	pFormatCtx = *pfc;
@@ -620,14 +687,21 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	//	fprintf (stderr,"av_find_stream_info\n");
 	
 	// Retrieve stream information
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
 	if(av_find_stream_info(pFormatCtx)<0)
+#else
+	if(avformat_find_stream_info(pFormatCtx,NULL)<0)
+#endif
 		return -1; // Couldn't find stream information
 	
 	//	fprintf (stderr,"dump_format\n");
 	
 	// Dump information about file onto standard error
+#if LIBAVFORMAT_VERSION_MAJOR  < 53
 	dump_format(pFormatCtx, 0, fn, 0);
-	
+#else
+	av_dump_format(pFormatCtx, 0, fn, 0);
+#endif
 	// Find the first video stream
 	// not necessarily a video stream but this is legacy code
 	for(i=0; i<pFormatCtx->nb_streams; i++)
@@ -662,11 +736,19 @@ int open_av_file (AVFormatContext **pfc, char *fn, AVInputFormat *avif, int st, 
 	}
 	
 	// Open codec
+#if LIBAVCODEC_VERSION_MAJOR < 53 
 	if(avcodec_open(pCodecCtx, *pCodec)<0) {
+#else
+	if(avcodec_open2(pCodecCtx, *pCodec,NULL)<0) {
+#endif
 		mjpeg_error("open_av_file: could not open codec");
 		return -1; // Could not open codec
 	}
-	
+		
+#if 0 
+	}
+#endif
+		
 	return avStream;
 }
 
@@ -762,7 +844,7 @@ int init_video(y4m_ratio_t *yuv_frame_rate, int stream, AVFormatContext *pFormat
 int manual_write_yuv (uint8_t *m[3], y4m_stream_info_t *sinfo) {
 	
 	int fs,cfs;
-	int r=0;
+
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
 	
@@ -782,17 +864,29 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 				   uint8_t  *yuv_data[3], int fdOut, y4m_frame_info_t *frameinfo, int write, struct SwsContext *img_convert_ctx)
 {
 	
-	int frameFinished,numBytes;
+	int frameFinished=0,numBytes;
 	int write_error_code;
-	int yuv_width[3];
+
+	int bytesDecoded;
 	
 	//	mjpeg_debug ("decode video");
 	
-#ifdef HAVE_AVCODEC_DECODE_VIDEO2
-	avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+	// will this cause dropped frames to be output...?? or simply crash.
+	while (!frameFinished) {
+#if LIBAVCODEC_VERSION_MAJOR < 52
+		bytesDecoded = avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
 #else
-	avcodec_decode_video(pCodecCtx, pFrame, &frameFinished, packet->data, packet->size);
+		bytesDecoded = avcodec_decode_video2(pCodecCtx, pFrame, &frameFinished, packet);
+
 #endif
+	
+	// I'm trying to handle broken video files, but It's causing the audio to lose sync with the video.
+	// Maybe the PTS might help
+	
+		if (bytesDecoded < 0 ) 
+			mjpeg_error ("error decoding frame at PTS: %lld\n", packet->pts);
+	
+		
 	//
 	// Did we get a video frame?
 	// frameFinished does not mean decoder finished, means that the packet can be freed.
@@ -861,14 +955,15 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			if ((write_error_code = y4m_write_stream_header(fdOut, streaminfo)) != Y4M_OK)
 			{
 				// should this be fatal?
-				mjpeg_error("Write header failed: %s", y4m_strerr(write_error_code));
+				// Yes as it will result in a broken yuv4mpeg stream, and may cause downstream filters to crash.
+				mjpeg_error_exit1("Write header failed: %s", y4m_strerr(write_error_code));
 			} 
 			*header_written = 1;
 		}
 	}
 	
 	if (*header_written) {
-		// if (frameFinished) { 
+		 if (frameFinished) { 
 		// appears that if it's not decoded there isn't anything in the ffmpeg buffer
 		// this can cause seg faults.
 		
@@ -880,7 +975,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 			
 			//	mjpeg_debug("after sws_scale(). %d \n",convert_mode);
 			
-			chromacpy(yuv_data,*pFrame444,streaminfo);
+			avchromacpy(yuv_data,*pFrame444,streaminfo);
 			
 			//	manual_write_yuv(yuv_data,streaminfo);
 			
@@ -896,8 +991,9 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 #ifdef DEBUGPROCESSVIDEO
 			fprintf (stderr,"yuv_data: %x pFrame: %x\n",yuv_data,pFrame);
 #endif					
-			chromacpy(yuv_data,pFrame,streaminfo);
+			avchromacpy(yuv_data,pFrame,streaminfo);
 		}
+		 }
 	} /* frame finished */
 	
 	if (write && *header_written) {
@@ -912,7 +1008,7 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		mjpeg_debug ("Stream info length: %d chroma: %d",y4m_si_get_framelength(streaminfo),y4m_si_get_chroma(streaminfo));
 		
 		
-		if ((write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data) != Y4M_OK)) 
+		if (((write_error_code = y4m_write_frame(fdOut, streaminfo, frameinfo, yuv_data)) != Y4M_OK)) 
 			mjpeg_error("Write frame failed: %s", y4m_strerr(write_error_code));
 		
 	}
@@ -925,24 +1021,23 @@ int process_video (AVCodecContext  *pCodecCtx, AVFrame *pFrame, AVFrame **pFrame
 		/*
 		 mjpeg_warn("freeing packet: %x",packet);
 		 */
-#ifdef HAVE_AV_FREE_PACKET
-		//mjpeg_warn ("using av_free_packet");
-		av_free_packet(packet);
-#else
-		//mjpeg_warn ("using av_freep");
+#if LIBAVCODEC_VERSION_MAJOR < 52 
 		av_freep(packet);
+#else
+		av_free_packet(packet);
 #endif
 		 
 	}
+		/*
 	else 
 		mjpeg_warn ("FRAME NOT FINISHED");
-	
-	
+	*/
+	}
 }	
 
 int main(int argc, char *argv[])
 {
-    AVFormatContext *pFormatCtx;
+    AVFormatContext *pFormatCtx=NULL;
 	AVInputFormat *avif = NULL;
     AVCodecContext  *pCodecCtx;
     AVCodec         *pCodec;
@@ -950,7 +1045,7 @@ int main(int argc, char *argv[])
     AVFrame         *pFrame444 = NULL; 
     AVPacket        packet;
     int             numBytes,numSamples;
-	int audioWrite = 0,search_codec_type=CODEC_TYPE_VIDEO;
+	int audioWrite = 0,search_codec_type=AVMEDIA_TYPE_VIDEO;
     uint8_t         *buffer = NULL;
 	int16_t		*aBuffer = NULL;
 	char *tc_in = NULL,*tc_out=NULL;
@@ -974,10 +1069,11 @@ int main(int argc, char *argv[])
 	char *openfile;
 	int edlfiles,edlcounter;
 	struct edlentry *edllist = NULL;
-	int y,skip=0;
-	int                frame_data_size ;
+	int skip=0;
+
 	uint8_t            *yuv_data[3] ;      
 	struct SwsContext *img_convert_ctx =NULL;
+	int writeAudioCount=0;
 	
 	y4m_stream_info_t streaminfo;
 	y4m_frame_info_t frameinfo;
@@ -1044,7 +1140,7 @@ int main(int argc, char *argv[])
 				// should allow for multiple edits from the one file.
 				
 				mjpeg_info("running EDL entry: %d %s",edlcounter,edllist[edlcounter].filename);
-				fprintf (stderr,"in: %s out: %s",edllist[edlcounter].in, edllist[edlcounter].out);
+				mjpeg_info ("in: %s out: %s\n",edllist[edlcounter].in, edllist[edlcounter].out);
 				
 				//fprintf (stderr,"in: %s out: %s audio: %d video: %d\n",edllist[edlcounter].in, edllist[edlcounter].out,edllist[edlcounter].audio, edllist[edlcounter].video);
 				
@@ -1056,9 +1152,9 @@ int main(int argc, char *argv[])
 				
 				skip = 0;
 				if (audioWrite && edllist[edlcounter].audio) {
-					search_codec_type = CODEC_TYPE_AUDIO;
+					search_codec_type = AVMEDIA_TYPE_AUDIO;
 				} else if (!audioWrite && edllist[edlcounter].video) {
-					search_codec_type = CODEC_TYPE_VIDEO;
+					search_codec_type = AVMEDIA_TYPE_VIDEO;
 				} else {
 					// skip if write mode (audio or video) != edit mode
 					skip = 1;
@@ -1075,6 +1171,10 @@ int main(int argc, char *argv[])
 							// this means that we've exited early from an edit
 							startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 							endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+							//fprintf (stderr,"samples written : %d\n",writeAudioCount);
+							//fprintf (stderr,"in: %s(%lld) out: %s(%lld) %d frames\n",tc_in,startFrame, tc_out,endFrame,endFrame-startFrame+1);
+							//writeAudioCount = 0;
+
 							if (startFrame == -1 || endFrame == -1) {
 								mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 							}
@@ -1093,7 +1193,11 @@ int main(int argc, char *argv[])
 									newFile=0;
 								}
 							}
+						} else {			
+							avcodec_close(pCodecCtx);
+							av_close_input_file(pFormatCtx);
 						}
+							
 					}
 				}
 				
@@ -1103,6 +1207,7 @@ int main(int argc, char *argv[])
 			}
 			if (!skip) {
 				if (newFile) {
+				//	fprintf (stderr,"not new file\n");
 					stream = open_av_file(&pFormatCtx, openfile, avif, stream, search_codec_type, &pCodecCtx, &pCodec);
 					if (stream == -1) {
 						mjpeg_error("Error with video file: %s",openfile);
@@ -1113,7 +1218,7 @@ int main(int argc, char *argv[])
 					if (audioWrite && tc_in) {
 						if (yuv_frame_rate.d == 0) {
 							for(i=0; i<pFormatCtx->nb_streams; i++) {
-								if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO)
+								if(pFormatCtx->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO)
 								{
 									yuv_frame_rate.n = pFormatCtx->streams[i]->r_frame_rate.num;
 									yuv_frame_rate.d = pFormatCtx->streams[i]->r_frame_rate.den;
@@ -1122,13 +1227,14 @@ int main(int argc, char *argv[])
 						}
 					}
 					if (audioWrite==0) {
+						// fprintf (stderr,"init_video: 1147\n");
 						if (init_video( &yuv_frame_rate, stream, pFormatCtx, &yuv_aspect, &convert, &yuv_ss_mode, &convert_mode, &streaminfo, &pFrame) == -1) {
 							mjpeg_error_exit1("Error initialising video file: %s",openfile);
 							exit (-1);
 						}
 						if (convert) {
 							img_convert_ctx = sws_getContext(pCodecCtx->width, pCodecCtx->height, pCodecCtx->pix_fmt, 
-															 pCodecCtx->width, pCodecCtx->height, convert_mode, 0, 0, NULL, NULL); 
+															 pCodecCtx->width, pCodecCtx->height, convert_mode, SWS_BICUBIC, NULL, NULL, NULL); 
 						}
 					} else {
 						numBytes = AVCODEC_MAX_AUDIO_FRAME_SIZE;
@@ -1150,8 +1256,14 @@ int main(int argc, char *argv[])
 					// now do I remember how NTSC drop frame works?
 					if (tc_in) {
 						startFrame = -1; endFrame = -1;
+						//fprintf (stderr,"in: %s out: %s\n",tc_in, tc_out);
+
 						startFrame = parseTimecodeRE(tc_in,yuv_frame_rate.n,yuv_frame_rate.d);
 						endFrame = parseTimecodeRE(tc_out,yuv_frame_rate.n,yuv_frame_rate.d);
+					//	fprintf (stderr,"samples written : %d\n",writeAudioCount);
+					//	fprintf (stderr,"in: %s(%lld) out: %s(%lld) %d frames\n",tc_in,startFrame, tc_out,endFrame,endFrame-startFrame+1);
+						//writeAudioCount = 0;
+
 						if (startFrame == -1 || endFrame == -1) {
 							mjpeg_error_exit1("Timecode range, incorrect format. Should be:\n\t[[[[hh:]mm:]ss:]ff]-[[[[hh:]mm:]ss:]ff]\n\t[[[[hh:]mm:]ss;]ff]-[[[[hh:]mm:]ss;]ff] for NTSC drop code\nmm and ss may be 60 or greater if they are the leading digit.\nff maybe FPS or greater if leading digit\n");
 						}
@@ -1174,13 +1286,14 @@ int main(int argc, char *argv[])
 				while(av_read_frame(pFormatCtx, &packet)>=0 && !finishedit)
 				{
 					
-					// fprintf (stderr,"inside loop until nothing left\n");
+					// fprintf (stderr,"inside loop until nothing left searching for stream %d==%d with %x\n",stream,packet.stream_index,pFormatCtx);
 					
 					
 					// Is this a packet from the desired stream?
 					if(packet.stream_index==stream)
 					{
 						// Decode video frame
+						//fprintf (stderr,"check for audio write\n");
 						if (audioWrite==0) {
 							
 							// fprintf (stderr,"frame counter: %lld  (%lld - %lld)\n",frameCounter,startFrame,endFrame);
@@ -1219,20 +1332,28 @@ int main(int argc, char *argv[])
 								// for some reason when we finish, we skip a frame which is causing syncing problems.
 								// so count it here.
 								// I would like to determine the cause, but this is the work around.
-								frameCounter++;
+								// I think the cause might've been the way I've been decoding the frames
+								// and possibly the way I've been determining the audio cut points.
+								// I'm going to turn it off for now and see if my edits get any better.
+								// Currently I'm considering EDL functionality broken.
+								
+								// frameCounter++;
+								
+								process_video (pCodecCtx, pFrame, &pFrame444, &packet, &buffer,
+											   &header_written, &yuv_interlacing, convert, convert_mode, &streaminfo,
+											   yuv_data, fdOut, &frameinfo,0,img_convert_ctx);
+								
 								
 							}
 							
-							if (header_written) {
-								frameCounter++;
-							} 
+							if (header_written) { frameCounter++; } 
 							
 						} else {
 							// decode Audio
-#ifdef HAVE_AVCODEC_DECODE_AUDIO3
-							avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
-#else
+#if LIBAVCODEC_VERSION_MAJOR < 53
 							avcodec_decode_audio2(pCodecCtx, aBuffer, &numBytes, packet.data, packet.size);
+#else
+							avcodec_decode_audio3(pCodecCtx, aBuffer, &numBytes, &packet);
 #endif
 							//
 							
@@ -1242,38 +1363,58 @@ int main(int argc, char *argv[])
 							numSamples = numBytes / BYTES_PER_SAMPLE;
 							
 							if (!tc_in) {
-								write (1, aBuffer, numBytes);
+								
+									writeAudioCount = write (1, aBuffer, numBytes);
+								if (writeAudioCount != numBytes)
+									mjpeg_warn("fewer sample bytes written (1)");
 								
 								// whole decoded frame within range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
-									   sampleCounter+numSamples <= (endFrame+1) * samplesFrame  ) {
-								write (1, aBuffer, numBytes);
+									   sampleCounter+numSamples < (endFrame+1) * samplesFrame  ) {
 								
+
+								writeAudioCount = write (1, aBuffer, numBytes); 
+								if (writeAudioCount != numBytes)
+									mjpeg_warn("fewer sample bytes written (2)");
+
 								// start of buffer outside range, end of buffer in range
 							} else if (sampleCounter+numSamples >= startFrame * samplesFrame &&
-									   sampleCounter+numSamples <= (endFrame+1) * samplesFrame ) {
+									   sampleCounter+numSamples < (endFrame+1) * samplesFrame ) {
 								// write a subset
-								
-								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+
+								fprintf (stderr, "sample writer 3: startFrame=%lld endFrame=%lld sampleCounter=%lld-%lld\n",startFrame*samplesFrame,(1+endFrame)*samplesFrame, sampleCounter,sampleCounter+numSamples);
+
+								writeAudioCount = write(1,aBuffer+(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE,numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+								if (writeAudioCount != numBytes-(startFrame*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE)
+									mjpeg_warn("fewer sample bytes written (3)");
+								fprintf (stderr,"Samples written %d\n",writeAudioCount/BYTES_PER_SAMPLE);
+
 								
 								// start of buffer in range, end of buffer outside range.
 							} else if (sampleCounter >= startFrame * samplesFrame &&
-									   sampleCounter <= (endFrame+1) * samplesFrame ) {
+									   sampleCounter < (endFrame+1) * samplesFrame ) {
 								// write a subset
+								fprintf (stderr, "sample writer 4: startFrame=%lld endFrame=%lld sampleCounter=%lld-%lld\n",startFrame*samplesFrame,(1+endFrame)*samplesFrame, sampleCounter,sampleCounter+numSamples);
+
+								writeAudioCount = write(1,aBuffer,((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
+								if (writeAudioCount != ((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE)
+									mjpeg_warn("fewer sample bytes written (4)");
 								
-								write(1,aBuffer,((endFrame+1)*samplesFrame-sampleCounter)*BYTES_PER_SAMPLE);
-								
+								fprintf (stderr,"Samples written %d\n",writeAudioCount/BYTES_PER_SAMPLE);
+
 								// entire range contained within buffer
 							} else if (sampleCounter < startFrame * samplesFrame &&
 									   sampleCounter+numSamples > (endFrame+1) * samplesFrame ) {
 								// write a subset
-								
-								write(1,aBuffer+(startFrame-sampleCounter)*BYTES_PER_SAMPLE,((endFrame+1)-startFrame)*samplesFrame*BYTES_PER_SAMPLE);
+								writeAudioCount = write(1,aBuffer+(startFrame *samplesFrame-sampleCounter)*BYTES_PER_SAMPLE,(endFrame-startFrame+1)*samplesFrame*BYTES_PER_SAMPLE);
+								if (writeAudioCount != (endFrame-startFrame+1)*samplesFrame*BYTES_PER_SAMPLE)
+									mjpeg_warn("fewer sample bytes written (5)");
+
 							} 
 							sampleCounter += numSamples;
 							numBytes  = AVCODEC_MAX_AUDIO_FRAME_SIZE;	
 							
-							if (sampleCounter > (endFrame+1) * samplesFrame) {
+							if (tc_in && sampleCounter > (endFrame+1) * samplesFrame) {
 								finishedit = 1;
 							}
 							
@@ -1285,19 +1426,25 @@ int main(int argc, char *argv[])
 						 */
 					}
 				
-#ifdef HAVE_AV_FREE_PACKET
-					av_free_packet(&packet);
-#else
+					
+					// fprintf (stderr,"free packet\n");
+#if LIBAVCODEC_VERSION_MAJOR < 52 
 					av_freep(&packet);
+#else
+					av_free_packet(&packet);
 #endif
+					//fprintf (stderr,"end free packet\n");
+
+					//fprintf (stderr,"End Loop : %x  %x\n",pFormatCtx, &packet);
 					
 				}
 			}
 			
 			// Free the packet that was allocated by av_read_frame
 			//	av_free_packet(&packet);
-			avcodec_close(pCodecCtx);
-			av_close_input_file(pFormatCtx);
+			// we need to close this else where.
+		//	avcodec_close(pCodecCtx);
+		//	av_close_input_file(pFormatCtx);
 
 		}
 	
@@ -1333,12 +1480,12 @@ int main(int argc, char *argv[])
 	}
 	mjpeg_debug("Freeing av_packet");
 
-#ifdef HAVE_AV_FREE_PACKET
-                av_free_packet(&packet);
+#if LIBAVCODEC_VERSION_MAJOR < 52 
+	av_freep(&packet);
 #else
-                av_freep(&packet);
+	av_free_packet(&packet);
 #endif
-
+	
 
 	// END of file loop
 
@@ -1356,6 +1503,9 @@ int main(int argc, char *argv[])
 		mjpeg_info ("%d Frames processed",frameCounter);
 	} else {
 		mjpeg_info ("%d Samples processed",sampleCounter);
+		// fprintf (stderr,"samples written %d\n",writeAudioCount);
 	}
+	if(edllist!=NULL) 
+		free(edllist);
     return 0;
 }

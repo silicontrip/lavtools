@@ -97,7 +97,16 @@ if ($dir = @opendir("$blogdir")) {
 </a>
 <p><a href="<?=$file?>"><?=$file?></a>
 <?php
+if (file_exists("$blogdir/$base.html")) {
 include ("$blogdir/$base.html");
+} else {
+$lines = file($file);
+foreach ($lines as $line) if(preg_match('/^\*\*/', $line)) print preg_replace("/^\*\*/", " ", $line);
+}
+if (is_dir("$blogdir/${base}_images")) {
+?><h3>Images</h3><?
+news::imageinline("lavtools/${base}_images",-1);
+}
 ?>
 </div>
 <?php

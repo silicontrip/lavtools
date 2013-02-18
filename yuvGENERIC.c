@@ -2,6 +2,8 @@
  *  generic.c
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
+
+** <p> Skeleton code for generic spatial filters </p>
  *
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
@@ -23,9 +25,6 @@
 gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -35,8 +34,8 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define VERSION "0.1"
@@ -134,13 +133,11 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	y4m_ratio_t frame_rate;
 	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
 	int c ;
 	const static char *legal_flags = "hv:";
 	
@@ -171,20 +168,26 @@ int main (int argc, char *argv[])
 	// The streaminfo structure is filled in
 	// ***************************************************************
 	// INPUT comes from stdin, we check for a correct file header
+
+	y4m_accept_extensions(1); // most of my code is chroma subsampling aware
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuv (version " VERSION ") is a general deinterlace/interlace utility for yuv streams");
+	mjpeg_info ("yuv (version " VERSION ") is a general utility for yuv streams");
 	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
 	// mjpeg_info ("yuvcropdetect -h for help");
 	
-    
-	y4m_write_stream_header(fdOut,&in_streaminfo);
+    y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
+	// make changes to output stream
+	
+	
+	y4m_write_stream_header(fdOut,&out_streaminfo);
 	/* in that function we do all the important work */
 	filter(fdIn, &in_streaminfo);
 	y4m_fini_stream_info (&in_streaminfo);
-	
+	y4m_fini_stream_info (&out_streaminfo);
+
 	return 0;
 }
 /*

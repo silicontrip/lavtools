@@ -1,5 +1,176 @@
 /*
  *  yuvCIFilter.c
+**<h3>YUV Core Image Filter</h3>
+**<p>
+**This allows Core Image filters to operate on yuv streams.
+**</p>
+**
+**<p>
+**Obviously this program only works under OSX.
+**</p>
+**
+**<h4>Example</h4>
+**<p>
+**To choose a Core Image filter use the -f option:
+**<tt> | yuvCIFilter -f CILineScreen | </tt>
+**</p>
+**
+**<p>
+**Default filter settings are shown:
+**<pre>
+**{CILineScreen {
+**    inputAngle = 0;
+**    inputCenter = [150 150];
+**    inputImage = <null>;
+**    inputSharpness = 0.7;
+**    inputWidth = 6;
+**}}
+**</pre>
+**<p>
+**Any of the filter settings can be changed using the -i option:
+**<tt>yuvCIFilter -f CILineScreen -i inputAngle=45.0</tt>
+**</p>
+**<p>
+**Multiple settings are separated by a comma:
+**<tt>yuvCIFilter -f CILineScreen -i inputAngle=45.0,inputWidth=12.0</tt>
+**</p>
+**<p>
+**Some settings require a space and will need to be quoted on the command line.
+**</P>
+**
+**<p>
+**A list of filters is obtained by giving an invalid filtername to the -f
+**option (such as help)
+**</p>
+**<p>
+**<pre>
+**CIAdditionCompositing
+**CIAffineClamp
+**CIAffineTile
+**CIAffineTransform
+**CIAreaAverage
+**CIAreaHistogram
+**CIAreaMaximum
+**CIAreaMaximumAlpha
+**CIAreaMinimum
+**CIAreaMinimumAlpha
+**CIBarsSwipeTransition
+**CIBlendWithMask
+**CIBloom
+**CIBoxBlur
+**CIBumpDistortion
+**CIBumpDistortionLinear
+**CICheckerboardGenerator
+**CICircleSplashDistortion
+**CICircularScreen
+**CICircularWrap
+**CICMYKHalftone
+**CIColorBlendMode
+**CIColorBurnBlendMode
+**CIColorControls
+**CIColorCube
+**CIColorDodgeBlendMode
+**CIColorInvert
+**CIColorMap
+**CIColorMatrix
+**CIColorMonochrome
+**CIColorPosterize
+**CIColumnAverage
+**CIComicEffect
+**CIConstantColorGenerator
+**CICopyMachineTransition
+**CICrop
+**CICrystallize
+**CIDarkenBlendMode
+**CIDifferenceBlendMode
+**CIDiscBlur
+**CIDisintegrateWithMaskTransition
+**CIDisplacementDistortion
+**CIDissolveTransition
+**CIDotScreen
+**CIEdges
+**CIEdgeWork
+**CIEightfoldReflectedTile
+**CIExclusionBlendMode
+**CIExposureAdjust
+**CIFalseColor
+**CIFlashTransition
+**CIFourfoldReflectedTile
+**CIFourfoldRotatedTile
+**CIFourfoldTranslatedTile
+**CIGammaAdjust
+**CIGaussianBlur
+**CIGaussianGradient
+**CIGlassDistortion
+**CIGlassLozenge
+**CIGlideReflectedTile
+**CIGloom
+**CIHardLightBlendMode
+**CIHatchedScreen
+**CIHeightFieldFromMask
+**CIHexagonalPixellate
+**CIHoleDistortion
+**CIHueAdjust
+**CIHueBlendMode
+**CIKaleidoscope
+**CILanczosScaleTransform
+**CILenticularHaloGenerator
+**CILightenBlendMode
+**CILinearGradient
+**CILineOverlay
+**CILineScreen
+**CILuminosityBlendMode
+**CIMaskToAlpha
+**CIMaximumComponent
+**CIMaximumCompositing
+**CIMedianFilter
+**CIMinimumComponent
+**CIMinimumCompositing
+**CIModTransition
+**CIMotionBlur
+**CIMultiplyBlendMode
+**CIMultiplyCompositing
+**CINoiseReduction
+**CIOpTile
+**CIOverlayBlendMode
+**CIPageCurlTransition
+**CIParallelogramTile
+**CIPerspectiveTile
+**CIPerspectiveTransform
+**CIPinchDistortion
+**CIPixellate
+**CIPointillize
+**CIRadialGradient
+**CIRandomGenerator
+**CIRippleTransition
+**CIRowAverage
+**CISaturationBlendMode
+**CIScreenBlendMode
+**CISepiaTone
+**CIShadedMaterial
+**CISharpenLuminance
+**CISixfoldReflectedTile
+**CISixfoldRotatedTile
+**CISoftLightBlendMode
+**CISourceAtopCompositing
+**CISourceInCompositing
+**CISourceOutCompositing
+**CISourceOverCompositing
+**CISpotColor
+**CISpotLight
+**CIStarShineGenerator
+**CIStripesGenerator
+**CISunbeamsGenerator
+**CISwipeTransition
+**CITorusLensDistortion
+**CITriangleTile
+**CITwelvefoldReflectedTile
+**CITwirlDistortion
+**CIUnsharpMask
+**CIVortexDistortion
+**CIWhitePointAdjust
+**CIZoomBlur
+**</pre>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -27,8 +198,8 @@ gcc -I/usr/local/include/mjpegtools -L/usr/local/lib -lmjpegutils -framework Qua
 #include <unistd.h>
 #include <signal.h>
 #include <string.h>
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #import <Foundation/NSAutoreleasePool.h>
 #import <QuartzCore/QuartzCore.h>
@@ -75,73 +246,61 @@ static void list_filters()
 }
 
 
-// Allocate a uint8_t frame
-int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
+
+/* Convert an NSImage into a CVPixelBufferRef */
+
+// - (CVPixelBufferRef)fastImageFromNSImage:(NSImage *)image
+
+
+
+CVPixelBufferRef fastImageFromNSImage(NSImage *image) 
 {
+	CVPixelBufferRef buffer = NULL;
 	
-	int fs,cfs;
+	// config
+	size_t width = [image size].width;
+	size_t height = [image size].height;
+	size_t bitsPerComponent = 8; // *not* CGImageGetBitsPerComponent(image);
+	CGColorSpaceRef cs = CGColorSpaceCreateWithName(kCGColorSpaceGenericRGB);
+	CGBitmapInfo bi = kCGImageAlphaNoneSkipFirst; // *not* CGImageGetBitmapInfo(image);
+	NSDictionary *d = [NSDictionary dictionaryWithObjectsAndKeys:[NSNumber numberWithBool:YES], kCVPixelBufferCGImageCompatibilityKey, [NSNumber numberWithBool:YES], 
+					   kCVPixelBufferCGBitmapContextCompatibilityKey, nil];
 	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
+	// create pixel buffer
+	CVPixelBufferCreate(kCFAllocatorDefault, width, height, kYUVSPixelFormat, (CFDictionaryRef)d, &buffer);
+	CVPixelBufferLockBaseAddress(buffer, 0);
+	void *rasterData = CVPixelBufferGetBaseAddress(buffer);
+	size_t bytesPerRow = CVPixelBufferGetBytesPerRow(buffer);
 	
-	m[0] = (uint8_t *)malloc( fs );
-	m[1] = (uint8_t *)malloc( cfs);
-	m[2] = (uint8_t *)malloc( cfs);
-	
-	if( !m[0] || !m[1] || !m[2]) {
-		return -1;
-	} else {
-		return 0;
+	// context to draw in, set to pixel buffer's address
+	CGContextRef ctxt = CGBitmapContextCreate(rasterData, width, height, bitsPerComponent, bytesPerRow, cs, bi);
+	if(ctxt == NULL){
+		NSLog(@"could not create context");
+		return NULL;
 	}
 	
+	// draw
+	NSGraphicsContext *nsctxt = [NSGraphicsContext graphicsContextWithGraphicsPort:ctxt flipped:NO];
+	[NSGraphicsContext saveGraphicsState];
+	[NSGraphicsContext setCurrentContext:nsctxt];
+	[image compositeToPoint:NSMakePoint(0.0, 0.0) operation:NSCompositeCopy];
+	[NSGraphicsContext restoreGraphicsState];
+	
+	CVPixelBufferUnlockBaseAddress(buffer, 0);
+	CFRelease(ctxt);
+	
+	return buffer;
 }
 
-//Copy a uint8_t frame
-int chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
+CVPixelBufferRef fastImageFromNSImageRep (NSBitmapImageRep *imageRep)
 {
 	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	memcpy (m[0],n[0],fs);
-	memcpy (m[1],n[1],cfs);
-	memcpy (m[2],n[2],cfs);
+	NSImage * image = [[NSImage alloc] initWithSize:[imageRep size]];
+	[image addRepresentation: imageRep];
+	return  fastImageFromNSImage(image);
 	
 }
 
-// set a solid colour for a uint8_t frame
-set_colour(uint8_t *m[], y4m_stream_info_t  *sinfo, int y, int u, int v )
-{
-	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	memset (m[0],y,fs);
-	memset (m[1],u,cfs);
-	memset (m[2],v,cfs);
-	
-}
-
-
-// returns the opposite field ordering
-int invert_order(int f)
-{
-	switch (f) {
-		
-		case Y4M_ILACE_TOP_FIRST:
-			return Y4M_ILACE_BOTTOM_FIRST;
-		case Y4M_ILACE_BOTTOM_FIRST:
-			return Y4M_ILACE_TOP_FIRST;
-		case Y4M_ILACE_NONE:
-			return Y4M_ILACE_NONE;
-		default:
-			return Y4M_UNKNOWN;
-	}
-}
 
 /* looks like I need to write my own RGB - YUV converter
 
@@ -191,7 +350,6 @@ int argbYUV(uint8_t **m, NSBitmapImageRep *bit, y4m_stream_info_t *si)
 	d=[bit bitmapData];
 	bpp=[bit bytesPerRow];
 
-
 // Allocate a yuv444 buffer
 
 	fs = y4m_si_get_plane_length(si,0);
@@ -205,7 +363,6 @@ int argbYUV(uint8_t **m, NSBitmapImageRep *bit, y4m_stream_info_t *si)
 	}
 
 // convert to YUV444
-
 
 	for (y=0; y< height; y++) {
 		for(x=0; x<width; x++) {
@@ -275,6 +432,7 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 	// I assume that plane 0 is larger or equal to the other planes
 	
 	pixelFormat=CVPixelBufferGetPixelFormatType(cf);
+	// NSLog(@"pixel Format: %c%c%c%c", pixelFormat>>24,(pixelFormat>>16)&0xff,(pixelFormat>>8)&0xff,pixelFormat&0xff);
 	switch (pixelFormat) {
 			
 		case 'y420':
@@ -296,7 +454,7 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 				
 			}
 			break;
-			case 'yuvs':
+			case kYUVSPixelFormat:
 			
 			h = CVPixelBufferGetHeight(cf);
 			w = CVPixelBufferGetWidth(cf);
@@ -307,18 +465,44 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 			// NSLog(@"yuvCVcopy: BytesPerRow: %d %dx%d size: %d",b,w,h,sz);
 			
 			//optimise this, do want.
+			
+			int w2 = w>>1;
+			
 			for(y=0; y< h; y++ ) {
-				for(x=0; x< (w>>1); x++ ) {
+				int uv=0, iuv=0;
+				// it is worth this if statement
+				if (y4m_si_get_interlace(si) == Y4M_ILACE_NONE) {
+					 uv = (y>>1) * w2;
+				} else {
+					// I think this interlacing algorithm is correct.
+
+					 iuv = (((y>>2)<<1) + (y % 2)) * w2;
+				}
+				// some optimsations
+				int cy = 0;
+				int yb = y * b;
+				for(x=0; x< w2; x++ ) {
+					
+					// some optimsations
+					int ybx4 = (x << 2) + yb;
 					
 					// planar vs packed, it's such a religious argument.
-					cy0 = m[0][(x<<1) + y * w];
-					cy1 = m[0][(x<<1) + 1 + y * w];
+					
+				//	cy0 = m[0][(x<<1) + y * w];
+				//	cy1 = m[0][(x<<1) + 1 + y * w];
+
+					// some optimsations
+					cy0 = m[0][cy++];
+					cy1 = m[0][cy++];
 					
 					//  assuming 420 sub sampling
 					if (y4m_si_get_interlace(si) == Y4M_ILACE_NONE) {
 						// Progressive, 1,1,2,2,3,3,4,4
-						cu = m[1][x + (y>>1) * (w>>1)];					
-						cv = m[2][x + (y>>1) * (w>>1)];
+						
+						int xuv = x + uv;
+						
+						cu = m[1][xuv];					
+						cv = m[2][xuv];
 					} else {
 						// Interlaced, 1,2,1,2,3,4,3,4
 						// 0,1,2,3,4,5,6,7  y
@@ -329,17 +513,18 @@ void yuvCVcopy(CVPixelBufferRef cf,  uint8_t ** m, y4m_stream_info_t *si)
 						// 0,0,1,1,2,2,3,3 >>1
 						// 0,1,1,2,2,3,3,4 >>1 + %2
 						
-						// I think this interlacing algorithm is correct.
-						cu = m[1][x + (((y>>2)<<1) + (y % 2)) * (w>>1)];					
-						cv = m[2][x + (((y>>2)<<1) + (y % 2)) * (w>>1)];
+						int xiuv = x + iuv;
+
+						cu = m[1][xiuv];					
+						cv = m[2][xiuv];
 					}
 					
 					// lets see if this is correct
 			//		NSLog(@"yuvCVcopy: %d %dx%d",b,y,x);
-					buffer[y * b + (x << 2)] = cy0;
-					buffer[y * b + (x << 2)  + 1] = cu;
-					buffer[y * b + (x << 2) + 2] = cy1;
-					buffer[y * b + (x << 2) + 3] = cv;
+					buffer[ybx4] = cy0;
+					buffer[ybx4 + 1] = cu;
+					buffer[ybx4 + 2] = cy1;
+					buffer[ybx4 + 3] = cv;
 				}
 			}
 			break;

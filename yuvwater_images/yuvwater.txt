@@ -1,0 +1,1 @@
+Watermark removed. <br> The brightness change, adjusted by the -l option. Scaling differences due to external program.

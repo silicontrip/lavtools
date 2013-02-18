@@ -22,11 +22,54 @@
   *  You should have received a copy of the GNU General Public License
   *  along with this program; if not, write to the Free Software
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+
+**<h3>Flat Transparent watermark detection and removal</h3>
+
+**<p>Attempts to detect and remove semi-transperant watermarks from
+**the source.  Produces a PGM file of the detected watermark which
+**is used to remove or reduce the effect.  This is a two pass process,
+**the documentation is a little sparse.  </p>
+
+**<p> The first pass produces a grey image file (PGM format) this is
+**done by averaging luma of all the frames.  The idea is that the
+**watermark is consistantly brighter than the surrounding video.
+**The PGM file may need to be edited (blurred) in places as other
+**long term artifacts may be visible.  </p>
+
+**<p> The second pass modifies the luma of the video reducing the
+**brightness by the amount in the pgm file.  This is not a linear
+**reduction.  Trial and error was used to determine the correct
+**formula to reduce the luma by.  For flat watermarks, this function
+**is ideal.  </p>
+
+**<p> Non flat watermarks cannot be removed by this program.  Colour
+**watermarks cannot be removed by this program.  Solid watermarks
+**cannot be removed by this program.  </p>
+
+**<h4>EXAMPLE</h4>
+**<p> Pass 1:  <tt> | yuvwater -d > watermark.pgm </tt></p>
+
+**<p> May also use a black frame with the watermark showing, extracted
+**by other means.</P>
+
+**<p> pass 2 <tt>| yuvwater  yuvwater -m 145 -l 72  -u 384  -i
+**watermark.pgm | </tt> -m specifies the amount to remove, the lower
+**the number the darker the resulting watermark, good starting values
+**are 140.  -l specifies the black level for normalisation, good
+**starting values between 32-80. If the black is too light, increase
+**this value.  -u specifies the white level, good starting value 384,
+**if the white is too dark, decrease this value.  </p>
+
+**<h4>HISTORY</h4>
+**<ul> <li>26th April 2005. Fixed a bug which incorrectly detected
+**the end of file, creating more frames in the output.</li> <li>17th
+**May 2005.  Fixed a bug which incorrectly compared the pgm size and
+**the video size.</li> </ul>
+
+
+
   */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -36,8 +79,10 @@
 #include <strings.h>
 #include <fcntl.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
+
+#include "utilyuv.h"
 
 #define YUVPRO_VERSION "0.1"
 
@@ -258,9 +303,7 @@ int main (int argc, char *argv[])
 	int detect=0,verbose = 4; // LOG_ERROR ;
 	int fdIn = 0 ;
 	int fdWM = 0 ;
-	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	int brightness=128;
 	int multiple=MUL_SCALE;
 	int upper=0,lower=0,frames=-1;
 
@@ -320,6 +363,10 @@ int main (int argc, char *argv[])
 	if (detect) 
 		detectwm( fdIn,&in_streaminfo, frames );
 	else {
+		int fdOut = 1 ;
+		int brightness=128;
+
+		
 		y4m_init_stream_info (&out_streaminfo);
 		y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 		y4m_write_stream_header(fdOut,&out_streaminfo);

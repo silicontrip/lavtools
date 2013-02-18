@@ -3,6 +3,7 @@
   *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree dot com>
   *  Linear Frame averaging modification 2008 Mark Heath <mjpeg1 at silicontrip dot org>
   *
+** <p>This is an integer implementation of yuvafps.c </p>
   *
   *  Upsamples or downsamples a yuv stream to a specified frame rate
   *  Interlace modification 6 Sep 2006
@@ -41,8 +42,8 @@ gcc yuvaifps.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvaifps
 #include <string.h>
 
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 
 #define YUVFPS_VERSION "0.1"
 

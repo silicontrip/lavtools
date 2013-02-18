@@ -3,8 +3,28 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- *  based on code:
- *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
+** <h3>Bilateral temporal filter</h3>
+ 
+** <p> performs a temporal bilateral filter over the video. </p>
+** <p> As the bilateral filter is edge preserving, this filter has innate motion awareness
+** This filter attempts to perform a time based noise reduction while minimising ghosting.</p>
+ 
+** <p>Based on code from <a href="http://user.cs.tu-berlin.de/~eitz/bilateral_filtering/">m.eitz</a> </p>
+ 
+** <h4>EXAMPLE</h4>
+** <p>Useful options are:</p>
+** <pre>
+** -D 3
+** -R 3
+** </pre>
+** <p>
+** Higher values of R cause more ghosting.  Higher values of D increase the 
+** search radius, and increase processing time.
+** </p>
+** <h4>History</h4>
+** <p>6-Nov-2011 added y4m accept extensions. To allow for other chroma subsampling.</p>
+ 
+ 
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -23,9 +43,6 @@
  gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
  */
 
-#ifdef HAVE_CONFIG_H
-#include "config.h"
-#endif
 
 #include <stdio.h>
 #include <sys/types.h>
@@ -35,8 +52,8 @@
 #include <string.h>
 #include <math.h>
 
-#include "yuv4mpeg.h"
-#include "mpegconsts.h"
+#include <yuv4mpeg.h>
+#include <mpegconsts.h>
 #include "utilyuv.h"
 
 #define VERSION "0.1"
@@ -69,7 +86,9 @@ static struct parameters this;
 static void print_usage() 
 {
 	fprintf (stderr,
-			 "usage: yuv\n"
+			 "usage: yuvbilateral -r sigmaR -d sigmaD [-v 0..2]\n"
+			 "\t -r sigmaR set the similarity distance\n"
+			 "\t -r sigmaD set the search radius\n"
 			 );
 }
 
@@ -93,12 +112,14 @@ unsigned int similarity(int p, int s) {
 static void filterinitialize () {
 	
 	// int center;
-	int x,y,i;
+	int x,i;
 	
 	this.kernelRadius = this.sigmaD>this.sigmaR?this.sigmaD * 2:this.sigmaR * 2;
 	this.kernelRadius = this.kernelRadius / PRECISION;
 	
-	this.twoSigmaRSquared = (2 * (1.0 *this.sigmaR/PRECISION)  * (1.0 *this.sigmaR/PRECISION)) * PRECISION;
+//	this.twoSigmaRSquared = (2 * (1.0 *this.sigmaR/PRECISION)  * (1.0 *this.sigmaR/PRECISION)) * PRECISION;	
+	this.twoSigmaRSquared = (2 * (this.sigmaR * this.sigmaR)/PRECISION);
+
 	
 	this.kernelSize = this.kernelRadius * 2 + 1;
 	// center = (this.kernelSize - 1) / 2;
@@ -159,7 +180,8 @@ static void filterpixel(uint8_t **o, uint8_t ***p,int chan, int i, int j, int w,
 		
 		//fprintf (stderr,"kernel D %d. kp %d cen %d\n",this.kernelD[z],intensityKernelPos,intensityCenter);
 		
-		weight = this.kernelD[z] * similarity(intensityKernelPos,intensityCenter);
+		// multiplying two fixed precision numbers together squares the PRECISION. So need to remove it.
+		weight = this.kernelD[z] * similarity(intensityKernelPos,intensityCenter) / PRECISION;
 		totalWeight += weight;
 		sum += (weight * intensityKernelPos);
 		
@@ -201,20 +223,19 @@ static void filterframe (uint8_t *m[3], uint8_t ***n, y4m_stream_info_t *si)
 	
 }
 
-
+// temporal filter loop
 static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            ***yuv_data;
 	uint8_t				*yuv_odata[3];
+	uint8_t				**temp_yuv;
 	int                read_error_code ;
 	int                write_error_code ;
 	int c,d;
 	
 	// Allocate memory for the YUV channels
-	
-	
-	
+	// may move these off into utility functions
 	if (chromalloc(yuv_odata,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
@@ -253,9 +274,13 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[this.kernelSize-1] );
 		// shuffle
 		// should use pointers...
+		
+		temp_yuv = yuv_data[0];
 		for (c=0;c<this.kernelSize-1;c++) {
-			chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+	//		chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			yuv_data[c] = yuv_data[c+1];
 		}
+		yuv_data[this.kernelSize-1] = temp_yuv;
 		
 	}
 	
@@ -271,10 +296,13 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[this.kernelSize-1] );
 		// shuffle
-		// should use pointers...
+		temp_yuv = yuv_data[0];
 		for (c=0;c<this.kernelSize-1;c++) {
-			chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			// should use pointers...
+			//		chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			yuv_data[c] = yuv_data[c+1];
 		}
+		yuv_data[this.kernelSize-1] = temp_yuv;
 		
 	}
 	// finalise loop		
@@ -288,20 +316,25 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo )
 		y4m_init_frame_info( &in_frame );
 		
 		// shuffle
-		// should use pointers...
+		temp_yuv = yuv_data[0];
 		for (c=0;c<this.kernelSize-1;c++) {
-			chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			// should use pointers...
+			//		chromacpy(yuv_data[c],yuv_data[c+1],inStrInfo);
+			yuv_data[c] = yuv_data[c+1];
 		}
+		yuv_data[this.kernelSize-1] = temp_yuv;
 		
 	}
 	
+	// deallocate temporal buffer
 	
 	// Clean-up regardless an error happened or not
 	
 	
 	y4m_fini_frame_info( &in_frame );
 	chromafree(yuv_odata);
-	
+	chromafree(yuv_data);
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
 	
@@ -314,13 +347,9 @@ int main (int argc, char *argv[])
 {
 	
 	int verbose = 4; // LOG_ERROR ;
-	int top_field =0, bottom_field = 0,double_height=1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
-	y4m_stream_info_t in_streaminfo, out_streaminfo ;
-	y4m_ratio_t frame_rate;
-	int interlaced,ilace=0,pro_chroma=0,yuv_interlacing= Y4M_UNKNOWN;
-	int height;
+	y4m_stream_info_t in_streaminfo ;
 	float sigma;
 	int c ;
 	const static char *legal_flags = "?hv:r:d:";
@@ -357,6 +386,7 @@ int main (int argc, char *argv[])
 		
 	}
 	
+	y4m_accept_extensions(1);
 	
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
@@ -369,11 +399,12 @@ int main (int argc, char *argv[])
 	// The streaminfo structure is filled in
 	// ***************************************************************
 	// INPUT comes from stdin, we check for a correct file header
+	y4m_accept_extensions(1);
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
 	// Information output
-	mjpeg_info ("yuvtbilateral (version " VERSION ") is a general deinterlace/interlace utility for yuv streams");
+	mjpeg_info ("yuvtbilateral (version " VERSION ") is a temporal bilateral filter for yuv streams");
 	mjpeg_info ("(C) 2010 Mark Heath <mjpeg0 at silicontrip.org>");
 	mjpeg_info (" -h for help");
 	
