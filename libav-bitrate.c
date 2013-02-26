@@ -390,7 +390,7 @@ int main(int argc, char *argv[])
     av_free(pFrame);
 	
     // Close the codec
-    avcodec_close(pCodecCtx);
+    x(pCodecCtx);
 	
 	
     // Close the video file

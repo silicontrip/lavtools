@@ -17,7 +17,7 @@ MJPEGFLAGS= -lmjpegutils utilyuv.o
 TARGETS=libav-bitrate libav2yuv libavmux yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 		yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
 		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev yuvtemporal yuvtout \
-		yuvyadif yuvnlmeans yuvvalues
+		yuvyadif yuvnlmeans yuvvalues metadata-example
 
 
 all: $(TARGETS)
@@ -73,6 +73,9 @@ libav2yuv: libav2yuv.o utilyuv.o
 
 libav-bitrate: libav-bitrate.c progress.o
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  progress.o $<
+
+metadata-example: metadata-example.o
+	       $(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o metadata-example $<
 
 libavmux: libavmux.c 
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $<

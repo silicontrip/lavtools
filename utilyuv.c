@@ -345,6 +345,7 @@ int ychroma(int y, y4m_stream_info_t *si)
 	return ychr;
 }
 
+// I don't think this code is valid.
 int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int df) 
 {
 
@@ -358,6 +359,8 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 		if (df) {
 			if ( fabs(29.97 - (1.0 * fr.n / fr.d )) < 0.001){
 				// TODO: this only works for 29.97
+				// there is only drop code algorithm for 30000/1001
+				
 				int totalMinutes = 60 * h + m;
 				fr.n += fr.d - (fr.n % fr.d);
 				// 2 skipped frames per minute, excluding the 10 minute divisible ones.

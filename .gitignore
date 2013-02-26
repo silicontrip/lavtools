@@ -1,5 +1,6 @@
 *.o
 *.dSYM
+*.txt
 libav-bitrate
 libav2yuv
 libavmux
@@ -27,3 +28,4 @@ yuvyadif
 yuvnlmeans
 yuvvalues
 yuv2jpeg
+

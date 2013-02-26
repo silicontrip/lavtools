@@ -441,10 +441,10 @@ int main (int argc, char **argv)
         printf("%s=%s\n", tag->key, tag->value);
 		if (strcmp(tag->key,"major_brand")==0) {
 				// mp4 or mov
-			if (strcmp(tag->value,"qt")==0) {
+			if (strcmp(tag->value,"qt  ")==0) {
 					container = "mov";
 			}
-			if (strcmp(tag->value,"mp42")==0) {
+			if (strcmp(tag->value,"mp42")==0 || strcmp(tag->value,"isom")==0) {
 					container = "mp4";
 			}
 		}
