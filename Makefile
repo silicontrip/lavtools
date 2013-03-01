@@ -20,7 +20,7 @@ DEPRECATED_TARGETS=libav2yuv libavmux
 
 TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 		yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
-		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev yuvtemporal yuvtout \
+		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev yuvtout \
 		yuvyadif yuvnlmeans yuvvalues
 
 
