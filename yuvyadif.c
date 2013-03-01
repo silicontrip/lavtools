@@ -297,7 +297,10 @@ int main (int argc, char *argv[])
 	y4m_stream_info_t in_streaminfo ;
 	int c ;
 	const static char *legal_flags = "?hv:I:";
-	
+    int yuv_interlacing;
+
+    
+    
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
