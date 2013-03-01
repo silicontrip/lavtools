@@ -26,78 +26,82 @@ TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 
 all: $(TARGETS)
 
+yuvcrop: utilyuv.o yuvcrop.o
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
+
+
 yuvadjust: utilyuv.o yuvadjust.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvadjust  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvTHREADED: utilyuv.o yuvTHREADED.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvTHREADED  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvdeinterlace: utilyuv.o yuvdeinterlace.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvdeinterlace  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvtshot: yuvtshot.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvtshot  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvdiff: yuvdiff.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvdiff  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvfieldrev: yuvfieldrev.o utilyuv.o 
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvfieldrev  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvpixelgraph: yuvpixelgraph.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvpixelgraph  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvbilateral: yuvbilateral.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvbilateral  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvtbilateral: yuvtbilateral.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvtbilateral  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvtemporal: yuvtemporal.o utilyuv.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o yuvtemporal  $^
+	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 
 yuvtout: yuvtout.o utilyuv.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o yuvtout  $^
+	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvyadif: yuvyadif.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvyadif  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 
 yuvnlmeans: yuvnlmeans.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvnlmeans  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 
 yuvvalues: yuvvalues.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o yuvvalues  $^
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 
 yuv2jpeg: yuv2jpeg.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS)  $(JPEGFLAGS) -o yuv2jpeg $^
+	$(CC) $(LDFLAGS) $(CFLAGS)  $(JPEGFLAGS) -o $@ $^
 
 yuvsubtitle: yuvsubtitle.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(FREETYPEFLAGS) -o yuvsubtitle  $^
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(FREETYPEFLAGS) -o $@  $^
 
 yuvdiag: yuvdiag.o utilyuv.o
-	$(CC)  $(LDFLAGS) $(MJPEGFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o yuvdiag  $^
+	$(CC)  $(LDFLAGS) $(MJPEGFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o $@  $^
 
 yuvCIFilter: yuvCIFilter.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(COCOAFLAGS) -o yuvCIFilter $^
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(COCOAFLAGS) -o $@ $^
 
 yuvilace: yuvilace.o  utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) -lfftw3 -o yuvilace  $^
+	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) -lfftw3 -o $@  $^
 
 libav2yuv.o: libav2yuv.c
-	$(CC) $(FFMPEG_FLAGS) $(CFLAGS) -c -o libav2yuv.o $^
+	$(CC) $(FFMPEG_FLAGS) $(CFLAGS) -c -o $@ $^
 
 libav2yuv: libav2yuv.o utilyuv.o
-	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv $^
+	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
 
 libav-bitrate: libav-bitrate.c progress.o
-	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  $^
+	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@  $^
 
 libavmux: libavmux.c 
-	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $^
+	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
 
 clean:
 	 rm -f *.o $(TARGETS)
