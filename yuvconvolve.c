@@ -353,7 +353,7 @@ int main (int argc, char *argv[])
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 
-	src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
+	y4m_ratio_t src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 	
   // Information output
