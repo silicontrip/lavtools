@@ -270,7 +270,8 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	uint8_t				*yuv_tdata[3];
 	int                read_error_code  = Y4M_OK;
 	int                write_error_code = Y4M_OK ;
-
+    int src_frame_counter;
+    
 	chromalloc(yuv_data[0],inStrInfo);
 	chromalloc(yuv_data[1],inStrInfo);
 	chromalloc(yuv_data[2],inStrInfo);
@@ -363,6 +364,7 @@ int main (int argc, char *argv[])
 	int max_shift = 0;
 	int cl=3;
 	int c,adp=0;
+    float search;
 
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
@@ -412,7 +414,7 @@ int main (int argc, char *argv[])
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 
-	src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
+	y4m_ratio_t src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 	
 
