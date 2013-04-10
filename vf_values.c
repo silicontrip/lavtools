@@ -54,6 +54,9 @@ typedef struct
     int chromaw;
     int fc;
     
+    int fs;
+    int cfs;
+    
 } valuesContext;
 
 
@@ -139,6 +142,8 @@ static int config_props(AVFilterLink *outlink)
     values->chromaw = inlink->w >> hsub;
     values->chromah = inlink->h >> vsub;
 
+    values->fs = inlink->w * inlink->h;
+    values->cfs = values->chromaw * values->chromah;
     
 	return 0;
 	
@@ -205,7 +210,10 @@ static int filter_frame(AVFilterLink *link, AVFrame *in)
 	
     // should I copy the frame to the output?
     
-    fprintf(values->fh,"%d %d %d %d %d %d %d\n",values->fc,miny,maxy,minu,maxu,minv,maxv);
+    fprintf(values->fh,"%d %d %g %d %d %g %d %d %g %d\n",values->fc,
+            miny,1.0 * toty / values->fs, maxy,
+            minu,1.0 * totu / values->cfs, maxu,
+            minv,1.0 * totv / values->cfs, maxv);
     
     values->fc++;
 	av_frame_free(&in);
