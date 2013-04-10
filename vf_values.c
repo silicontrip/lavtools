@@ -43,14 +43,20 @@
  */
 
 typedef struct
-{	
+{
+    const AVClass *class;
+
+    
 	FILE  *fh;
     char *filename;
     
     int chromah;
     int chromaw;
+    int fc;
     
 } valuesContext;
+
+
 
 #define OFFSET(x) offsetof(valuesContext, x)
 
@@ -60,32 +66,45 @@ static const AVOption values_options[]= {
     {NULL}
 };
 
+AVFILTER_DEFINE_CLASS(values);
+
 
 // static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
 static av_cold int init(AVFilterContext *ctx, const char *args)
 {
-    valuesContext *valuesCtx = ctx->priv;
+    valuesContext *values = ctx->priv;
     int ret;
 
-    
-    av_opt_set_defaults(valuesCtx);
+    av_log(ctx, AV_LOG_DEBUG, ">>> init().\n");
 
-    if ((ret = av_set_options_string(valuesCtx, args, "=", ":")) < 0)
+    values->class = &values_class;
+
+    av_opt_set_defaults(values);
+
+    av_log(ctx, AV_LOG_DEBUG, "    init() av_set_options_string.\n");
+
+    
+    if ((ret = av_set_options_string(values, args, "=", ":")) < 0)
         return ret;
 
-    valuesCtx->fh = stdout;
+    values->fc = 0;
+    values->fh = stdout;
     
-    if (valuesCtx->filename != NULL)
+    if (values->filename != NULL)
     {
-        valuesCtx->fh = fopen (valuesCtx->filename,"w");
+        values->fh = fopen (values->filename,"w");
     }
+    
+    av_log(ctx, AV_LOG_DEBUG, "<<< init().\n");
+
+    
 	return 0;
 }
 
 static av_cold void uninit(AVFilterContext *ctx)
 {
-    valuesContext *valuesCtx = ctx->priv;
-    fclose(valuesCtx->fh);
+    valuesContext *values = ctx->priv;
+    fclose(values->fh);
 }
 
 static int query_formats(AVFilterContext *ctx)
@@ -106,7 +125,7 @@ static int config_props(AVFilterLink *outlink)
 {
 	
 	AVFilterContext *ctx = outlink->src;
-	valuesContext *valuesCtx = ctx->priv;
+	valuesContext *values = ctx->priv;
 	AVFilterLink *inlink = outlink->src->inputs[0];
 
     int hsub, vsub;
@@ -117,8 +136,8 @@ static int config_props(AVFilterLink *outlink)
     outlink->h = inlink->h;
 	
     // may need to check that this is correct
-    valuesCtx->chromaw = inlink->w >> hsub;
-    valuesCtx->chromah = inlink->h >> vsub;
+    values->chromaw = inlink->w >> hsub;
+    values->chromah = inlink->h >> vsub;
 
     
 	return 0;
@@ -129,7 +148,7 @@ static int config_props(AVFilterLink *outlink)
 static int filter_frame(AVFilterLink *link, AVFrame *in)
 {
    
-    valuesContext *valuesCtx = link->dst->priv;
+    valuesContext *values = link->dst->priv;
     AVFilterLink *outlink = link->dst->outputs[0];
     AVFrame *out; // = link->dst->outputs[0]->outpic;
     
@@ -165,7 +184,7 @@ static int filter_frame(AVFilterLink *link, AVFrame *in)
 			if (yuv < miny) miny=yuv;
 			toty += yuv;
 
-            if (i<valuesCtx->chromaw && j<valuesCtx->chromah) {
+            if (i<values->chromaw && j<values->chromah) {
 				yuv = in->data[1][cw+i];
 				if (yuv > maxu) maxu=yuv;
 				if (yuv < minu) minu=yuv;
@@ -186,6 +205,9 @@ static int filter_frame(AVFilterLink *link, AVFrame *in)
 	
     // should I copy the frame to the output?
     
+    fprintf(values->fh,"%d %d %d %d %d %d %d\n",values->fc,miny,maxy,minu,maxu,minv,maxv);
+    
+    values->fc++;
 	av_frame_free(&in);
     return ff_filter_frame(outlink, out);
 }
@@ -223,4 +245,6 @@ AVFilter avfilter_vf_values = {
 	
     .inputs    = avfilter_vf_values_inputs,
     .outputs   = avfilter_vf_values_outputs,
+    .priv_class = &values_class,
+
 };
