@@ -7,7 +7,8 @@ COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
 CODECFLAGS=
 #CODECFLAGS=-DHAVE_AV_FREE_PACKET
 #LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib 
-CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2
+CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 
+CPPFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 -D__STDC_CONSTANT_MACROS
 #CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/usr/local/include/freetype2
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 #FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
@@ -21,10 +22,13 @@ DEPRECATED_TARGETS=libav2yuv libavmux
 TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 		yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
 		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev yuvtout \
-		yuvyadif yuvnlmeans yuvvalues
+		yuvyadif yuvnlmeans yuvvalues yuvfieldseperate
 
 
 all: $(TARGETS)
+
+yuvfieldseperate: yuvfieldseperate.o Libyuv.o AVException.o
+	g++ $(LDFLAGS) -o $@ $^ 
 
 yuvcrop: utilyuv.o yuvcrop.o
 	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^

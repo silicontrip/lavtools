@@ -57,7 +57,7 @@ static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvvalues [-d]\n"
-			 "\t-d use NTSC drop frame timecode\n"
+			 "-d\t use NTSC drop frame timecode\n"
 			);
 }
 
