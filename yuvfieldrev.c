@@ -123,7 +123,7 @@ int main (int argc, char *argv[])
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	int c ;
 	const static char *legal_flags = "hI:v:";
-	int yuv_interlacing;
+	int yuv_interlacing= Y4M_UNKNOWN;
     
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
