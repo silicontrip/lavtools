@@ -15,6 +15,8 @@ FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 JPEGFLAGS= -ljpeg
 MJPEGFLAGS= -lmjpegutils
 LDFLAGS=-L/usr/X11/lib  -L/usr/local/lib  $(MJPEGFLAGS)
+OPENCVFLAGS=-lopencv_calib3d -lopencv_contrib -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_gpu -lopencv_highgui -lopencv_imgproc -lopencv_legacy -lopencv_ml -lopencv_nonfree -lopencv_objdetect -lopencv_ocl -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_ts -lopencv_video -lopencv_videostab
+
 
 
 DEPRECATED_TARGETS=libav2yuv libavmux
@@ -28,10 +30,10 @@ TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 all: $(TARGETS)
 
 yuvfieldseperate: yuvfieldseperate.o Libyuv.o AVException.o
-	g++ $(LDFLAGS) -lopencv_imgproc -o $@ $^ 
+	g++ $(LDFLAGS) -o $@ $^ 
 
 yuvopencv: yuvopencv.o Libyuv.o AVException.o
-	g++ $(LDFLAGS) -o $@ $^ 
+	g++ $(LDFLAGS) $(OPENCVFLAGS) -o $@ $^ 
 
 yuvcrop: utilyuv.o yuvcrop.o
 	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^

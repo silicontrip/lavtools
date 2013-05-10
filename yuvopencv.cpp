@@ -68,9 +68,9 @@ int main (int argc, char **argv)
 
             img1 = cv::Mat(width,height,CV_8UC1,iyuv.getYUVFrame()[0],width);
 
-            imgout = cv::Mat(width,height,CV_8UC1,oyuv.getYUVFrame()[0],width);
+          imgout = cv::Mat(width,height,CV_8UC1,oyuv.getYUVFrame()[0],width);
             
-            blur(img1,imgout,cv::Size(2,2),cv::Point(-1,-1));
+     //       blur(img1,imgout,cv::Size(2,2),cv::Point(-1,-1));
             
             
             
