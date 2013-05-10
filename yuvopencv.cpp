@@ -67,12 +67,19 @@ int main (int argc, char **argv)
         
 
             img1 = cv::Mat(width,height,CV_8UC1,iyuv.getYUVFrame()[0],width);
+            imgout = img1.clone();
+         // imgout = cv::Mat(width,height,CV_8UC1,oyuv.getYUVFrame()[0],width);
+            
+            blur(img1,imgout,cv::Size(2,2),cv::Point(-1,-1));
+            
 
-          imgout = cv::Mat(width,height,CV_8UC1,oyuv.getYUVFrame()[0],width);
-            
-     //       blur(img1,imgout,cv::Size(2,2),cv::Point(-1,-1));
-            
-            
+            int y;
+            for (y=0;y<height;y++)
+            {
+                memcpy(oyuv.getYUVFrame()[0] + y * width,imgout.data + y * imgout.step,width);
+            }
+
+
             
             oyuv.write();
         }
