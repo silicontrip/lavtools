@@ -54,36 +54,51 @@ int main (int argc, char **argv)
         oyuv.allocFrameData();
         
         int width = iyuv.getWidth();
+        int height = iyuv.getHeight();
+        
+//        std::cerr << "width: " << width <<" height: " << height << "\n";
+        
         int cwidth = iyuv.getChromaWidth();
         int cheight = iyuv.getChromaHeight();
-        int height = iyuv.getHeight();
 
+        
+        // set to black
+        memset (oyuv.getYUVFrame()[0],16,width*height);
         memset (oyuv.getYUVFrame()[1],128,cwidth*cheight);
         memset (oyuv.getYUVFrame()[2],128,cwidth*cheight);
 
+        img1 = cv::Mat(height,width,CV_8UC1,oyuv.getYUVFrame()[0],width);
+        imgout.create(height,width,CV_8UC1);
+        //imgout = img1.clone();
+        
+        cv::Point2d shift;
         
         while(1) {
             iyuv.read();
         
-
-            img1 = cv::Mat(width,height,CV_8UC1,iyuv.getYUVFrame()[0],width);
-            imgout = img1.clone();
-         // imgout = cv::Mat(width,height,CV_8UC1,oyuv.getYUVFrame()[0],width);
+            img2 = cv::Mat(height,width,CV_8UC1,iyuv.getYUVFrame()[0],width);
+            //imgout = img2.clone();
+  
+            cv::accumulate(img2, imgout);
             
-            blur(img1,imgout,cv::Size(2,2),cv::Point(-1,-1));
+        
+//            shift = cv::phaseCorrelate(img1,img2);
+      
+  //          std::cout << shift << "\n";
+            
+    //        img1 = img2.clone();
             
 
             int y;
             for (y=0;y<height;y++)
             {
-                memcpy(oyuv.getYUVFrame()[0] + y * width,imgout.data + y * imgout.step,width);
+                memcpy(oyuv.getYUVFrame()[0] + y * width,imgout.ptr(y),width);
             }
-
-
-            
             oyuv.write();
         }
     } catch (AVException *e) {
 		std::cerr << "ERROR occurred: " << e->getMessage() << "\n";
-	}
+	} catch (cv::Exception *e) {
+        std::cerr << "Exception occurred: " << e  << "\n";
+    }
 }
