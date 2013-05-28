@@ -24,7 +24,7 @@ DEPRECATED_TARGETS=libav2yuv libavmux
 TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 		yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
 		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev yuvtout \
-		yuvyadif yuvnlmeans yuvvalues yuvfieldseperate yuvopencv
+		yuvyadif yuvnlmeans yuvvalues yuvfieldseperate yuvopencv 
 
 
 all: $(TARGETS)
@@ -34,6 +34,9 @@ yuvfieldseperate: yuvfieldseperate.o Libyuv.o AVException.o
 
 yuvopencv: yuvopencv.o Libyuv.o AVException.o
 	g++ $(LDFLAGS) $(OPENCVFLAGS) -o $@ $^ 
+
+yuvhsync: utilyuv.o yuvhsync.o
+	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
 
 yuvcrop: utilyuv.o yuvcrop.o
 	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
