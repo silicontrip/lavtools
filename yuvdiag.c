@@ -688,7 +688,10 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 	int                write_error_code ;
 	int height,width;
 	int oheight,owidth;
-	int y,x;
+    int coheight,cowidth;
+
+	int y,x,y1;
+    int cx,cy;
 	int hist[256],max;
 	
 	
@@ -709,7 +712,11 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 	owidth = y4m_si_get_plane_width(outStrInfo,0);
 	oheight = y4m_si_get_plane_height(outStrInfo,0);
 	
-	write_error_code = Y4M_OK ;
+	
+    cowidth = y4m_si_get_plane_width(outStrInfo,1);
+	coheight = y4m_si_get_plane_height(outStrInfo,1);
+
+    write_error_code = Y4M_OK ;
 	
 	for (x=0; x<256; x++) 
 		hist[x] = 0;
@@ -738,9 +745,49 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 			}
 			//	mjpeg_debug("max: %d choice %d",max,choice);
 			for (x=0; x<owidth; x++) {
-				for (y=0; y < (255.0 * hist[x]) / max; y++)
-					yuv_odata[0][(oheight-y) * owidth + x] = 224;
+                
+				for (y=1; y <= (oheight * hist[x] / max); y++)
+                {
+                        yuv_odata[0][(oheight-y) * owidth + x] = 192;
+                }
 			}
+        
+            for (x=0 ; x  < owidth; x +=8) {
+                
+                // fprintf(stderr,"draw_luma: y1=%d\n",y1);
+                
+                for (y=0; y < 8; y++) {
+                    
+                    y1 = y;
+                    //chroma_coord(sinfo, &cx, &cy, x, y);
+                    
+                    cx = xchroma(x,outStrInfo);
+                    cy = ychroma(y1,outStrInfo);
+                    
+                    // fprintf(stderr,"%d %d -> %d %d\n",x,y,cx,cy);
+                    
+                    yuv_odata[0][y1 * owidth + x] = 240;
+                    yuv_odata[1][cy * cowidth + cx] = 240;
+                    yuv_odata[2][cy * cowidth + cx] = 128;
+                    
+                    
+                    y1 = (oheight - 1) - y;
+                    //chroma_coord(sinfo, &cx, &cy, x, y);
+                    
+                    cx = xchroma(x,outStrInfo);
+                    cy = ychroma(y1,outStrInfo);
+                    
+                    
+                    yuv_odata[0][y1 * owidth + x] = 240;
+                    yuv_odata[1][cy * cowidth + cx] = 240;
+                    yuv_odata[2][cy * cowidth + cx] = 128;
+                    
+                    
+                }
+                
+            }
+        
+            
 			write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
 			
 		}
@@ -752,10 +799,9 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
 	
-	free( yuv_data[0] );
-	free( yuv_data[1] );
-	free( yuv_data[2] );
-	
+    chromafree(yuv_data);
+    chromafree(yuv_odata);
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
 	
