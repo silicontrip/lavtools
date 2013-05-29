@@ -278,7 +278,7 @@ const char *av_get_codecid(enum AVCodecID codec)
 		case AV_CODEC_ID_INTERPLAY_DPCM: return "INTERPLAY_DPCM";
 		case AV_CODEC_ID_XAN_DPCM: return "XAN_DPCM";
 		case AV_CODEC_ID_SOL_DPCM: return "SOL_DPCM";
-		case AV_CODEC_ID_MP2: return "MP2 ";
+		case AV_CODEC_ID_MP2: return "MP2";
 		case AV_CODEC_ID_MP3: return "MP3";
 		case AV_CODEC_ID_AAC: return "AAC";
 		case AV_CODEC_ID_AC3: return "AC3";
@@ -437,18 +437,19 @@ int main (int argc, char **argv)
 	if ((ret=avformat_find_stream_info(fmt_ctx,NULL))<0)
 		return ret;
 	
+	if (strncmp(fmt_ctx->iformat->name,"mov,",4)==0) { container = "mov"; }
+	if (strncmp(fmt_ctx->iformat->name,"matroska",8)==0) { container = "mkv"; }
+
 	while ((tag = av_dict_get(fmt_ctx->metadata, "", tag, AV_DICT_IGNORE_SUFFIX))) {
         printf("%s=%s\n", tag->key, tag->value);
 		if (strcmp(tag->key,"major_brand")==0) {
 				// mp4 or mov
-			if (strcmp(tag->value,"qt  ")==0) {
-					container = "mov";
-			}
-			if (strcmp(tag->value,"mp42")==0 || strcmp(tag->value,"isom")==0) {
-					container = "mp4";
-			}
+			if (strcmp(tag->value,"qt  ")==0) { container = "mov"; }
+			if (strcmp(tag->value,"mp42")==0 || strcmp(tag->value,"isom")==0) { container = "mp4"; }
 		}
 	}
+
+
 	
 	if (container == NULL) {
 		printf ("FORMAT_NAME=%s\n",fmt_ctx->iformat->name);

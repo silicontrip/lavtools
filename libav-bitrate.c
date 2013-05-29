@@ -45,6 +45,8 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
+void progress_init(off_t b, off_t t);
+void progress_loadBar(off_t bytes);
 
 static void print_usage() 
 {
@@ -155,7 +157,7 @@ int main(int argc, char *argv[])
 				break;
 			case 'h':
 			case '*':
-				print_usage(argv);
+				print_usage();
 				return 0;
 				break;
 		}
@@ -277,6 +279,7 @@ int main(int argc, char *argv[])
 	
 	
 	if (programSettings.output_interval_seconds >0)
+    {
 		if (INT32_MAX / framerate > programSettings.output_interval_seconds)
 		{
 			programSettings.output_interval = programSettings.output_interval_seconds * framerate;
@@ -285,7 +288,7 @@ int main(int argc, char *argv[])
 			free (stream_size); free (stream_min); free (stream_max); free (stream_ave);
 			return -1; 
 		}
-	
+	}
 	//	fprintf (stderr,"Video Stream: %d Frame Rate: %g\n",videoStream,framerate);
 	
 	

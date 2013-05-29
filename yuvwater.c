@@ -97,8 +97,10 @@ static void print_usage()
 	   "producing a watermark pgm, which can be used\n"
            "to remove the watermark\n"
            "\n"
-	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
-	   "\t -h print this help\n"
+    "-d\tDetect mode. Output a pgm file."
+           "-i <filename>\tRemove Mode."
+	   "-v\tVerbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
+	   "-h\tprint this help\n"
          );
 }
 
@@ -348,14 +350,6 @@ int main (int argc, char *argv[])
   // INPUT comes from stdin, we check for a correct file header
   if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
     mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-
-
-  // Information output
-  mjpeg_info ("yuv2fps (version " YUVPRO_VERSION
-              ") is a general frame resampling utility for yuv streams");
-  mjpeg_info ("(C) 2002 Alfonso Garcia-Patino Barbolani <barbolani@jazzfree.com>");
-  mjpeg_info ("yuvfps -h for help, or man yuvfps");
-
 
 
     

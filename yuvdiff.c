@@ -330,24 +330,6 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 	
 }
 
-static int parse_interlacing(char *str)
-{
-	if (str[0] != '\0' && str[1] == '\0')
-	{
-		switch (str[0])
-		{
-			case 'p':
-				return Y4M_ILACE_NONE;
-			case 't':
-				return Y4M_ILACE_TOP_FIRST;
-			case 'b':
-				return Y4M_ILACE_BOTTOM_FIRST;
-		}
-	}
-	mjpeg_error_exit1("Valid interlacing modes are: p - progressive, t - top-field first, b - bottom-field first");
-	return Y4M_UNKNOWN; /* to avoid compiler warnings */
-}
-
 int read_frame (uint8_t **yuv_frame, char * filename, y4m_stream_info_t in_streaminfo)
 {			
 	

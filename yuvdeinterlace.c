@@ -300,7 +300,7 @@ int int_detect (int x, int y,uint8_t *m[3],frame_dimensions *fd) {
 	int hp = PIXELS/2;
 	int i,w,h;
 	
-	int br,bi,cr;
+	int br,bi,cr,ci;
 	int b,c;
 	
 	// mjpeg_warn("int_detect");
@@ -892,7 +892,7 @@ static void depro(  int fdIn
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
 	h = y4m_si_get_height(outStrInfo) ; w = y4m_si_get_width(outStrInfo);
-	frame_data_size = h * w;
+	int frame_data_size = h * w;
 	if (chromalloc(yuv_o1data,inStrInfo))		
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	

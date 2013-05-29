@@ -21,10 +21,6 @@
   *  along with this program; if not, write to the Free Software
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   *
-  
-gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvhsync.c -o yuvhsync
-ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils yuvhsync.c -o yuvhsync
-
   */
 
 #include <stdio.h>
@@ -37,15 +33,17 @@ ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils yuvhs
 
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
-
-#define YUVRFPS_VERSION "0.3"
+#include "utilyuv.h"
 
 static void print_usage() 
 {
   fprintf (stderr,
-	   "usage: yuvhsync -m <max shift> -s <search length>\n"
-		"\n"
-	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
+           "usage: yuvhsync -m <max shift> -s <search length>\n"
+           "\n"
+           "-v\tVerbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
+           "-m\tMaximum number of pixels to shift\n"
+           "-s\tCompare this number of pixels when determining shift\n"
+           "-n\tDo not shift video\n"
 		);
 }
 
@@ -54,6 +52,7 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
 	
 	int x,w,cw,cs;
 	int vss;
+    int linew,linecw;
 	
 //	mjpeg_debug("shift_video %d %d",s,line);
 	
@@ -65,31 +64,33 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
 		
 		cs = s * cw / w;
 	
-	// could memcpy() do this? 
+    linew = line * w;
+    linecw = line * cw;
+	// could memcpy() do this?
 		if (s>0) {
 			for (x=w; x>=s; x--)
-				*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
+				*(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
 		
 		// one day I should start catering for more or less than 3 planes.
 			if (line % vss) {
 				line /= vss;
 				for (x=cw; x>=cs; x--) {
-					*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
-					*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+					*(yuv_data[1]+x+(linecw))= *(yuv_data[1]+(x-cs)+(linecw));
+					*(yuv_data[2]+x+(linecw))= *(yuv_data[2]+(x-cs)+(linecw));
 				}
 			}
 		}
 		if (s<0) {
 			for (x=0; x<=w+s; x++)
-				*(yuv_data[0]+x+(line*w))= *(yuv_data[0]+(x-s)+(line*w));
+				*(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
 			
 			
 			// one day I should start catering for more or less than 3 planes.
 			if (line % vss) {
 				line /= vss;
 				for (x=0; x<=cw; x++) {
-					*(yuv_data[1]+x+(line*cw))= *(yuv_data[1]+(x-cs)+(line*cw));
-					*(yuv_data[2]+x+(line*cw))= *(yuv_data[2]+(x-cs)+(line*cw));
+					*(yuv_data[1]+x+(linecw))= *(yuv_data[1]+(x-cs)+(linecw));
+					*(yuv_data[2]+x+(linecw))= *(yuv_data[2]+(x-cs)+(linecw));
 				}
 			}
 			
@@ -98,18 +99,22 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
 
 }
 
-int search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
+int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
 {
 
 	int w,x1,diff;
-	int max,c=0;
+	int max,c=0,linew;
 	
 	w = y4m_si_get_plane_width(sinfo,0);
 	
+    linew= w * line;
+
+    // I'm not quite sure what I'm attempting to do here.
+    // I think I'm trying to find the black frame.
 	for (x1=0;x1<m;x1++) 
 	{
 		
-		diff = abs(*(yuv_data[0]+x1+(line*w)) - *(yuv_data[0]+x1+1+(line*w)));
+		diff = abs(*(yuv_data[0]+x1+(linew)) - *(yuv_data[0]+x1+1+(linew)));
 		if (x1==0) max = diff;
 		
 		if (diff > max) {
@@ -122,38 +127,50 @@ int search_video (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_st
 	return s-c;
 }
 
-int search_video_1 (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
+int search_video_1 (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
 {
 
 	int w,h;
 	int x1,x2;
-	int max,shift,tot;
+	int min,shift,tot;
+	int linew, line1w;
 	
 	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 
+	linew = line * w;
 	
 	mjpeg_debug("search_video %d",line);
 	// these two should be more than just warnings
+	// they now early exit.
+/*
 	if (s+m > w) {
 		mjpeg_warn("search %d + shift %d > width %d",s,m,w);
+		return 0;
 	}
+*/
 	
 	if (line >= h) {
 		mjpeg_warn("line > height");
+		return 0;
 	}
+    
 	shift = 0;
-	for (x1=0;x1<m;x1++) 
+	for (x1=-m;x1<m;x1++) 
 	{
 		tot = 0;
 		for(x2=0; x2<s;x2++) 
 		{
-			tot = tot + abs ( *(yuv_data[0]+x2+x1+(line*w)) - *(yuv_data[0]+x2+((line+1)*w)));
+			// don't know if I should apply a standard addition to pixels outside the box.
+			if (x1+x2 >=0 && x1+x2 < w) 
+				tot += abs ( *(yuv_data[0]+x1+x2+linew) - *(yuv_data[0]+x2+(linew+w)));
+			else
+				tot += 128;
 		}
 	
 		// ok it wasn't max afterall, it was min.
-		if (x1==0) max = tot;
-		if (tot < max) { max = tot; shift = x1;}
+		if (x1==0) min = tot;
+		if (tot < min) { min = tot; shift = x1;}
 	}
 	
 	mjpeg_debug("exit search_video %d",line);
@@ -161,29 +178,14 @@ int search_video_1 (int m, int s, int res[], int line, uint8_t *yuv_data[3],y4m_
 	return shift;
 }
 
-void chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
-{	
-	int fs,cfs;
-	
-	fs = y4m_si_get_plane_length(sinfo,0);
-	cfs = y4m_si_get_plane_length(sinfo,1);
-	
-	m[0] = (uint8_t *)malloc( fs );
-	m[1] = (uint8_t *)malloc( cfs);
-	m[2] = (uint8_t *)malloc( cfs);
-	
-	mjpeg_debug("alloc yuv_data: %x,%x,%x",m[0],m[1],m[2]);
-}
-
-
 static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int fdOut, y4m_stream_info_t  *outStrInfo,
-	int max,int search)
+	int max,int search, int noshift)
 {
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3],*yuv_odata[3];	
-	int result[720]; // will change to malloc based on max shift
-	int lineresult[720]; // as above but on height
+	// int result[720]; // will change to malloc based on max shift
+	int *lineresult;
 	int                y_frame_data_size, uv_frame_data_size ;
 	int                read_error_code  = Y4M_OK;
 	int                write_error_code = Y4M_OK ;
@@ -193,6 +195,8 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	h = y4m_si_get_plane_height(inStrInfo,0);
 	ch = y4m_si_get_plane_height(inStrInfo,1);
 
+    lineresult = (int *) malloc(sizeof(int) * h);
+    
 	chromalloc(yuv_data,inStrInfo);
 	
 // initialise and read the first number of frames
@@ -201,19 +205,22 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		for (y=0; y<h-1; y++) 
-			lineresult[y] = search_video(max,search,result,y,yuv_data,inStrInfo);
+			lineresult[y] = search_video_1(max,search,y,yuv_data,inStrInfo);
 			
-			/* graphing this would be nice
+        
+        if (noshift) {
+			/* graphing this would be nice */
 			printf ("%d",y);
 			for (x=0; x < max; x++)
-				printf (", %d",result[x]);
+				printf (", %d",lineresult[x]);
 			printf("\n");
-			 */
 		
-		for (y=0; y<h-1; y++) 
-			shift_video(lineresult[y],y,yuv_data,inStrInfo);
+        } else {
+            for (y=0; y<h-1; y++)
+                shift_video(lineresult[y],y,yuv_data,inStrInfo);
 
-		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
+            write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
+        }
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
@@ -222,11 +229,10 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 
   // Clean-up regardless an error happened or not
 
-y4m_fini_frame_info( &in_frame );
+    y4m_fini_frame_info( &in_frame );
 
-		free( yuv_data[0] );
-		free( yuv_data[1] );
-		free( yuv_data[2] );
+    free (lineresult);
+    chromafree(yuv_data);
 	
   if( read_error_code != Y4M_ERR_EOF )
     mjpeg_error_exit1 ("Error reading from input stream!");
@@ -248,8 +254,9 @@ int main (int argc, char *argv[])
 	y4m_stream_info_t in_streaminfo,out_streaminfo;
 	int src_interlacing = Y4M_UNKNOWN;
 	y4m_ratio_t src_frame_rate;
-	const static char *legal_flags = "v:m:s:";
+	const static char *legal_flags = "v:m:s:n";
 	int max_shift = 0, search = 0;
+    int noshift=0;
 	int c;
 
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
@@ -265,6 +272,9 @@ int main (int argc, char *argv[])
 	case 's':
 		search = atof(optarg);
 		break;
+    case 'n':
+            noshift=1;
+            break;
 	case '?':
           print_usage (argv);
           return 0 ;
@@ -293,13 +303,12 @@ int main (int argc, char *argv[])
 	
 
   // Information output
-  mjpeg_info ("yuvadjust (version " YUVRFPS_VERSION ") is a simple luma and chroma adjustments for yuv streams");
-  mjpeg_info ("yuvadjust -? for help");
 
   /* in that function we do all the important work */
-	y4m_write_stream_header(fdOut,&out_streaminfo);
+    if (!noshift)
+        y4m_write_stream_header(fdOut,&out_streaminfo);
 
-	process( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,search);
+	process( fdIn,&in_streaminfo,fdOut,&out_streaminfo,max_shift,search,noshift);
 
   y4m_fini_stream_info (&in_streaminfo);
   y4m_fini_stream_info (&out_streaminfo);

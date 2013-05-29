@@ -842,6 +842,10 @@ int main (int argc, char *argv[])
 	// The streaminfo structure is filled in
 	// ***************************************************************
 	// INPUT comes from stdin, we check for a correct file header
+    
+    y4m_accept_extensions(1); // because some filters can handle different chroma subsampling
+
+    
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
