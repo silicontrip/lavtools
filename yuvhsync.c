@@ -42,7 +42,7 @@ static void print_usage()
            "\n"
            "-v\tVerbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
            "-m\tMaximum number of pixels to shift\n"
-           "-s\tMaximum number of pixels to search\n"
+           "-s\tCompare this number of pixels when determining shift\n";
            "-n\tDo not shift video\n"
 		);
 }
@@ -133,33 +133,39 @@ int search_video_1 (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info
 	int w,h;
 	int x1,x2;
 	int min,shift,tot;
-    int linew, line1w;
+	int linew, line1w;
 	
 	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 
-    linew = line * w;
+	linew = line * w;
 	
 	mjpeg_debug("search_video %d",line);
 	// these two should be more than just warnings
-    // they now early exit.
+	// they now early exit.
+/*
 	if (s+m > w) {
 		mjpeg_warn("search %d + shift %d > width %d",s,m,w);
-        return 0;
+		return 0;
 	}
+*/
 	
 	if (line >= h) {
 		mjpeg_warn("line > height");
-        return 0;
+		return 0;
 	}
     
 	shift = 0;
-	for (x1=0;x1<m;x1++) 
+	for (x1=-m;x1<m;x1++) 
 	{
 		tot = 0;
 		for(x2=0; x2<s;x2++) 
 		{
-			tot = tot + abs ( *(yuv_data[0]+x1+x2+linew) - *(yuv_data[0]+x2+(linew+w)));
+			// don't know if I should apply a standard addition to pixels outside the box.
+			if (x1+x2 >=0 && x1+x2 < w) 
+				tot += abs ( *(yuv_data[0]+x1+x2+linew) - *(yuv_data[0]+x2+(linew+w)));
+			else
+				tot += 128;
 		}
 	
 		// ok it wasn't max afterall, it was min.
