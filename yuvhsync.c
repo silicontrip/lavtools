@@ -68,27 +68,45 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
     linecw = line * cw;
 	// could memcpy() do this?
 		if (s>0) {
-			for (x=w; x>=s; x--)
-				*(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
-		
+			for (x=w-1; x>=0; x--)
+                if (x>=s)
+                    *(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
+                else
+                    *(yuv_data[0]+x+(linew))= 16;
+            
 		// one day I should start catering for more or less than 3 planes.
+            // have to take proper interlace chroma into account.
+            // would be easier to work with 422 or 444
+            
 			if (line % vss) {
-				for (x=cw; x>=cs; x--) {
-					*(yuv_data[1]+x+linecw)= *(yuv_data[1]+(x-cs)+linecw);
-					*(yuv_data[2]+x+linecw)= *(yuv_data[2]+(x-cs)+linecw);
+				for (x=cw; x>=0; x--) {
+                    if (x>=cs) {
+                        *(yuv_data[1]+x+linecw)= *(yuv_data[1]+(x-cs)+linecw);
+                        *(yuv_data[2]+x+linecw)= *(yuv_data[2]+(x-cs)+linecw);
+                    } else {
+                        *(yuv_data[1]+x+linecw)= 128;
+                        *(yuv_data[2]+x+linecw)= 128;
+                    }
 				}
 			}
 		}
 		if (s<0) {
-			for (x=0; x<=w+s; x++)
-				*(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
-			
+			for (x=0; x<=w; x++)
+                    if (x-s < w)
+                        *(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
+                    else
+                        *(yuv_data[0]+x+linew)=16;
 			
 			// one day I should start catering for more or less than 3 planes.
 			if (line % vss) {
 				for (x=0; x<=cw; x++) {
-					*(yuv_data[1]+x+(linecw))= *(yuv_data[1]+(x-cs)+(linecw));
-					*(yuv_data[2]+x+(linecw))= *(yuv_data[2]+(x-cs)+(linecw));
+                    if (x-cs<=cw) {
+                        *(yuv_data[1]+x+(linecw))= *(yuv_data[1]+(x-cs)+(linecw));
+                        *(yuv_data[2]+x+(linecw))= *(yuv_data[2]+(x-cs)+(linecw));
+                    } else {
+                        *(yuv_data[1]+x+(linecw))= 128;
+                        *(yuv_data[2]+x+(linecw))= 128;
+                    }
 				}
 			}
 			
@@ -107,15 +125,25 @@ int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t
 	
     linew= w * line;
 
-    // I'm not quite sure what I'm attempting to do here.
-    // I think I'm trying to find the black frame.
-	for (x1=0;x1<m;x1++) 
+    for (x1=0;x1<m;x1++)
 	{
+        if (yuv_data[0][linew+x1]> 24) {
+            return x1;
+        }
+    }
+
+    
+    
+	for (x1=1;x1<m;x1++)
+	{
+        if (abs(yuv_data[0][linew+x1] - yuv_data[0][linew+x1+1] ) > 6) {
+            return x1-1;
+        }
     }
 	//	fprintf(stderr," %d",diff);
-	}
+	
 //	fprintf (stderr,"\n");
-	return c;
+	return 0;
 }
 
 // this method isn't too effective
@@ -200,21 +228,23 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		for (y=0; y<h-1; y++) 
-			lineresult[y] = search_video_1(max,search,y,yuv_data,inStrInfo);
+			lineresult[y] = search_video(max,search,y,yuv_data,inStrInfo);
 			
         
         if (noshift) {
 			/* graphing this would be nice */
-			printf ("%d",y);
-			for (x=0; x < h; x++)
-				printf (", %d",lineresult[x]);
+			for (x=0; x < h; x++) {
+                if (x!=0) printf(", ");
+				printf ("%d",lineresult[x]);
+            }
 			printf("\n");
 		
         } else {
             
             int shifter = 0;
             for (y=0; y<h-1; y++) {
-                shifter += lineresult[y];
+               // shifter += lineresult[y];
+                shifter = -lineresult[y];
                 shift_video(shifter,y,yuv_data,inStrInfo);
                 
             }
