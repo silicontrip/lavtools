@@ -6,9 +6,9 @@ FREETYPEFLAGS=-L/usr/X11/lib -lfreetype
 COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
 CODECFLAGS=
 #CODECFLAGS=-DHAVE_AV_FREE_PACKET
-LDFLAGS=-L/usr/X11/lib  -L/usr/local/lib 
+LDFLAGS=-L/usr/X11/lib  -L/usr/local/lib -L/opt/local/lib
 #LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib 
-CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2
+CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 -I/opt/local/include
 #CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/opt/local/include/freetype2
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
 #FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
@@ -67,17 +67,15 @@ yuvCIFilter: yuvCIFilter.o utilyuv.o
 yuvilace: yuvilace.o  utilyuv.o
 	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) -lfftw3 -o yuvilace  $<
 
-libav2yuv.o: libav2yuv.c
-	$(CC) $(FFMPEG_FLAGS) $(CFLAGS) -c -o libav2yuv.o $<
-
-libav2yuv: libav2yuv.o utilyuv.o
-	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o libav2yuv $<
-
 libav-bitrate: libav-bitrate.c progress.o
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libav-bitrate  progress.o $<
 
 libavmux: libavmux.c 
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o libavmux $<
+
+metadata-example: metadata-example.c
+	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o metadata-example $^
+
 
 clean:
 	 rm -f *.o $(TARGETS)
