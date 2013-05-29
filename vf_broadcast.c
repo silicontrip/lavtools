@@ -29,6 +29,11 @@
 #include "libavutil/pixdesc.h"
 #include "libswscale/swscale.h"
 #include "avfilter.h"
+#include "formats.h"
+#include "internal.h"
+#include "video.h"
+
+
 #include <strings.h>
 
 
@@ -58,7 +63,8 @@ typedef struct
  }
  */
 
-static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
+// static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
+static av_cold int init(AVFilterContext *ctx, const char *args)
 {
     levelsContext *lctx = ctx->priv;
 	int argc=0;
@@ -119,7 +125,7 @@ static int query_formats(AVFilterContext *ctx)
         PIX_FMT_NONE
     };
 	
-    avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
+    ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
     return 0;
 }
 
@@ -143,33 +149,29 @@ static int config_props(AVFilterLink *outlink)
 	
 }
 
-static void start_frame(AVFilterLink *link, AVFilterPicRef *picref)
+// static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
+static int filter_frame(AVFilterLink *link, AVFrame *in)
 {
-    AVFilterLink *outlink = link->dst->outputs[0];
-    AVFilterPicRef *outpicref;
-	
-    outpicref = avfilter_get_video_buffer(outlink, AV_PERM_WRITE, outlink->w, outlink->h);
-    outpicref->pts = picref->pts;
-	
-    outlink->outpic = outpicref;
-	
-	avfilter_start_frame(outlink, avfilter_ref_pic(outpicref, ~0));
-}
-
-
-static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
-{
+   
     levelsContext *lctx = link->dst->priv;
-    AVFilterPicRef *in  = link->cur_pic;
-    AVFilterPicRef *out = link->dst->outputs[0]->outpic;
+    AVFilterLink *outlink = link->dst->outputs[0];
+    AVFrame *out; // = link->dst->outputs[0]->outpic;
 	AVFilterContext *ctx = link->src;
 
+
+    int y = 0;
+    int h = outlink->h;
+    
 	// Broadcast swing levels, min and max
 	int min=16;
 	int max=235;
 	int luma,chromab,chromar;
 	int i,j;
 	
+    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
+    av_frame_copy_props(out, in);
+
+    
 	if (lctx->frames == 0) {
 		// nothing detected, shut off
 		memcpy((out->data[0]+y*out->linesize[0]),(in->data[0]+y*in->linesize[0]),in->linesize[0]*h);
@@ -302,28 +304,41 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 	
 	
 	
-    avfilter_draw_slice(link->dst->outputs[0], y, h, slice_dir);
+	av_frame_free(&in);
+    return ff_filter_frame(outlink, out);
 }
+
+static const AVFilterPad avfilter_vf_broadcast_inputs[] = {
+    {
+        .name            = "default",
+        .type            = AVMEDIA_TYPE_VIDEO,
+        .min_perms       = AV_PERM_READ,
+        .filter_frame = filter_frame,
+        
+    },
+    { NULL }
+};
+
+static const AVFilterPad avfilter_vf_broadcast_outputs[] = {
+    {
+        .name            = "default",
+        .config_props     = config_props,
+        .type            = AVMEDIA_TYPE_VIDEO,
+    },
+    { NULL }
+};
 
 
 AVFilter avfilter_vf_broadcast = {
     .name      = "broadcast",
 	.description = "clips or scales full swing levels to broadcast swing.",
 	
-	.init      = init,
+	.init = init,
 	//    .uninit    = uninit,
     .query_formats = query_formats,
 	
 	.priv_size = sizeof(levelsContext),
 	
-    .inputs    = (AVFilterPad[]) {{ .name            = "default",
-		.type            = CODEC_TYPE_VIDEO,
-		.start_frame      = start_frame,
-		.draw_slice      = draw_slice,
-	.min_perms       = AV_PERM_READ, },
-		{ .name = NULL}},
-    .outputs   = (AVFilterPad[]) {{ .name            = "default",
-		.config_props     = config_props,
-	.type            = CODEC_TYPE_VIDEO, },
-		{ .name = NULL}},
+    .inputs    = avfilter_vf_broadcast_inputs,
+    .outputs   = avfilter_vf_broadcast_outputs,
 };

@@ -28,6 +28,9 @@
 #include "libavutil/pixdesc.h"
 #include "libswscale/swscale.h"
 #include "avfilter.h"
+#include "formats.h"
+#include "internal.h"
+#include "video.h"
 #include <strings.h>
 
 /* time
@@ -79,7 +82,7 @@ static av_cold void uninit(AVFilterContext *ctx)
 }
 
 
-static av_cold int init(AVFilterContext *ctx, const char *args, void *opaque)
+static av_cold int init(AVFilterContext *ctx, const char *args)
 {
     OverlayContext *ovl = ctx->priv;
 	int argc=0,off;
@@ -219,15 +222,11 @@ static int query_formats(AVFilterContext *ctx)
         PIX_FMT_NONE
     };
 
-	av_log(ctx, AV_LOG_DEBUG, "query_formats().\n");
+	av_log(ctx, AV_LOG_DEBUG, ">>> query_formats().\n");
 
-    avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
+    ff_set_common_formats(ctx, ff_make_format_list(pix_fmts));
 
-	av_log(ctx, AV_LOG_DEBUG, "query_formats(). exit\n");
-
-=======
-    avfilter_set_common_formats(ctx, avfilter_make_format_list(pix_fmts));
->>>>>>> 9352602216821a58f0dd66bbd3014117ebafa534:vf_watermark.c
+	av_log(ctx, AV_LOG_DEBUG, "<<< query_formats().\n");
     return 0;
 }
 
@@ -257,6 +256,10 @@ static int config_props(AVFilterLink *outlink)
 	uint8_t *maskData;
 	uint8_t *tempData;
 	
+    av_log(ctx, AV_LOG_DEBUG, ">>> config_props().\n");
+
+    
+    
 	// make sure Chroma planes align.
 	avcodec_get_chroma_sub_sample(outlink->format, &ovl->hsub, &ovl->vsub);
 	
@@ -266,22 +269,32 @@ static int config_props(AVFilterLink *outlink)
 			av_log(ctx, AV_LOG_ERROR, "Cannot use this position with this chroma subsampling. Chroma plane will not align. (continuing with unaligned chroma planes, your watermark may look distorted)\n");
 	}
 
+    av_log(ctx, AV_LOG_DEBUG, "    config_props() avformat_open_input(%s).\n",ovl->imageName);
+
+    pFormatCtx = avformat_alloc_context();
+    
 	// open overlay image 
-	
-	if(av_open_input_file(&pFormatCtx, ovl->imageName, avif, 0, NULL)!=0) {
+	// avformat_open_input
+	if(avformat_open_input(&pFormatCtx, ovl->imageName, avif, NULL)!=0) {
 		av_log(ctx, AV_LOG_FATAL, "Cannot open overlay image (%s).\n",ovl->imageName);
 		return -1;
 		
 	}
 	
-	if(av_find_stream_info(pFormatCtx)<0) {
+    av_log(ctx, AV_LOG_DEBUG, "    config_props() avformat_find_stream_info.\n");
+
+    
+	if(avformat_find_stream_info(pFormatCtx,NULL)<0) {
 		av_log(ctx, AV_LOG_FATAL, "Cannot find stream in overlay image.\n");
 		return -1;
 		
 	}
 	
+    av_log(ctx, AV_LOG_DEBUG, "    config_props() pFormatCtx->streams.\n");
+
+    
 	for(int i=0; i<pFormatCtx->nb_streams; i++)
-		if(pFormatCtx->streams[i]->codec->codec_type==CODEC_TYPE_VIDEO) {
+		if(pFormatCtx->streams[i]->codec->codec_type==AVMEDIA_TYPE_VIDEO) {
 			avStream=i;
 			break;
 		}
@@ -291,6 +304,8 @@ static int config_props(AVFilterLink *outlink)
 		return -1;
 	}
 	
+    av_log(ctx, AV_LOG_DEBUG, "    config_props() avcodec_find_decoder.\n");
+
 	
 	pCodecCtx=pFormatCtx->streams[avStream]->codec;
 	
@@ -303,8 +318,11 @@ static int config_props(AVFilterLink *outlink)
 		
 	}
 	
+    av_log(ctx, AV_LOG_DEBUG, "    config_props() avcodec_open2.\n");
+
+    
 	// Open codec
-	if(avcodec_open(pCodecCtx, pCodec)<0) {
+	if(avcodec_open2(pCodecCtx, pCodec,NULL)<0) {
 		av_log(ctx, AV_LOG_FATAL,"could not open codec for overlay image\n");
 		return -1;
 		
@@ -321,6 +339,9 @@ static int config_props(AVFilterLink *outlink)
 		
 	}
 	
+    av_log(ctx, AV_LOG_DEBUG, "    config_props() avcodec_alloc_frame.\n");
+
+    
 	overlay = avcodec_alloc_frame();
 	
 	// read overlay file into overlay AVFrame
@@ -384,7 +405,7 @@ static int config_props(AVFilterLink *outlink)
 						   ovl->printW, ovl->printH, PIX_FMT_GRAY8,
 						   SWS_BILINEAR, NULL, NULL, NULL);
 		
-		sws_scale(sws, tempMask->data, tempMask->linesize, 0, pCodecCtx->height, 
+		sws_scale(sws, (const uint8_t * const *)tempMask->data, tempMask->linesize, 0, pCodecCtx->height,
 				  ovl->maskFrame->data, ovl->maskFrame->linesize);
 				  
 				  ovl->mask = 1;
@@ -410,7 +431,7 @@ static int config_props(AVFilterLink *outlink)
 	
 	// convert the image 
 
-	sws_scale(sws, overlay->data, overlay->linesize, 0, pCodecCtx->height, 
+	sws_scale(sws, (const uint8_t * const *)overlay->data, overlay->linesize, 0, pCodecCtx->height,
 				ovl->pFrame->data, ovl->pFrame->linesize);
 	
 
@@ -421,36 +442,49 @@ static int config_props(AVFilterLink *outlink)
     avcodec_close(pCodecCtx);
 	
     // Close the video file
-    av_close_input_file(pFormatCtx);
+    avformat_close_input(&pFormatCtx);
 	
+    av_log(ctx, AV_LOG_DEBUG, "<<< config_props().\n");
+
+    
     return 0;
 	
 	
 }
 
+/*
 static void start_frame(AVFilterLink *link, AVFilterPicRef *picref)
 {
     AVFilterLink *outlink = link->dst->outputs[0];
     AVFilterPicRef *outpicref;
 		
-    outpicref = avfilter_get_video_buffer(outlink, AV_PERM_WRITE, outlink->w, outlink->h);
+    outpicref = ff_get_video_buffer(outlink, outlink->w, outlink->h);
     outpicref->pts = picref->pts;
 		
     outlink->outpic = outpicref;
 	
 	avfilter_start_frame(outlink, avfilter_ref_pic(outpicref, ~0));
 }
-
-
-static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
+*/
+// replaced by filter_frame...
+// need refactoring
+// static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
+static int filter_frame(AVFilterLink *link, AVFrame *in)
 {
     OverlayContext *ovl = link->dst->priv;
-    AVFilterPicRef *in  = link->cur_pic;
-    AVFilterPicRef *out = link->dst->outputs[0]->outpic;
+    AVFilterLink *outlink = link->dst->outputs[0];
+
+    AVFrame *out;
+    
     int i, j;
 	int lumaFrame, lumaPrint, lumaMask,uPrint,vPrint;
 	int py;
-	
+	int h = link->h;
+    int y = 0;
+    
+    av_log(link->src, AV_LOG_DEBUG, "filter_frame().\n");
+
+    
 	py = ovl->printY;
 	
 	// use py to disable the watermark for interval display
@@ -460,8 +494,10 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 		if (i >= ovl->printON) py = y+h+1; // hack to turn off water mark 
 	}
 	
+    out = ff_get_video_buffer(outlink, outlink->w, outlink->h);
+    av_frame_copy_props(out, in);
 
-	av_log(link->src, AV_LOG_DEBUG, "draw_slice().\n");
+
 	lumaMask=255;
 
 	for (j=0; j<h; j++) {
@@ -518,12 +554,31 @@ static void draw_slice(AVFilterLink *link, int y, int h, int slice_dir)
 			}
 		}
 	}
-	
-    avfilter_draw_slice(link->dst->outputs[0], y, h, slice_dir);
+	av_frame_free(&in);
+    return ff_filter_frame(outlink, out);
+
 }
 
 
+static const AVFilterPad avfilter_vf_watermark_inputs[] = {
+    {
+    .name            = "default",
+    .type            = AVMEDIA_TYPE_VIDEO,
+    .min_perms       = AV_PERM_READ,
+    .filter_frame = filter_frame,
 
+    },
+    { NULL}
+};
+
+static const AVFilterPad avfilter_vf_watermark_outputs[] = {
+    {
+        .name            = "default",
+        .config_props     = config_props,
+        .type            = AVMEDIA_TYPE_VIDEO,
+    },
+    { NULL }
+};
 
 AVFilter avfilter_vf_watermark = {
     .name      = "watermark",
@@ -535,14 +590,6 @@ AVFilter avfilter_vf_watermark = {
 	
 	.priv_size = sizeof(OverlayContext),
 
-    .inputs    = (AVFilterPad[]) {{ .name            = "default",
-									.type            = CODEC_TYPE_VIDEO,
-									.start_frame      = start_frame,
-									.draw_slice      = draw_slice,
-									.min_perms       = AV_PERM_READ, },
-									{ .name = NULL}},
-    .outputs   = (AVFilterPad[]) {{ .name            = "default",
-									.config_props     = config_props,
-									.type            = CODEC_TYPE_VIDEO, },
-									{ .name = NULL}},
+    .inputs    = avfilter_vf_watermark_inputs,
+    .outputs   = avfilter_vf_watermark_outputs
 };

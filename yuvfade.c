@@ -195,7 +195,7 @@ int main (int argc, char *argv[])
 	
 	// Prepare output stream
 	src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
-	frame_rate = src_frame_rate ;
+	y4m_ratio_t frame_rate = src_frame_rate ;
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 	
 	
