@@ -42,7 +42,7 @@ static void print_usage()
            "\n"
            "-v\tVerbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
            "-m\tMaximum number of pixels to shift\n"
-           "-s\tCompare this number of pixels when determining shift\n";
+           "-s\tCompare this number of pixels when determining shift\n"
            "-n\tDo not shift video\n"
 		);
 }
