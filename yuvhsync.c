@@ -127,7 +127,7 @@ int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t
 
     for (x1=0;x1<m;x1++)
 	{
-        if (yuv_data[0][linew+x1]> 24) {
+        if (yuv_data[0][linew+x1]>= 32) {
             return x1;
         }
     }
