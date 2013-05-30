@@ -50,5 +50,6 @@ int ychroma (int y, y4m_stream_info_t *si);
 int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int df) ;
 void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,  int fc, int *df );
 
+void y4m_dump_frame(y4m_stream_info_t  *si, uint8_t *m[3]);
 
 #endif

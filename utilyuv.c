@@ -423,3 +423,43 @@ void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,
 	
 }
 
+void y4m_dump_frame(y4m_stream_info_t  *si, uint8_t *m[3])
+{
+    int w,h;
+    int x,y;
+    
+    h = y4m_si_get_plane_height(si,0);
+	w = y4m_si_get_plane_width(si,0);
+
+    
+    printf("    ");
+    for (x=0;x<w;x++) {
+        if (x%10==0)
+            printf("%d",x/10);
+        else
+            printf(" ");
+    }
+    printf("\n");
+
+    printf("    ");
+    for (x=0;x<w;x++) {
+            printf("%d",x%10);
+    }
+    printf("\n");
+
+    
+    for (y=0; y<h; y++) {
+    
+        printf ("%03d ",y);
+        
+        int linew = w * y;
+        for (x=0;x<w;x++) {
+            printf("%02x",m[0][linew+x]);
+        }
+        printf("\n");
+
+        
+    }
+
+}
+

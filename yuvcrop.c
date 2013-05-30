@@ -1,23 +1,23 @@
 /*
  *  yuvcrop.c
  *  detect/crop/matte  2004 Mark Heath <mjpeg at silicontrip.org>
- *  detects colour matting and then remove it. 
+ *  detects colour matting and then remove it.
  *  Either by removing the pixels or painting them with a solid colour.
-
-**<h3>Crop, Matte and Matte detection</h3>
-**<p>
-**Used to detect matting in yuv sources.
-**It can also be used to crop and matte a yuv video stream.</p>
-**
-**<p>
-**Cropping makes the destination video frame dimensions smaller, while matting will keep the
-**video the same size, but replace pixels with a solid colour.
-**</P>
-**
-**<h4>RESULTS</h4>
-**
-**<? news::imageinline("lavtools/yuvcrop",-1); ?>
-**
+ 
+ **<h3>Crop, Matte and Matte detection</h3>
+ **<p>
+ **Used to detect matting in yuv sources.
+ **It can also be used to crop and matte a yuv video stream.</p>
+ **
+ **<p>
+ **Cropping makes the destination video frame dimensions smaller, while matting will keep the
+ **video the same size, but replace pixels with a solid colour.
+ **</P>
+ **
+ **<h4>RESULTS</h4>
+ **
+ **<? news::imageinline("lavtools/yuvcrop",-1); ?>
+ **
  *
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Patiño Barbolani <barbolani at jazzfree.com>
@@ -58,7 +58,7 @@
 
 #define YUVDE_VERSION "0.1"
 
-static void print_usage() 
+static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvcrop [-v] [-c|-m -a <x1,y1-x2,y2>] [-C <y,u,v>] [-T <tolerance>] [-h]\n"
@@ -83,33 +83,33 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 	uint8_t				point[3];
 	int                read_error_code ;
 	int frame = 0;
-	int width,height;	
-	int cwidth;	
+	int width,height;
+	int cwidth;
 	int atop=0, abottom=0, aleft=0, aright=0;
-
+    
 	
 	// Allocate memory for the YUV channels
 	
-	if (chromalloc(yuv_data,inStrInfo))		
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
 	/* Initialize counters */
-		
+    
 	fprintf(stderr,"detecting...\n");
 	
 	height = y4m_si_get_plane_height(inStrInfo,0) ; width = y4m_si_get_plane_width(inStrInfo,0);
-	//cheight = y4m_si_get_plane_height(inStrInfo,1) ; 
+	//cheight = y4m_si_get_plane_height(inStrInfo,1) ;
 	cwidth = y4m_si_get_plane_width(inStrInfo,1);
-
+    
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-
-	abottom=height; 
-	aright=width;	
+    
+	abottom=height;
+	aright=width;
 	
 	while( Y4M_ERR_EOF != read_error_code ) {
 		int top=height, left=width;
-
+        
 		frame ++;
 		if (read_error_code == Y4M_OK) {
 			// do work
@@ -190,9 +190,9 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 
 static void copy_subframe (uint8_t *dst[3], uint8_t *src[3], y4m_stream_info_t *sinfo,
 						   y4m_stream_info_t *sonfo,
-						   unsigned int *a) 
+						   unsigned int *a)
 {
-
+    
 	int y,h,w;
 	int cw,ch;
 	int ow,oh,ocw,och;
@@ -208,7 +208,7 @@ static void copy_subframe (uint8_t *dst[3], uint8_t *src[3], y4m_stream_info_t *
 	oh = y4m_si_get_plane_height(sonfo,0);
 	ocw = y4m_si_get_plane_width(sonfo,1);
 	och = y4m_si_get_plane_height(sonfo,1);
-
+    
 	
 	cx = a[0]/(ow/ocw);
 	cy = a[1]/(oh/och);
@@ -221,52 +221,55 @@ static void copy_subframe (uint8_t *dst[3], uint8_t *src[3], y4m_stream_info_t *
 			memcpy(dst[2]+y*cw,src[2]+cx+(y+cy)*ocw,cw);
 		}
 	}
-
-
+    
+    
 }
 
 static void crop (int fdIn, y4m_stream_info_t  *inStrInfo,
-					int fdOut, y4m_stream_info_t  *outStrInfo,
-					unsigned int *a) 
+                  int fdOut, y4m_stream_info_t  *outStrInfo,
+                  unsigned int *a, int dump)
 {
-
+    
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
 	uint8_t            *yuv_odata[3] ;
 	int                read_error_code ;
 	int                write_error_code ;
-
-
-	if (chromalloc(yuv_data,inStrInfo))		
+    
+    
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
-	if (chromalloc(yuv_odata,outStrInfo))		
+	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-
+    
 	write_error_code = Y4M_OK ;
-
+    
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-
+    
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-
+        
 		copy_subframe(yuv_odata,yuv_data,outStrInfo,inStrInfo,a);
-
-		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-
+        
+        if (dump)
+            y4m_dump_frame(outStrInfo,yuv_odata);
+        else
+            write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
+        
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 		
 	}
-
+    
 }
 
 static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned int *a, uint8_t *col)
 {
-
+    
 	int y,h,w;
-	int cw,ch;	
+	int cw,ch;
 	int cy;
 	int dh,clw,crw,crx;
 	
@@ -313,7 +316,7 @@ static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned in
 				memset(src[2]+(y/dh)*cw,col[2],clw);
 				// and the right
 				memset(src[1]+crx+(y/dh)*cw,col[1],crw);
-				memset(src[2]+crx+(y/dh)*cw,col[2],crw);	
+				memset(src[2]+crx+(y/dh)*cw,col[2],crw);
 			}
 		}
 	}
@@ -322,41 +325,41 @@ static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned in
 }
 
 static void matte (int fdIn, y4m_stream_info_t  *inStrInfo,
-					int fdOut, y4m_stream_info_t  *outStrInfo,
-					unsigned int *a, uint8_t *col) 
+                   int fdOut, y4m_stream_info_t  *outStrInfo,
+                   unsigned int *a, uint8_t *col)
 {
-
+    
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
 	uint8_t            *yuv_odata[3] ;
 	int                read_error_code ;
 	int                write_error_code ;
-
-
-	if (chromalloc(yuv_data,inStrInfo))		
+    
+    
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	
-	if (chromalloc(yuv_odata,outStrInfo))		
+	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-
+    
 	write_error_code = Y4M_OK ;
-
+    
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-
+    
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-
+        
 		chromacpy(yuv_odata,yuv_data,outStrInfo);
 		paint_matte(yuv_odata,outStrInfo,a,col);
-
+        
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-
+        
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 		
 	}
-
+    
 }
 
 
@@ -382,9 +385,9 @@ int main (int argc, char *argv[])
 	uint8_t colour[3];
 	unsigned int area[4];
 	int tolerance= DEFAULT_TOLERANCE;
-	const static char *legal_flags = "cma:C:T:v:h?";
-	int i; 
-
+	const static char *legal_flags = "cma:C:T:v:h?d";
+	int i,dump=0;
+    
 	// default colour (black)
 	colour[0]=16;
 	colour[1]=128;
@@ -401,14 +404,14 @@ int main (int argc, char *argv[])
 				verbose = atoi (optarg);
 				if (verbose < 0 || verbose > 2)
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
-			break;
+                break;
 			case 'c':
-				if (mode) 
+				if (mode)
 					mjpeg_error_exit1 ("Cannot use both crop and matte mode");
 				mode = MODE_CROP;
 				break;
 			case 'm':
-				if (mode) 
+				if (mode)
 					mjpeg_error_exit1 ("Cannot use both crop and matte mode");
 				mode = MODE_MATTE;
 				break;
@@ -423,19 +426,22 @@ int main (int argc, char *argv[])
 					mjpeg_error_exit1 ("Colour parse error, input doesn't match y,u,v");
 				break;
 			case 'T':
-					tolerance = atoi(optarg);
-			break;
+                tolerance = atoi(optarg);
+                break;
+            case 'd':
+                dump =1;
+                break;
 			case 'h':
 			case '?':
 				print_usage (argv);
 				return 0 ;
-			break;
+                break;
 		}
 	}
-		
-
+    
+    
 	if (mode) {
-		if ((area[2] == -1) && (area[3] == -1)) 
+		if ((area[2] == -1) && (area[3] == -1))
 		{
 			mjpeg_error_exit1 ("No area defined for crop or matte.");
 		}
@@ -444,7 +450,7 @@ int main (int argc, char *argv[])
 		}
 		// I should also check that the area isn't outside the input streams dimensions
 	}
-		
+    
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
 	
@@ -461,22 +467,22 @@ int main (int argc, char *argv[])
 	
 	// setup output streams if mode isn't detect
 	if (mode) {
-
-			if (area[0] > y4m_si_get_plane_width(&in_streaminfo,0) ||
-				area[2] > y4m_si_get_plane_width(&in_streaminfo,0) ||
-				area[1] > y4m_si_get_plane_height(&in_streaminfo,0) ||
-				area[3] > y4m_si_get_plane_height(&in_streaminfo,0))
-					mjpeg_error_exit1 ("Area outside of streams dimensions!");
-
-			y4m_init_stream_info (&out_streaminfo);
-			y4m_copy_stream_info(&out_streaminfo, &in_streaminfo);
-			
-			// reduce the dimensions
-			if (mode == MODE_CROP) {
-				y4m_si_set_height (&out_streaminfo, area[3]-area[1]);
-				y4m_si_set_width (&out_streaminfo, area[2]-area[0]);
-			}
-			y4m_write_stream_header(fdOut,&out_streaminfo);
+        
+        if (area[0] > y4m_si_get_plane_width(&in_streaminfo,0) ||
+            area[2] > y4m_si_get_plane_width(&in_streaminfo,0) ||
+            area[1] > y4m_si_get_plane_height(&in_streaminfo,0) ||
+            area[3] > y4m_si_get_plane_height(&in_streaminfo,0))
+            mjpeg_error_exit1 ("Area outside of streams dimensions!");
+        
+        y4m_init_stream_info (&out_streaminfo);
+        y4m_copy_stream_info(&out_streaminfo, &in_streaminfo);
+        
+        // reduce the dimensions
+        if (mode == MODE_CROP) {
+            y4m_si_set_height (&out_streaminfo, area[3]-area[1]);
+            y4m_si_set_width (&out_streaminfo, area[2]-area[0]);
+        }
+        y4m_write_stream_header(fdOut,&out_streaminfo);
 	}
 	// Information output
 	mjpeg_info ("yuvcropdetect (version " YUVDE_VERSION ") is a general deinterlace/interlace utility for yuv streams");
@@ -490,11 +496,11 @@ int main (int argc, char *argv[])
 		detect(fdIn, &in_streaminfo,colour,tolerance);
 	
 	if (mode == MODE_CROP) 
-		crop (fdIn,&in_streaminfo, fdOut,&out_streaminfo, area);
-		
+		crop (fdIn,&in_streaminfo, fdOut,&out_streaminfo, area, dump);
+    
 	if (mode == MODE_MATTE) 
 		matte (fdIn,&in_streaminfo, fdOut,&out_streaminfo, area, colour);
-
+    
 	
 	y4m_fini_stream_info (&in_streaminfo);
 	
