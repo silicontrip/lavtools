@@ -435,15 +435,15 @@ void y4m_dump_frame(y4m_stream_info_t  *si, uint8_t *m[3])
     printf("    ");
     for (x=0;x<w;x++) {
         if (x%10==0)
-            printf("%d",x/10);
+            printf("%2d",x/10);
         else
-            printf(" ");
+            printf("  ");
     }
     printf("\n");
 
     printf("    ");
     for (x=0;x<w;x++) {
-            printf("%d",x%10);
+            printf("%2d",x%10);
     }
     printf("\n");
 
