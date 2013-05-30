@@ -113,11 +113,10 @@ libav-bitrate: libav-bitrate.c progress.o
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@  $^
 
 metadata-example: metadata-example.o
-	       $(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $<
+	       $(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
 
 libavmux: libavmux.c 
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
-
 
 clean:
 	 rm -f *.o $(TARGETS)

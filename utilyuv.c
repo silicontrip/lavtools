@@ -303,20 +303,18 @@ int gcd(int a, int b)
 
 int xchroma (int x, y4m_stream_info_t *si)
 {
-	int cwr,xcwr;
+	int cwr;
 	cwr = y4m_si_get_plane_width(si,0) / y4m_si_get_plane_width(si,1);
 	
 	if ( cwr == 1 ) {
-		xcwr = x;
+		return  x;
 	} else if ( cwr == 2) {
-		xcwr = x >> 1;
+		return x >> 1;
 	} else if (cwr == 4) {
-		xcwr = x >> 2;
-	} else {
-		xcwr = x / cwr;
+		return x >> 2;
 	}
-	
-	return xcwr;
+    
+    return x / cwr;
 	
 }
 
@@ -328,21 +326,19 @@ int ychroma(int y, y4m_stream_info_t *si)
 
 	
 	if (chr == 1) {	
-		ychr = y;
+		return y;
 	} else if (chr == 2) {
 		if (y4m_si_get_interlace(si) == Y4M_ILACE_NONE) {
-			ychr = y >> 1;
+			return y >> 1;
 		} else {
-			ychr = ((y >> 2) << 1) + (y%2);
+			return ((y >> 2) << 1) + (y%2);
 		}
 	} else if (chr == 4) {
 		// I have no idea how a /4 interlace chroma would work.
-		ychr = y >> 2;
-	} else {	
-		ychr = y / chr;		
+		return y >> 2;
 	}
-	
-	return ychr;
+    return y / chr;
+
 }
 
 // I don't think this code is valid.
