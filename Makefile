@@ -118,8 +118,6 @@ metadata-example: metadata-example.o
 libavmux: libavmux.c 
 	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
 
-
-
 clean:
 	 rm -f *.o $(TARGETS)
 

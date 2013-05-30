@@ -134,10 +134,12 @@ int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t
 
     
     
-	for (x1=1;x1<m;x1++)
+	for (x1=0;x1<m;x1++)
 	{
-        if (abs(yuv_data[0][linew+x1] - yuv_data[0][linew+x1+1] ) > 6) {
-            return x1-1;
+		// it appears that sync is outside of the mpeg video range.
+		if (yuv_data[0][linew+x1] >=16) return x1;
+	//	if (abs(yuv_data[0][linew+x1] - yuv_data[0][linew+x1+1] ) > 6) {
+	//	    return x1-1;
         }
     }
 	//	fprintf(stderr," %d",diff);
