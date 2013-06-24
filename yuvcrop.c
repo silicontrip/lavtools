@@ -75,6 +75,143 @@ static void print_usage()
 			 );
 }
 
+static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInfo, uint8_t *col, int tol )
+{
+    y4m_frame_info_t    in_frame ;
+	uint8_t             *yuv_data[3] ;
+    uint8_t             *yuv_odata[3] ;
+    int                 read_error_code ;
+    int border [1024]; // need to malloc this instead
+    int order[1024]; // as above
+    int x,y,luma;
+    int write_error_code,width,height;
+    int min,select,med;
+    
+    if (chromalloc(yuv_data,inStrInfo))
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+    
+    if (chromalloc(yuv_odata,inStrInfo))
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
+
+
+    
+    height = y4m_si_get_plane_height(inStrInfo,0) ; width = y4m_si_get_plane_width(inStrInfo,0);
+
+    read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+    
+    while( Y4M_ERR_EOF != read_error_code ) {
+
+        chromaset(yuv_odata,inStrInfo, 16,128,128);
+        
+        // top down
+        
+        /*
+        for (x=0; x< width; x++ )
+        {
+            for (y=0; y< height; y++)
+            {
+                luma = yuv_data[0][y*width + x];
+                yuv_odata[0][y*width+x] = 235;
+                if (abs(col[0] - luma) > tol)
+                {
+                    border[0][x] = y;
+                    break;
+                }
+                
+            }
+            for (y=height; y>0; y--)
+            {
+                yuv_odata[0][y*width+x] = 235;
+
+                luma = yuv_data[0][y*width + x];
+                if (abs(col[0] - luma) > tol)
+                {
+                    border[2][x] = y;
+                    break;
+                }
+                
+            }
+        }
+        */
+        // left right
+        
+        for (y=0; y< height; y++ )
+        {
+            
+            col[0] = yuv_data[0][y*width];
+            
+            for (x=0; x< width; x++)
+            {
+
+                
+                luma = yuv_data[0][y*width + x];
+                if (abs(col[0] - luma) > tol)
+                {
+                    border[y] = x;
+                    break;
+                }
+                
+            }
+        }
+        
+        // now to detect classic head switching pattern.
+
+        for (y=0; y<height;y++)
+            order[y]=border[y];
+        
+        for (y=0; y< height; y++ )
+        {
+            min = order[y];
+            select = y;
+            
+            for (x=y; x<height; x++)
+            {
+                if (order[x] < min)
+                {
+                    min = order[x];
+                    select = x;
+                }
+            
+                if (select != y)
+                {
+                    min = order[y];
+                    order[y] = order[select];
+                    order[select] = min;
+                }
+            }
+            
+            med = order[height/2];
+        }
+        
+        for (y=0;y<height;y++)
+        {
+            if (border[y]>med)
+                for(x=0;x<border[y];x++)
+                    yuv_odata[0][y*width+x] = 235;
+                
+        }
+
+        y4m_fini_frame_info( &in_frame );
+		y4m_init_frame_info( &in_frame );
+        
+        write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
+        
+        read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
+
+        
+    }
+    
+    y4m_fini_frame_info( &in_frame );
+	
+	chromafree( yuv_data);
+	chromafree( yuv_odata );
+	
+	if( read_error_code != Y4M_ERR_EOF )
+		mjpeg_error_exit1 ("Error reading from input stream!");
+
+    
+}
+
 
 static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int tol )
 {
@@ -95,6 +232,8 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 	
 	/* Initialize counters */
     
+    
+    // if debug
 	fprintf(stderr,"detecting...\n");
 	
 	height = y4m_si_get_plane_height(inStrInfo,0) ; width = y4m_si_get_plane_width(inStrInfo,0);
@@ -371,6 +510,7 @@ static void matte (int fdIn, y4m_stream_info_t  *inStrInfo,
 #define MODE_DETECT 0
 #define MODE_CROP 1
 #define MODE_MATTE 2
+#define MODE_SWITCHING 3
 
 #define ARGLEN_AREA 24  // I hope 5 digits per dimension is enough but who knows how large frames might grow... 16384,16384...
 #define ARGLEN_COLOUR 12 // 3 colour values, maximum 3 digits each plus commas, this program is only designed to handle 8 bit colour (however 9 bit colour will fit in this string length)
@@ -385,7 +525,7 @@ int main (int argc, char *argv[])
 	uint8_t colour[3];
 	unsigned int area[4];
 	int tolerance= DEFAULT_TOLERANCE;
-	const static char *legal_flags = "cma:C:T:v:h?d";
+	const static char *legal_flags = "scma:C:T:v:h?d";
 	int i,dump=0;
     
 	// default colour (black)
@@ -415,6 +555,9 @@ int main (int argc, char *argv[])
 					mjpeg_error_exit1 ("Cannot use both crop and matte mode");
 				mode = MODE_MATTE;
 				break;
+            case 's':
+                mode = MODE_SWITCHING;
+                break;
 			case 'a':
 				i = sscanf(optarg,"%i,%i-%i,%i",&area[0],&area[1],&area[2],&area[3]);
 				if (i != 4)
@@ -440,7 +583,7 @@ int main (int argc, char *argv[])
 	}
     
     
-	if (mode) {
+	if (mode != MODE_DETECT && mode != MODE_SWITCHING) {
 		if ((area[2] == -1) && (area[3] == -1))
 		{
 			mjpeg_error_exit1 ("No area defined for crop or matte.");
@@ -456,7 +599,7 @@ int main (int argc, char *argv[])
 	
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
-	
+    
 	// ***************************************************************
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
@@ -465,6 +608,12 @@ int main (int argc, char *argv[])
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 	
+    if (mode == MODE_SWITCHING)
+    {
+        area[2] = y4m_si_get_plane_width(&in_streaminfo,0) - 1;
+        area[3] = y4m_si_get_plane_height(&in_streaminfo,0) - 1;
+    }
+    
 	// setup output streams if mode isn't detect
 	if (mode) {
         
@@ -485,15 +634,19 @@ int main (int argc, char *argv[])
         y4m_write_stream_header(fdOut,&out_streaminfo);
 	}
 	// Information output
-	mjpeg_info ("yuvcropdetect (version " YUVDE_VERSION ") is a general deinterlace/interlace utility for yuv streams");
-	mjpeg_info ("(C) 2005 Mark Heath <mjpeg0 at silicontrip.org>");
-	mjpeg_info ("yuvcropdetect -h for help");
+	mjpeg_info ("yuvcrop (version " YUVDE_VERSION ") crop tool for yuv streams");
+	mjpeg_info ("(C) 2005-2013 Mark Heath <mjpeg0 at silicontrip.org>");
+	mjpeg_info ("yuvcrop -h for help");
 	
 	
 	
 	/* in that function we do all the important work */
 	if (mode == MODE_DETECT)
 		detect(fdIn, &in_streaminfo,colour,tolerance);
+    
+    if (mode == MODE_SWITCHING)
+		detect_switching(fdIn, fdOut, &in_streaminfo,colour,tolerance);
+
 	
 	if (mode == MODE_CROP) 
 		crop (fdIn,&in_streaminfo, fdOut,&out_streaminfo, area, dump);
