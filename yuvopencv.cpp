@@ -1,5 +1,9 @@
 /*
- * yuv field seperator
+ * yuv scanning picture assembler
+ * This program takes a horizontal and vertically scrolling video. (say a view of a map from a computer game)
+ * And attempts to assemble it into a single large image.  Uses the opencv2 library. http://http://opencv.org
+ *
+ *
  * Mark Heath
  * http://github.com/silicontrip/lavtools/
  *
