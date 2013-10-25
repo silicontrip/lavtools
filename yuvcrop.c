@@ -138,12 +138,16 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
         for (y=0; y< height; y++ )
         {
             
-            col[0] = yuv_data[0][y*width];
+            border[y] = 0;
+            
+            // try not to get fooled by non matted video.
+            col[0] = 16;
+            if (yuv_data[0][y*width] <= 16)
+                col[0] = yuv_data[0][y*width];
             
             for (x=0; x< width; x++)
             {
 
-                
                 luma = yuv_data[0][y*width + x];
                 if (abs(col[0] - luma) > tol)
                 {
@@ -158,6 +162,7 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
 
         for (y=0; y<height;y++)
             order[y]=border[y];
+        
         
         for (y=0; y< height; y++ )
         {
@@ -180,22 +185,26 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
                 }
             }
             
-            med = order[height/2];
         }
+        // wondering if I should up this to a heigher percentile.
+        med = order[50 * height / 100] ;
         
-        for (y=0;y<height;y++)
-        {
-            if (border[y]>med)
-                for(x=0;x<border[y];x++)
-                    yuv_odata[0][y*width+x] = 235;
-                
+        int switching = 0;
+        for (y=height-1;y>0&&border[y]>med;y--) {
+            switching ++;
+            
+            for(x=0;x<border[y];x++)
+                yuv_odata[0][y*width+x] = 235;
+            
+            
         }
 
+        // switching
+        
         y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
         
         write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
-        
         read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 
         
