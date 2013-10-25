@@ -24,8 +24,8 @@
 #include <yuv4mpeg.h>
 #include <mpegconsts.h>
 #include <string.h>
-#include "Libyuv.h"
-#include "AVException.h"
+#include "libav2yuv/Libyuv.h"
+#include "libav2yuv/AVException.h"
 
 
 #include <vector>
