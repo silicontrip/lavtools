@@ -2,7 +2,6 @@
 *.dSYM
 *.txt
 libav-bitrate
-libav2yuv
 libavmux
 yuvaddetect
 yuvadjust

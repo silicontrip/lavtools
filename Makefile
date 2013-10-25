@@ -29,10 +29,10 @@ TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 
 all: $(TARGETS)
 
-yuvfieldseperate: yuvfieldseperate.o Libyuv.o AVException.o
+yuvfieldseperate: yuvfieldseperate.o libav2yuv/Libyuv.o libav2yuv/AVException.o
 	g++ $(LDFLAGS) -o $@ $^ 
 
-yuvopencv: yuvopencv.o Libyuv.o AVException.o
+yuvopencv: yuvopencv.o libav2yuv/Libyuv.o libav2yuv/AVException.o
 	g++ $(LDFLAGS) $(OPENCVFLAGS) -o $@ $^ 
 
 yuvhsync: utilyuv.o yuvhsync.o
