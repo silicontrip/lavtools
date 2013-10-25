@@ -393,8 +393,7 @@ int main(int argc, char *argv[])
     av_free(pFrame);
 	
     // Close the codec
-    x(pCodecCtx);
-	
+	avcodec_close(pCodecCtx);
 	
     // Close the video file
 #if LIBAVCODEC_VERSION_MAJOR < 53
