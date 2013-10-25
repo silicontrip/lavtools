@@ -1,0 +1,3 @@
+[submodule "libav2yuv"]
+	path = libav2yuv
+	url = ../libav2yuv
