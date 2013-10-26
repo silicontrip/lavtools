@@ -4,13 +4,13 @@ CFLAGS?=-g
 CXXFLAGS?=-g
 BINDIR?=/usr/local/bin
 
-FFMPEG_LIBS=-lswscale -lavcodec -lavformat -lavutil
+FFMPEG_LIBS=-lavcodec -lavformat -lavutil
 MATH_LIBS=-lm
 MJPEG_LIBS=-lmjpegutils
 FREETYPE_LIBS=-lfreetype
 FFTW_LIBS=-lfftw3
 JPEG_LIBS=-ljpeg
-OPENCV_LIBS=-lopencv_calib3d -lopencv_contrib -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_gpu -lopencv_highgui -lopencv_imgproc -lopencv_legacy -lopencv_ml -lopencv_nonfree -lopencv_objdetect -lopencv_ocl -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_ts -lopencv_video -lopencv_videostab
+OPENCV_LIBS=-lopencv_core -lopencv_highgui -lopencv_imgproc
 COCOA_LIBS=-framework QuartzCore -framework Foundation -framework AppKit
 
 DEPRECATED_TARGETS=libavmux
@@ -33,7 +33,7 @@ endif
 .PHONY: clean install
 all: $(TARGETS)
 clean:
-	 rm -f *.o $(TARGETS) $(DEPRECATED_TARGETS)
+	 rm -f *.o libav2yuv/*.o $(TARGETS)
 
 install:
 	install -d $(DESTDIR)$(BINDIR)
@@ -57,9 +57,6 @@ yuvconvolve: yuvconvolve.o
 
 yuvadjust: utilyuv.o yuvadjust.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(MATH_LIBS)
-
-yuvTHREADED: utilyuv.o yuvTHREADED.o
-	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
 
 yuvmdeinterlace: utilyuv.o yuvmdeinterlace.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
