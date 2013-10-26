@@ -155,7 +155,7 @@ void ftdims (int *px, int *py, int *lines, FT_Face face, unsigned char * text) {
 		
 			/* ignore errors */
 			pen_x += slot->advance.x;
-			pen_y += slot->advance.y; /* not useful for now */
+		//	pen_y += slot->advance.y; /* not useful for now */
 			
 			if ( slot->bitmap_top > topmax) topmax=slot->bitmap_top;
 			if ( slot->bitmap.rows-slot->bitmap_top > rowmax) rowmax = slot->bitmap.rows-slot->bitmap_top;

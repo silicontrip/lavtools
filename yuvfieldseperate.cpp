@@ -43,7 +43,6 @@ int main (int argc, char **argv)
         oyuv.copyStreamInfo(&iyuv);
 
         oyuv.dumpInfo();
-        
         oyuv.writeHeader();
     
         iyuv.allocFrameData();
