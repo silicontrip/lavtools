@@ -7,7 +7,7 @@ COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
 CODECFLAGS=
 #CODECFLAGS=-DHAVE_AV_FREE_PACKET
 #LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib 
-CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 
+CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 -Wl,--as-needed
 CPPFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 -D__STDC_CONSTANT_MACROS
 #CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/usr/local/include/freetype2
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
@@ -110,7 +110,7 @@ libav2yuv: libav2yuv.o utilyuv.o
 	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
 
 libav-bitrate: libav-bitrate.c progress.o
-	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@  $^
+	$(CC)  -o $@ $^ $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) 
 
 metadata-example: metadata-example.o
 	       $(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
