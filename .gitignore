@@ -2,6 +2,7 @@
 *.dSYM
 *.txt
 libav-bitrate
+metadata-example
 libavmux
 yuvaddetect
 yuvadjust
