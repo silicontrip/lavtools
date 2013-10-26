@@ -8,7 +8,7 @@ yuvadjust
 yuvaifps
 yuvconvolve
 yuvcrop
-yuvdeinterlace
+yuvmdeinterlace
 yuvdiff
 yuvfade
 yuvhsync
@@ -27,4 +27,7 @@ yuvyadif
 yuvnlmeans
 yuvvalues
 yuv2jpeg
+yuvfieldseperate
+yuvopencv
+yuvsubtitle
 

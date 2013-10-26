@@ -1,125 +1,134 @@
+CC?=gcc
+CXX?=g++
+CFLAGS?=-g
+CXXFLAGS?=-g
+BINDIR?=/usr/local/bin
 
-CC=gcc
-OPT_FLAG=-g 
-#OPT_FLAG=-O3 -ftree-vectorize
-FREETYPEFLAGS=-L/usr/X11/lib -lfreetype
-COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
-CODECFLAGS=
-#CODECFLAGS=-DHAVE_AV_FREE_PACKET
-#LDFLAGS=-L/usr/local/lib -lmjpegutils -L/opt/local/lib 
-CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 
-CPPFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include  -I/usr/X11/include -I/usr/X11/include/freetype2 -D__STDC_CONSTANT_MACROS
-#CFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/opt/local/include -I/usr/local/include -I/usr/local/include/freetype2
-FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
-#FFMPEG_FLAGS= $(CODECFLAGS) -lavcodec -lavformat -lavutil
-JPEGFLAGS= -ljpeg
-MJPEGFLAGS= -lmjpegutils
-LDFLAGS=-L/usr/X11/lib  -L/usr/local/lib  $(MJPEGFLAGS)
-OPENCVFLAGS=-lopencv_calib3d -lopencv_contrib -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_gpu -lopencv_highgui -lopencv_imgproc -lopencv_legacy -lopencv_ml -lopencv_nonfree -lopencv_objdetect -lopencv_ocl -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_ts -lopencv_video -lopencv_videostab
+FFMPEG_LIBS=-lswscale -lavcodec -lavformat -lavutil
+MATH_LIBS=-lm
+MJPEG_LIBS=-lmjpegutils
+FREETYPE_LIBS=-lfreetype
+FFTW_LIBS=-lfftw3
+JPEG_LIBS=-ljpeg
+OPENCV_LIBS=-lopencv_calib3d -lopencv_contrib -lopencv_core -lopencv_features2d -lopencv_flann -lopencv_gpu -lopencv_highgui -lopencv_imgproc -lopencv_legacy -lopencv_ml -lopencv_nonfree -lopencv_objdetect -lopencv_ocl -lopencv_photo -lopencv_stitching -lopencv_superres -lopencv_ts -lopencv_video -lopencv_videostab
+COCOA_LIBS=-framework QuartzCore -framework Foundation -framework AppKit
 
+DEPRECATED_TARGETS=libavmux
+DARWIN_TARGETS=yuvCIFilter
+MAIN_TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
+	yuvmdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
+	yuvtbilateral yuvdiag yuvpixelgraph yuvfieldrev yuvtout \
+	yuvyadif yuvnlmeans yuvvalues yuvfieldseperate yuvopencv metadata-example yuvilace
 
+UNAME:=$(shell uname)
+ifeq ($(UNAME), Darwin)
+	CPPFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include -I/usr/X11/include -I/usr/X11/include/freetype2 -D__STDC_CONSTANT_MACROS
+	LDFLAGS=-L/usr/X11/lib -L/usr/local/lib
+	TARGETS=$(MAIN_TARGETS) $(DARWIN_TARGETS)
+else
+	CPPFLAGS=-I/usr/include/mjpegtools -I/usr/include/freetype2 -D__STDC_CONSTANT_MACROS
+	TARGETS=$(MAIN_TARGETS)
+endif
 
-DEPRECATED_TARGETS=libav2yuv libavmux
-
-TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
-		yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
-		yuvtbilateral yuvCIFilter yuvdiag yuvpixelgraph yuvfieldrev yuvtout \
-		yuvyadif yuvnlmeans yuvvalues yuvfieldseperate yuvopencv metadata-example
-
-
+.PHONY: clean install
 all: $(TARGETS)
-
-yuvfieldseperate: yuvfieldseperate.o libav2yuv/Libyuv.o libav2yuv/AVException.o
-	g++ $(LDFLAGS) -o $@ $^ 
-
-yuvopencv: yuvopencv.o libav2yuv/Libyuv.o libav2yuv/AVException.o
-	g++ $(LDFLAGS) $(OPENCVFLAGS) -o $@ $^ 
-
-yuvhsync: utilyuv.o yuvhsync.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvcrop: utilyuv.o yuvcrop.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-
-yuvadjust: utilyuv.o yuvadjust.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvTHREADED: utilyuv.o yuvTHREADED.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvdeinterlace: utilyuv.o yuvdeinterlace.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvtshot: yuvtshot.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvdiff: yuvdiff.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvfieldrev: yuvfieldrev.o utilyuv.o 
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvpixelgraph: yuvpixelgraph.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvbilateral: yuvbilateral.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvtbilateral: yuvtbilateral.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvtemporal: yuvtemporal.o utilyuv.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-
-yuvtout: yuvtout.o utilyuv.o
-	$(CC) $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-yuvyadif: yuvyadif.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-
-yuvnlmeans: yuvnlmeans.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-
-yuvvalues: yuvvalues.o utilyuv.o
-	$(CC)  $(CFLAGS) $(LDFLAGS)  -o $@  $^
-
-
-yuv2jpeg: yuv2jpeg.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS)  $(JPEGFLAGS) -o $@ $^
-
-yuvsubtitle: yuvsubtitle.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(FREETYPEFLAGS) -o $@  $^
-
-yuvdiag: yuvdiag.o utilyuv.o
-	$(CC)  $(LDFLAGS) $(MJPEGFLAGS) $(CFLAGS) $(FREETYPEFLAGS) -o $@  $^
-
-yuvCIFilter: yuvCIFilter.o utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) $(COCOAFLAGS) -o $@ $^
-
-yuvilace: yuvilace.o  utilyuv.o
-	$(CC) $(LDFLAGS) $(CFLAGS) $(MJPEGFLAGS) -lfftw3 -o $@  $^
-
-libav2yuv.o: libav2yuv.c
-	$(CC) $(FFMPEG_FLAGS) $(CFLAGS) -c -o $@ $^
-
-libav2yuv: libav2yuv.o utilyuv.o
-	$(CC) $(FFMPEG_FLAGS) $(MJPEGFLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
-
-libav-bitrate: libav-bitrate.c progress.o
-	$(CC)  -o $@ $^ $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) 
-
-metadata-example: metadata-example.o
-	       $(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
-
-libavmux: libavmux.c 
-	$(CC) $(FFMPEG_FLAGS) $(LDFLAGS) $(CFLAGS) -o $@ $^
-
 clean:
-	 rm -f *.o $(TARGETS)
+	 rm -f *.o $(TARGETS) $(DEPRECATED_TARGETS)
 
 install:
-	cp $(TARGETS) /usr/local/bin
+	install -d $(DESTDIR)$(BINDIR)
+	for i in $(TARGETS) ; do install -m0755 $$i $(DESTDIR)$(BINDIR) ; done
+
+
+yuvfieldseperate: yuvfieldseperate.o libav2yuv/Libyuv.o libav2yuv/AVException.o
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) $(MJPEG_LIBS) 
+
+yuvopencv: yuvopencv.o libav2yuv/Libyuv.o libav2yuv/AVException.o
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(OPENCV_LIBS)
+
+yuvhsync: utilyuv.o yuvhsync.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvcrop: utilyuv.o yuvcrop.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvconvolve: yuvconvolve.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(MATH_LIBS)
+
+yuvadjust: utilyuv.o yuvadjust.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(MATH_LIBS)
+
+yuvTHREADED: utilyuv.o yuvTHREADED.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvmdeinterlace: utilyuv.o yuvmdeinterlace.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvtshot: yuvtshot.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(MATH_LIBS)
+
+yuvdiff: yuvdiff.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvfieldrev: yuvfieldrev.o utilyuv.o 
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvpixelgraph: yuvpixelgraph.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvbilateral: yuvbilateral.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(MATH_LIBS)
+
+yuvtbilateral: yuvtbilateral.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(MATH_LIBS)
+
+yuvtout: yuvtout.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvyadif: yuvyadif.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvnlmeans: yuvnlmeans.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(MATH_LIBS)
+
+yuvvalues: yuvvalues.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuv2jpeg: yuv2jpeg.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(JPEG_LIBS)
+
+yuvaddetect: yuvaddetect.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvfade: yuvfade.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvaifps: yuvaifps.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvrfps: yuvrfps.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvwater: yuvwater.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
+
+yuvsubtitle: yuvsubtitle.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(FREETYPE_LIBS)
+
+yuvdiag: yuvdiag.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(FREETYPE_LIBS)
+
+yuvCIFilter: yuvCIFilter.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(COCOA_LIBS)
+
+yuvilace: yuvilace.o utilyuv.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(FFTW_LIBS)
+
+libav-bitrate: libav-bitrate.o progress.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(FFMPEG_LIBS)
+
+metadata-example: metadata-example.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(FFMPEG_LIBS)
+
+libavmux: libavmux.o
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(FFMPEG_LIBS)
