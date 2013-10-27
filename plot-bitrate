@@ -1,0 +1,49 @@
+#!/bin/sh
+# plot-bitrate
+
+check_file() {
+	if [ ! -s "${1}" ]
+	then
+		echo "ERROR: \"${1}\" does not exist or is empty"
+		exit 1
+	fi
+}
+
+media_file="${1}"
+check_file "${media_file}"
+width="${2:-1920}"
+height="${3:-1080}"
+media_name="$(basename "${media_file}")"
+data_file="${HOME}/.plot-bitrate_"${media_name}"_data.$$"
+streams_file="${HOME}/.plot-bitrate_"${media_name}"_streams.$$"
+
+libav-bitrate -P -e -I 1 "${media_file}" 2>&1 > "${data_file}"|tee /dev/tty|\
+sed -n -e '/^[[:space:]]*Stream/s|^[[:space:]]*||p' > "${streams_file}"
+
+for i in "${data_file}" "${streams_file}"
+do
+	check_file "${i}"
+done
+
+{
+echo "
+set title \"${media_name}\"
+set xdata time
+set timefmt '%s'
+set format x '%R'
+set xlabel 'time'
+set ylabel 'bitrate (Kb/s)'
+set style data lines
+
+set terminal qt size ${width},${height}
+"
+echo -n 'plot "'"${data_file}"'" using 1:($2/1024) title "Total"'
+stream_n='2'
+while read line
+do
+	stream_n="$((${stream_n}+1))"
+	echo -n ', "'"${data_file}"'" using 1:($'"${stream_n}"'/1024) title "'"${line}"'"'
+done < "${streams_file}"
+echo
+}|gnuplot --persist
+rm "${data_file}" "${streams_file}"
