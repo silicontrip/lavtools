@@ -24,7 +24,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
-gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
+gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
  */
 
 
@@ -42,7 +42,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 
 #define VERSION "0.1"
 
-static void print_usage() 
+static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvfieldrev\n"
@@ -59,37 +59,37 @@ static void filter(  int fdIn ,int fdOut  , y4m_stream_info_t  *inStrInfo )
 	int interlace;
 	int                read_error_code ;
 	int                write_error_code ;
-	
+
 	// Allocate memory for the YUV channels
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Couldn't allocate memory for the YUV4MPEG data!");
-	
-	if (chromalloc(yuv_odata,inStrInfo))		
+
+	if (chromalloc(yuv_odata,inStrInfo))
 		mjpeg_error_exit1 ("Couldn't allocate memory for the YUV4MPEG data!");
 
 	// fill with black.
 	chromaset(yuv_odata,inStrInfo,16,128,128);
-	
+
 	/* Initialize counters */
-	
+
 	interlace = y4m_si_get_interlace(inStrInfo);
 	write_error_code = Y4M_OK ;
-	
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 		if (read_error_code == Y4M_OK) {
-			
+
 			copyfield(yuv_odata,yuv_data,inStrInfo,interlace);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 			copyfield(yuv_odata,yuv_data,inStrInfo,invert_order(interlace));
 
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
@@ -98,17 +98,17 @@ static void filter(  int fdIn ,int fdOut  , y4m_stream_info_t  *inStrInfo )
 	copyfield(yuv_odata,yuv_data,inStrInfo,interlace);
 	write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 
-	
+
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 // *************************************************************************************
@@ -116,7 +116,7 @@ static void filter(  int fdIn ,int fdOut  , y4m_stream_info_t  *inStrInfo )
 // *************************************************************************************
 int main (int argc, char *argv[])
 {
-	
+
 	int verbose = 4; // LOG_ERROR ;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
@@ -124,7 +124,7 @@ int main (int argc, char *argv[])
 	int c ;
 	const static char *legal_flags = "hI:v:";
 	int yuv_interlacing= Y4M_UNKNOWN;
-    
+
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -133,11 +133,11 @@ int main (int argc, char *argv[])
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
 			case 'I':
-				
+
 				fprintf(stderr,"Parsing Interlace");
-				
+
 				mjpeg_info ("Parsing interlace");
-				
+
 				yuv_interlacing = parse_interlacing(optarg);
 				break;
 			case 'h':
@@ -147,14 +147,14 @@ int main (int argc, char *argv[])
 				break;
 		}
 	}
-	
+
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
-	
+
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
 
-	
+
 	// ***************************************************************
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
@@ -162,22 +162,22 @@ int main (int argc, char *argv[])
 	// INPUT comes from stdin, we check for a correct file header
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-	
+
 	//yuv_interlacing = Y4M_ILACE_TOP_FIRST;
-	
+
 	// Information output
 	mjpeg_info ("yuv (version " VERSION ") is a field reversing utility for yuv streams");
-	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");	
-	
+	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
+
 	if (yuv_interlacing == Y4M_UNKNOWN) {
 		yuv_interlacing = y4m_si_get_interlace(&in_streaminfo);
 	}
-		
+
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 	y4m_si_set_interlace(&in_streaminfo, yuv_interlacing);
 	y4m_si_set_interlace(&out_streaminfo, invert_order(yuv_interlacing));
 	y4m_write_stream_header(fdOut,&out_streaminfo);
-	
+
 	/* in that function we do all the important work */
 	filter(fdIn, fdOut, &in_streaminfo);
 	y4m_fini_stream_info (&in_streaminfo);

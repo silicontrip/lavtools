@@ -10,15 +10,15 @@ very slow or very fast frame rates and averages all frames that
 overlap.  </p>
 
 <p> It supports  interlaced and progressive streams, and can force a conversion
-from progressive to interlace (although I'm not sure if it properly handles 
+from progressive to interlace (although I'm not sure if it properly handles
 progressive to interlaced chroma)
 </p>
 
 <p><a href="yuvaifps.c">yuvaifps.c</a>
 <h3>Averaging Integer based Frame Rate Converter</h3>
 <p>
-I have re-written this to use integers rather than floats, 
-appears to increase speed by about 3 times.  
+I have re-written this to use integers rather than floats,
+appears to increase speed by about 3 times.
 <h4>BUGS</h4>
 <p>
 It may
@@ -27,7 +27,7 @@ I've tried to detect this occurance,
 but it simply reports an error on stderr and continues with a corrupted stream.
 </p>
 
-<UL> 
+<UL>
 <li> 24 April 2008.  Just when I think I fixed the interlaced bug,  I introduce a progressive bug.  Both bugs have now been fixed.
 <li> 23 April 2008. Fixed interlaced version.
 <li> 23 April 2008. Discovered bug in calc_per which affects both the integer and floating point versions.  The issue should be very rare, when there is no overlap of frames it will return a negative (or very large) value corrupting usually

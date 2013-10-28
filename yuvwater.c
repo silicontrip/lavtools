@@ -89,7 +89,7 @@
 /* the scale from 0 to 1 */
 #define MUL_SCALE 224
 
-static void print_usage() 
+static void print_usage()
 {
   fprintf (stderr,
 	   "usage: yuvwater [-v -h]\n"
@@ -140,7 +140,7 @@ static int removewm (int fdWM, int fdIn, y4m_stream_info_t  *inStrInfo, int fdOu
 
 	yuvwm_data = (uint8_t  *)malloc( frame_data_size );
 
-	read (fdWM,yuvwm_data,frame_data_size);	
+	read (fdWM,yuvwm_data,frame_data_size);
 
 	yuv_data[0] = (uint8_t *)malloc( frame_data_size );
 	yuv_data[1] = (uint8_t *)malloc( frame_data_size >> 2 );
@@ -176,7 +176,7 @@ static int removewm (int fdWM, int fdIn, y4m_stream_info_t  *inStrInfo, int fdOu
 		/* prevent clipping */
 			if (yuv > 240) yuv = 240;
 			if (yuv < 16) yuv = 16;
-			
+
 			yuv_data[0][l] = yuv;
 		}
 
@@ -185,7 +185,7 @@ static int removewm (int fdWM, int fdIn, y4m_stream_info_t  *inStrInfo, int fdOu
                 y4m_fini_frame_info( &in_frame );
                 y4m_init_frame_info( &in_frame );
                 read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	if (ur==lr) 
+	if (ur==lr)
 		fprintf (stderr, "Range: %d - %d\n",yuvmin,yuvmax);
 	else {
 		if ((yuvmax > ur) && (yuvmax > up )) {
@@ -255,10 +255,10 @@ static void detectwm(int fdIn , y4m_stream_info_t  *inStrInfo, int frames )
 		if (read_error_code == Y4M_OK) {
 
 		int l = 0;
-		for (y=0; y<h; y++) 
+		for (y=0; y<h; y++)
 		{
 			int x;
-			for (x=0; x<w; x++) 
+			for (x=0; x<w; x++)
 			{
 				yuvf_data[l]  += yuv_data[0][l];
 				l++;
@@ -267,7 +267,7 @@ static void detectwm(int fdIn , y4m_stream_info_t  *inStrInfo, int frames )
 		}
 
 		f++;
-	
+
 		}
 
 		y4m_fini_frame_info( &in_frame );
@@ -287,7 +287,7 @@ static void detectwm(int fdIn , y4m_stream_info_t  *inStrInfo, int frames )
 	fprintf (stdout,"P5\n%d %d\n255\n",w,h);
 	for (l=0; l < frame_data_size; l++)
 		fprintf (stdout,"%c",(yuvf_data[l] / f));
-	
+
 
 	free( yuvf_data );
 
@@ -352,15 +352,15 @@ int main (int argc, char *argv[])
     mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 
 
-    
+
   /* in that function we do all the important work */
-	if (detect) 
+	if (detect)
 		detectwm( fdIn,&in_streaminfo, frames );
 	else {
 		int fdOut = 1 ;
 		int brightness=128;
 
-		
+
 		y4m_init_stream_info (&out_streaminfo);
 		y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 		y4m_write_stream_header(fdOut,&out_streaminfo);

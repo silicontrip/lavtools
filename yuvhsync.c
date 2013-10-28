@@ -35,7 +35,7 @@
 #include <mpegconsts.h>
 #include "utilyuv.h"
 
-static void print_usage() 
+static void print_usage()
 {
   fprintf (stderr,
            "usage: yuvhsync -m <max shift> -s <search length>\n"
@@ -49,21 +49,21 @@ static void print_usage()
 
 void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo)
 {
-	
+
 	int x,w,cw,cs;
 	int vss;
     int linew,linecw;
-	
+
 //	mjpeg_debug("shift_video %d %d",s,line);
-	
+
 
 		w = y4m_si_get_plane_width(sinfo,0);
 		cw = y4m_si_get_plane_width(sinfo,1);
-		
+
 		vss = y4m_si_get_plane_height(sinfo,0) / y4m_si_get_plane_height(sinfo,1);
-		
+
 		cs = s * cw / w;
-	
+
     linew = line * w;
     linecw = line * cw;
 	// could memcpy() do this?
@@ -73,11 +73,11 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
                     *(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
                 else
                     *(yuv_data[0]+x+(linew))= 16;
-            
+
 		// one day I should start catering for more or less than 3 planes.
             // have to take proper interlace chroma into account.
             // would be easier to work with 422 or 444
-            
+
 			if (line % vss) {
 				for (x=cw; x>=0; x--) {
                     if (x>=cs) {
@@ -96,7 +96,7 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
                         *(yuv_data[0]+x+(linew))= *(yuv_data[0]+(x-s)+(linew));
                     else
                         *(yuv_data[0]+x+linew)=16;
-			
+
 			// one day I should start catering for more or less than 3 planes.
 			if (line % vss) {
 				for (x=0; x<=cw; x++) {
@@ -109,20 +109,20 @@ void shift_video (int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo
                     }
 				}
 			}
-			
+
 		}
 //	mjpeg_debug("exit shift_video %d %d",s,line);
 
 }
 
-int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
+int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo)
 {
 
 	int w,x1,diff;
 	int max,c=0,linew;
-	
+
 	w = y4m_si_get_plane_width(sinfo,0);
-	
+
     linew= w * line;
 
     for (x1=0;x1<m;x1++)
@@ -130,11 +130,11 @@ int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t
         if (yuv_data[0][linew+x1] >=16) return x1;
 
 //        if (yuv_data[0][linew+x1]>= 32) return x1;
-        
+
     }
 
-    
-    
+
+
     /*
 	for (x1=1;x1<m;x1++)
 	{
@@ -145,13 +145,13 @@ int search_video (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t
     }
      */
 	//	fprintf(stderr," %d",diff);
-	
+
 //	fprintf (stderr,"\n");
 	return 0;
 }
 
 // this method isn't too effective
-int search_video_1 (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo) 
+int search_video_1 (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info_t *sinfo)
 {
 
 	int w,h;
@@ -160,12 +160,12 @@ int search_video_1 (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info
 	int linew, line1w;
 
     int ilace = y4m_si_get_interlace(sinfo);
-	
+
 	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 
 	linew = line * w;
-    
+
     if (ilace == Y4M_ILACE_NONE)
         line1w = (line+1) * w ;
     else
@@ -173,7 +173,7 @@ int search_video_1 (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info
 
     line1w = (line+2) * w;
 
-    
+
 	mjpeg_debug("search_video %d",line);
 
     // 2 or 1 dependent on interlace or not.
@@ -181,25 +181,25 @@ int search_video_1 (int m, int s, int line, uint8_t *yuv_data[3],y4m_stream_info
 		mjpeg_warn("line > height");
 		return 0;
 	}
-    
+
 	shift = 0;
-	for (x1=-m;x1<m;x1++) 
+	for (x1=-m;x1<m;x1++)
 	{
 		tot = 0;
-		for(x2=0; x2<s;x2++) 
+		for(x2=0; x2<s;x2++)
 		{
 			// don't know if I should apply a standard addition to pixels outside the box.
-			if (x1+x2 >=0 && x1+x2 < w) 
+			if (x1+x2 >=0 && x1+x2 < w)
 				tot += abs ( *(yuv_data[0]+x1+x2+linew) - *(yuv_data[0]+x2+line1w));
 			else
 				tot += 128;
 		}
-	
+
 		// ok it wasn't max afterall, it was min.
 		if (x1==0) min = tot;
 		if (tot < min) { min = tot; shift = x1;}
 	}
-	
+
 	mjpeg_debug("exit search_video %d",line);
 
 	return shift;
@@ -210,7 +210,7 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int max,int search, int noshift)
 {
 	y4m_frame_info_t   in_frame ;
-	uint8_t            *yuv_data[3],*yuv_odata[3];	
+	uint8_t            *yuv_data[3],*yuv_odata[3];
 	// int result[720]; // will change to malloc based on max shift
 	int *lineresult;
 	int                y_frame_data_size, uv_frame_data_size ;
@@ -223,18 +223,18 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	ch = y4m_si_get_plane_height(inStrInfo,1);
 
     lineresult = (int *) malloc(sizeof(int) * h);
-    
+
 	chromalloc(yuv_data,inStrInfo);
-	
+
 // initialise and read the first number of frames
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		for (y=0; y<h-1; y++) 
+		for (y=0; y<h-1; y++)
 			lineresult[y] = search_video(max,search,y,yuv_data,inStrInfo);
-			
-        
+
+
         if (noshift) {
 			/* graphing this would be nice */
 			for (x=0; x < h; x++) {
@@ -242,15 +242,15 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 				printf ("%d",lineresult[x]);
             }
 			printf("\n");
-		
+
         } else {
-            
+
             int shifter = 0;
             for (y=0; y<h-1; y++) {
                // shifter += lineresult[y];
                 shifter = -lineresult[y];
                 shift_video(shifter,y,yuv_data,inStrInfo);
-                
+
             }
             write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
         }
@@ -266,7 +266,7 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 
     free (lineresult);
     chromafree(yuv_data);
-	
+
   if( read_error_code != Y4M_ERR_EOF )
     mjpeg_error_exit1 ("Error reading from input stream!");
   if( write_error_code != Y4M_OK )
@@ -314,8 +314,8 @@ int main (int argc, char *argv[])
           break;
     }
   }
-  
-  
+
+
   // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
 
@@ -333,7 +333,7 @@ int main (int argc, char *argv[])
 
 	src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
-	
+
 
   // Information output
 

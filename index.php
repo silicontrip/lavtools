@@ -10,22 +10,22 @@
 <div id=head>
 
 
-<h1>YUV Video filters</h1> 
+<h1>YUV Video filters</h1>
 
 </div> <div id="side">
 
 <p> Code for YUV video stream processing. This code extends code
 from the MJPEG tools and requires the mjpeg libraries.  If you have
 difficulty compiling these contact me, mjpeg0 at silicontrip dot org.
-</p> 
-<p> 
+</p>
+<p>
 You will need the mjpeg libraries to compile the yuv tools.
 <a href="http://mjpeg.sourceforge.net">information on the mjpeg libraries and download.</a>
 </P>
 <p>
-The Libav tools require the libavcodec library which is part of the 
+The Libav tools require the libavcodec library which is part of the
 <a href="http://ffmpeg.org">ffmpeg tools</a>
-<p> 
+<p>
 
 <?php
 
@@ -42,7 +42,7 @@ $baseuri="/~mark/";
 		$count = 0;
 		while ((($file = readdir($dir)) !== false) && ($count != $max)) {
 			list ($base,$ext)=explode(".",$file);
-			if ((strtolower($ext) == "jpg" ) || 
+			if ((strtolower($ext) == "jpg" ) ||
 			(strtolower($ext) == "png" ) ) {
 				if (is_file("$basepath/$thisdir/TN/$file")) {
 ?>
@@ -110,7 +110,7 @@ news::imageinline("lavtools/${base}_images",-1);
 ?>
 </div>
 <?php
-				
+
 			}
 		}
 	}

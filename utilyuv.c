@@ -3,10 +3,10 @@
 /*
 ** <p>this is a utility library. It doesn't do anything itself</p>
 
-going to start putting my most common functions here. 
- 
+going to start putting my most common functions here.
+
  gcc -I/usr/local/include/mjpegtools -c utilyuv.c
- 
+
  */
 
 struct y4m_stream_info_cache {
@@ -28,44 +28,44 @@ struct colour {
 // Allocate a uint8_t frame
 int chromalloc(uint8_t *m[3], y4m_stream_info_t *sinfo)
 {
-	
+
 	int fs,cfs;
-	
+
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
-	
+
 	// I'm gonna cheat and use this as an initialisation function.
-	
+
 	sic.h = y4m_si_get_plane_height(sinfo,0);
 	sic.w = y4m_si_get_plane_width(sinfo,0);
 	sic.ch = y4m_si_get_plane_height(sinfo,1);
 	sic.cw = y4m_si_get_plane_width(sinfo,1);
-	
+
 	m[0] = (uint8_t *)malloc( fs );
 	m[1] = (uint8_t *)malloc( cfs);
 	m[2] = (uint8_t *)malloc( cfs);
-	
+
 	if( !m[0] || !m[1] || !m[2]) {
 		return -1;
 	} else {
 		return 0;
 	}
-	
+
 }
 
 //Copy a uint8_t frame
 void chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
 {
-	
+
 	int fs,cfs;
-	
+
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
-	
+
 	memcpy (m[0],n[0],fs);
 	memcpy (m[1],n[1],cfs);
 	memcpy (m[2],n[2],cfs);
-	
+
 }
 
 
@@ -73,9 +73,9 @@ void chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
 int temporalalloc (uint8_t ****yuv_data, y4m_stream_info_t *sinfo, int length)
 {
 	int c,d;
-	
+
 //	fprintf(stderr,"temporalalloc: in\n");
-	
+
 	*yuv_data= (uint8_t ***) malloc(sizeof (uint8_t *) * length);
 	if (*yuv_data == NULL) return -1;
 	for (c=0;c<length;c++) {
@@ -103,7 +103,7 @@ int temporalalloc (uint8_t ****yuv_data, y4m_stream_info_t *sinfo, int length)
 	return 0;
 }
 
-void temporalfree(uint8_t ***yuv_data, int length) 
+void temporalfree(uint8_t ***yuv_data, int length)
 {
 	int d;
 	for (d=0;d<length;d++) {
@@ -116,19 +116,19 @@ void temporalfree(uint8_t ***yuv_data, int length)
 //do I want to also shuffle the other direction?
 void temporalshuffle(uint8_t ***yuv_data, int length)
 {
-	
+
 	uint8_t				**temp_yuv;
 	int c;
 //	fprintf(stderr,"temporalshuffle: in\n");
 
 	temp_yuv = yuv_data[0];
-	for (c=0;c<length-1;c++) 		
+	for (c=0;c<length-1;c++)
 		yuv_data[c] = yuv_data[c+1];
 	yuv_data[length-1] = temp_yuv;
-	
+
 //	fprintf(stderr,"temporalshuffle: out\n");
 
-}	
+}
 
 //Copy a  single field of a frame
 
@@ -136,13 +136,13 @@ void copyfield(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo, int which)
 {
 	int r = 0;
 	int h,w,cw,ch;
-	
+
 	h = y4m_si_get_plane_height(sinfo,0);
 	w = y4m_si_get_plane_width(sinfo,0);
 	cw = y4m_si_get_plane_width(sinfo,1);
 	ch = y4m_si_get_plane_height(sinfo,1);
-	
-	
+
+
 	if (which==Y4M_ILACE_TOP_FIRST) {
 		r=0;
 	} else if (which==Y4M_ILACE_BOTTOM_FIRST) {
@@ -150,7 +150,7 @@ void copyfield(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo, int which)
 	} else {
 		mjpeg_warn("copyfield() invalid interlace selected (%d)",which);
 	}
-	
+
 	for (; r < h; r += 2)
 	{
 		memcpy(&m[0][r * w], &n[0][r * w], w);
@@ -165,42 +165,42 @@ void copyfield(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo, int which)
 // set a solid colour for a uint8_t frame
 void chromaset(uint8_t *m[3], y4m_stream_info_t  *sinfo, int y, int u, int v )
 {
-	
+
 	int fs,cfs;
-	
+
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
-	
+
 	memset (m[0],y,fs);
 	memset (m[1],u,cfs);
 	memset (m[2],v,cfs);
-	
+
 }
 
-void chromafree(uint8_t *m[3]) 
+void chromafree(uint8_t *m[3])
 {
-	
+
 	free(m[0]);
 	free(m[1]);
 	free(m[2]);
-	
+
 }
 
 // Get a pixel, with bounds checking.
 //how easy is it to make this for all planes
 uint8_t get_pixel(register int x, register int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 {
-	
+
 	int w,h,off;
 	uint8_t *p;
-	
+
 	/*
 	h = y4m_si_get_plane_height(si,plane);
 	w = y4m_si_get_plane_width(si,plane);
 	*/
-	
+
 	//  the y4m_si_get_plane functions are eating large amounts of CPU on PPC machines.
-	
+
 	if ( plane == 0) {
 		h = sic.h;
 		w = sic.w;
@@ -208,48 +208,48 @@ uint8_t get_pixel(register int x, register int y, int plane, uint8_t *m[3],y4m_s
 		h = sic.ch;
 		w = sic.cw;
 	}
-	
-	
+
+
 	// my poor attempt to optimise for speed.
 	p=m[plane]+x;
 	off= y * w;
-	
+
 	if (x < 0) {x=0; p=m[plane];}
 	if (x >= w) {x=w-1; p=m[plane]+x;}
 	if (y < 0) {y=0; off=0;}
 	if (y >= h) {y=h-1; off= y * w;}
-	
+
 	return 	*(p+off);
-	
+
 }
 
 void set_pixel(uint8_t val,int x, int y, int plane, uint8_t *m[3],y4m_stream_info_t *si)
 {
 
-		
+
 		int w,h;
-		
+
 		h = y4m_si_get_plane_height(si,plane);
 		w = y4m_si_get_plane_width(si,plane);
-		
+
 		if (x >= 0 && x < w && y >= 0 && y < h) {
 			*(m[plane]+x+y*w) = val;
 		}
 }
-	
+
 
 // Mix two colours, percent is 0-255
 uint8_t mix (uint8_t c1, uint8_t c2, uint8_t per, int y) {
-	return ((c1 - y) * (255 - per) + (c2 - y) * per) / 255 + y; 
+	return ((c1 - y) * (255 - per) + (c2 - y) * per) / 255 + y;
 
 }
 
 uint8_t luma_mix (uint8_t c1, uint8_t c2, uint8_t per) {
-	return mix(c1,c2,per,16); 
+	return mix(c1,c2,per,16);
 }
 
 uint8_t chroma_mix (uint8_t c1, uint8_t c2, uint8_t per) {
-	return mix(c1,c2,per,128); 
+	return mix(c1,c2,per,128);
 }
 
 
@@ -278,7 +278,7 @@ int parse_interlacing(char *str)
 int invert_order(int f)
 {
 	switch (f) {
-			
+
 		case Y4M_ILACE_TOP_FIRST:
 			return Y4M_ILACE_BOTTOM_FIRST;
 		case Y4M_ILACE_BOTTOM_FIRST:
@@ -305,7 +305,7 @@ int xchroma (int x, y4m_stream_info_t *si)
 {
 	int cwr;
 	cwr = y4m_si_get_plane_width(si,0) / y4m_si_get_plane_width(si,1);
-	
+
 	if ( cwr == 1 ) {
 		return  x;
 	} else if ( cwr == 2) {
@@ -313,19 +313,19 @@ int xchroma (int x, y4m_stream_info_t *si)
 	} else if (cwr == 4) {
 		return x >> 2;
 	}
-    
+
     return x / cwr;
-	
+
 }
 
 int ychroma(int y, y4m_stream_info_t *si)
 {
-	
+
 	int chr,ychr;
 	chr=y4m_si_get_plane_height(si,0) / y4m_si_get_plane_height(si,1);
 
-	
-	if (chr == 1) {	
+
+	if (chr == 1) {
 		return y;
 	} else if (chr == 2) {
 		if (y4m_si_get_interlace(si) == Y4M_ILACE_NONE) {
@@ -342,12 +342,12 @@ int ychroma(int y, y4m_stream_info_t *si)
 }
 
 // I don't think this code is valid.
-int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int df) 
+int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int df)
 {
 
 	int sec;
 	y4m_ratio_t fr;
-	
+
 	fr = y4m_si_get_framerate(si);
 	sec = h * 3600 + m * 60 + s;
 	if (fr.n % fr.d) {
@@ -356,7 +356,7 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 			if ( fabs(29.97 - (1.0 * fr.n / fr.d )) < 0.001){
 				// TODO: this only works for 29.97
 				// there is only drop code algorithm for 30000/1001
-				
+
 				int totalMinutes = 60 * h + m;
 				fr.n += fr.d - (fr.n % fr.d);
 				// 2 skipped frames per minute, excluding the 10 minute divisible ones.
@@ -374,27 +374,27 @@ int timecode2framecount (y4m_stream_info_t *si, int h, int m, int s, int f, int 
 		//  integer frame rates
 		return sec * fr.n / fr.d;
 	}
-	
+
 }
 
-void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f, int fc, int *df ) 
+void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f, int fc, int *df )
 {
-	
+
 	y4m_ratio_t fr;
 	//	fprintf (stderr,"string_tc\n");
-	
+
 	fr = y4m_si_get_framerate (si);
-		
+
 	if (fr.n % fr.d) {
-		
+
 		int n = fr.n;
-		
+
 		// round up to integer frame rate
 		// non drop calculation.
 		fr.n += fr.d - (fr.n % fr.d);
-		
+
 	mjpeg_debug ("rounded up to : %d:%d\n",fr.n,fr.d);
-		
+
 		if (*df) {
 		// drop calculation.
 
@@ -404,34 +404,34 @@ void framecount2timecode(y4m_stream_info_t  *si, int *h, int *m, int *s, int *f,
 				int smptem = fc % 17982;
 				fc +=  18*smpted + 2*((smptem - 2) / 1798);
 			} else {
-				// this algorithm is not the correct SMPTE algorithm. 
+				// this algorithm is not the correct SMPTE algorithm.
 				// but is more generic
 				fc = (fc * fr.n) / n;
 			}
 
-			
+
 		}
 	} else {
 		*df = 0;
 	}
-	
-	
+
+
 	*h = fr.d * fc / fr.n / 3600;
 	*m = (fr.d * fc / fr.n / 60) % 60;
 	*s = (fr.d * fc / fr.n) % 60;
 	*f = fc % (fr.n / fr.d);
-	
+
 }
 
 void y4m_dump_frame(y4m_stream_info_t  *si, uint8_t *m[3])
 {
     int w,h;
     int x,y;
-    
+
     h = y4m_si_get_plane_height(si,0);
 	w = y4m_si_get_plane_width(si,0);
 
-    
+
     printf("    ");
     for (x=0;x<w;x++) {
         if (x%10==0)
@@ -447,18 +447,18 @@ void y4m_dump_frame(y4m_stream_info_t  *si, uint8_t *m[3])
     }
     printf("\n");
 
-    
+
     for (y=0; y<h; y++) {
-    
+
         printf ("%03d ",y);
-        
+
         int linew = w * y;
         for (x=0;x<w;x++) {
             printf("%02x",m[0][linew+x]);
         }
         printf("\n");
 
-        
+
     }
 
 }

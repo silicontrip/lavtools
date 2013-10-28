@@ -20,7 +20,7 @@
   *  along with this program; if not, write to the Free Software
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   *
-  
+
 gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils utilyuv.o yuvhsync.c -o yuvhsync
 ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils utilyuv.o yuvhsync.c -o yuvhsync
 
@@ -61,13 +61,13 @@ ess: gcc -O3 -L/usr/local/lib -I/usr/local/include/mjpegtools -lmjpegutils utily
 
 
 typedef uint8_t pixelvalue;
-#define PIX_SORT(a,b) { if ((a)>(b)) PIX_SWAP((a),(b)); } 
-#define PIX_SWAP(a,b) { pixelvalue temp=(a);(a)=(b);(b)=temp; } 
+#define PIX_SORT(a,b) { if ((a)>(b)) PIX_SWAP((a),(b)); }
+#define PIX_SWAP(a,b) { pixelvalue temp=(a);(a)=(b);(b)=temp; }
 
 
 #define YUVRFPS_VERSION "0.3"
 
-static void print_usage() 
+static void print_usage()
 {
   fprintf (stderr,
 		   "usage: yuvtshot -m <mode> -v <level> -c -y\n"
@@ -88,73 +88,73 @@ int median (int *p,int l) {
 
 	switch (l) {
 		case 3:
-			
+
 			// not sure if this is a quicker algorithm
 			if ((p[1] <= p[0] && p[0] <= p[2])||(p[2] <= p[0] && p[0] <= p[1])) return p[0];
 			if ((p[0] <= p[1] && p[1] <= p[2])||(p[2] <= p[1] && p[1] <= p[0])) return p[1];
 			if ((p[0] <= p[2] && p[2] <= p[1])||(p[1] <= p[2] && p[2] <= p[0])) return p[2];
-			
+
 			fprintf (stderr,"should not get here!! logic error p0 %d p1 %d p2 %d\n",p[0],p[1],p[2]);
-			
-			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[0],p[1]) ; 
-			return(p[1]) ; 
+
+			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[0],p[1]) ;
+			return(p[1]) ;
 			break;
 		case 5:
-			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[3],p[4]) ; PIX_SORT(p[0],p[3]) ; 
-			PIX_SORT(p[1],p[4]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[2],p[3]) ; 
-			PIX_SORT(p[1],p[2]) ; return(p[2]) ; 
+			PIX_SORT(p[0],p[1]) ; PIX_SORT(p[3],p[4]) ; PIX_SORT(p[0],p[3]) ;
+			PIX_SORT(p[1],p[4]) ; PIX_SORT(p[1],p[2]) ; PIX_SORT(p[2],p[3]) ;
+			PIX_SORT(p[1],p[2]) ; return(p[2]) ;
 			break;
 		case 7:
-			PIX_SORT(p[0], p[5]) ; PIX_SORT(p[0], p[3]) ; PIX_SORT(p[1], p[6]) ; 
-			PIX_SORT(p[2], p[4]) ; PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[5]) ; 
-			PIX_SORT(p[2], p[6]) ; PIX_SORT(p[2], p[3]) ; PIX_SORT(p[3], p[6]) ; 
-			PIX_SORT(p[4], p[5]) ; PIX_SORT(p[1], p[4]) ; PIX_SORT(p[1], p[3]) ; 
-			PIX_SORT(p[3], p[4]) ; return (p[3]) ; 
+			PIX_SORT(p[0], p[5]) ; PIX_SORT(p[0], p[3]) ; PIX_SORT(p[1], p[6]) ;
+			PIX_SORT(p[2], p[4]) ; PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[5]) ;
+			PIX_SORT(p[2], p[6]) ; PIX_SORT(p[2], p[3]) ; PIX_SORT(p[3], p[6]) ;
+			PIX_SORT(p[4], p[5]) ; PIX_SORT(p[1], p[4]) ; PIX_SORT(p[1], p[3]) ;
+			PIX_SORT(p[3], p[4]) ; return (p[3]) ;
 			break;
 		case 9:
-			PIX_SORT(p[1], p[2]) ; PIX_SORT(p[4], p[5]) ; PIX_SORT(p[7], p[8]) ; 
-			PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[4]) ; PIX_SORT(p[6], p[7]) ; 
-			PIX_SORT(p[1], p[2]) ; PIX_SORT(p[4], p[5]) ; PIX_SORT(p[7], p[8]) ; 
-			PIX_SORT(p[0], p[3]) ; PIX_SORT(p[5], p[8]) ; PIX_SORT(p[4], p[7]) ; 
-			PIX_SORT(p[3], p[6]) ; PIX_SORT(p[1], p[4]) ; PIX_SORT(p[2], p[5]) ; 
-			PIX_SORT(p[4], p[7]) ; PIX_SORT(p[4], p[2]) ; PIX_SORT(p[6], p[4]) ; 
-			PIX_SORT(p[4], p[2]) ; return(p[4]) ; 
+			PIX_SORT(p[1], p[2]) ; PIX_SORT(p[4], p[5]) ; PIX_SORT(p[7], p[8]) ;
+			PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[4]) ; PIX_SORT(p[6], p[7]) ;
+			PIX_SORT(p[1], p[2]) ; PIX_SORT(p[4], p[5]) ; PIX_SORT(p[7], p[8]) ;
+			PIX_SORT(p[0], p[3]) ; PIX_SORT(p[5], p[8]) ; PIX_SORT(p[4], p[7]) ;
+			PIX_SORT(p[3], p[6]) ; PIX_SORT(p[1], p[4]) ; PIX_SORT(p[2], p[5]) ;
+			PIX_SORT(p[4], p[7]) ; PIX_SORT(p[4], p[2]) ; PIX_SORT(p[6], p[4]) ;
+			PIX_SORT(p[4], p[2]) ; return(p[4]) ;
 			break;
 		case 25:
-			PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[4]) ; PIX_SORT(p[2], p[4]) ; 
-			PIX_SORT(p[2], p[3]) ; PIX_SORT(p[6], p[7]) ; PIX_SORT(p[5], p[7]) ; 
-			PIX_SORT(p[5], p[6]) ; PIX_SORT(p[9], p[10]) ; PIX_SORT(p[8], p[10]) ; 
-			PIX_SORT(p[8], p[9]) ; PIX_SORT(p[12], p[13]) ; PIX_SORT(p[11], p[13]) ; 
-			PIX_SORT(p[11], p[12]) ; PIX_SORT(p[15], p[16]) ; PIX_SORT(p[14], p[16]) ; 
-			PIX_SORT(p[14], p[15]) ; PIX_SORT(p[18], p[19]) ; PIX_SORT(p[17], p[19]) ; 
-			PIX_SORT(p[17], p[18]) ; PIX_SORT(p[21], p[22]) ; PIX_SORT(p[20], p[22]) ; 
-			PIX_SORT(p[20], p[21]) ; PIX_SORT(p[23], p[24]) ; PIX_SORT(p[2], p[5]) ; 
-			PIX_SORT(p[3], p[6]) ; PIX_SORT(p[0], p[6]) ; PIX_SORT(p[0], p[3]) ; 
+			PIX_SORT(p[0], p[1]) ; PIX_SORT(p[3], p[4]) ; PIX_SORT(p[2], p[4]) ;
+			PIX_SORT(p[2], p[3]) ; PIX_SORT(p[6], p[7]) ; PIX_SORT(p[5], p[7]) ;
+			PIX_SORT(p[5], p[6]) ; PIX_SORT(p[9], p[10]) ; PIX_SORT(p[8], p[10]) ;
+			PIX_SORT(p[8], p[9]) ; PIX_SORT(p[12], p[13]) ; PIX_SORT(p[11], p[13]) ;
+			PIX_SORT(p[11], p[12]) ; PIX_SORT(p[15], p[16]) ; PIX_SORT(p[14], p[16]) ;
+			PIX_SORT(p[14], p[15]) ; PIX_SORT(p[18], p[19]) ; PIX_SORT(p[17], p[19]) ;
+			PIX_SORT(p[17], p[18]) ; PIX_SORT(p[21], p[22]) ; PIX_SORT(p[20], p[22]) ;
+			PIX_SORT(p[20], p[21]) ; PIX_SORT(p[23], p[24]) ; PIX_SORT(p[2], p[5]) ;
+			PIX_SORT(p[3], p[6]) ; PIX_SORT(p[0], p[6]) ; PIX_SORT(p[0], p[3]) ;
 			PIX_SORT(p[4], p[7]) ; PIX_SORT(p[1], p[7]) ; PIX_SORT(p[1], p[4]) ;
-			PIX_SORT(p[11], p[14]) ; PIX_SORT(p[8], p[14]) ; PIX_SORT(p[8], p[11]) ; 
-			PIX_SORT(p[12], p[15]) ; PIX_SORT(p[9], p[15]) ; PIX_SORT(p[9], p[12]) ; 
-			PIX_SORT(p[13], p[16]) ; PIX_SORT(p[10], p[16]) ; PIX_SORT(p[10], p[13]) ; 
-			PIX_SORT(p[20], p[23]) ; PIX_SORT(p[17], p[23]) ; PIX_SORT(p[17], p[20]) ; 
-			PIX_SORT(p[21], p[24]) ; PIX_SORT(p[18], p[24]) ; PIX_SORT(p[18], p[21]) ; 
-			PIX_SORT(p[19], p[22]) ; PIX_SORT(p[8], p[17]) ; PIX_SORT(p[9], p[18]) ; 
-			PIX_SORT(p[0], p[18]) ; PIX_SORT(p[0], p[9]) ; PIX_SORT(p[10], p[19]) ; 
-			PIX_SORT(p[1], p[19]) ; PIX_SORT(p[1], p[10]) ; PIX_SORT(p[11], p[20]) ; 
-			PIX_SORT(p[2], p[20]) ; PIX_SORT(p[2], p[11]) ; PIX_SORT(p[12], p[21]) ; 
-			PIX_SORT(p[3], p[21]) ; PIX_SORT(p[3], p[12]) ; PIX_SORT(p[13], p[22]) ; 
-			PIX_SORT(p[4], p[22]) ; PIX_SORT(p[4], p[13]) ; PIX_SORT(p[14], p[23]) ; 
-			PIX_SORT(p[5], p[23]) ; PIX_SORT(p[5], p[14]) ; PIX_SORT(p[15], p[24]) ; 
-			PIX_SORT(p[6], p[24]) ; PIX_SORT(p[6], p[15]) ; PIX_SORT(p[7], p[16]) ; 
-			PIX_SORT(p[7], p[19]) ; PIX_SORT(p[13], p[21]) ; PIX_SORT(p[15], p[23]) ; 
-			PIX_SORT(p[7], p[13]) ; PIX_SORT(p[7], p[15]) ; PIX_SORT(p[1], p[9]) ; 
-			PIX_SORT(p[3], p[11]) ; PIX_SORT(p[5], p[17]) ; PIX_SORT(p[11], p[17]) ; 
-			PIX_SORT(p[9], p[17]) ; PIX_SORT(p[4], p[10]) ; PIX_SORT(p[6], p[12]) ; 
-			PIX_SORT(p[7], p[14]) ; PIX_SORT(p[4], p[6]) ; PIX_SORT(p[4], p[7]) ; 
-			PIX_SORT(p[12], p[14]) ; PIX_SORT(p[10], p[14]) ; PIX_SORT(p[6], p[7]) ; 
-			PIX_SORT(p[10], p[12]) ; PIX_SORT(p[6], p[10]) ; PIX_SORT(p[6], p[17]) ; 
-			PIX_SORT(p[12], p[17]) ; PIX_SORT(p[7], p[17]) ; PIX_SORT(p[7], p[10]) ; 
-			PIX_SORT(p[12], p[18]) ; PIX_SORT(p[7], p[12]) ; PIX_SORT(p[10], p[18]) ; 
-			PIX_SORT(p[12], p[20]) ; PIX_SORT(p[10], p[20]) ; PIX_SORT(p[10], p[12]) ; 
-			return (p[12]); 
+			PIX_SORT(p[11], p[14]) ; PIX_SORT(p[8], p[14]) ; PIX_SORT(p[8], p[11]) ;
+			PIX_SORT(p[12], p[15]) ; PIX_SORT(p[9], p[15]) ; PIX_SORT(p[9], p[12]) ;
+			PIX_SORT(p[13], p[16]) ; PIX_SORT(p[10], p[16]) ; PIX_SORT(p[10], p[13]) ;
+			PIX_SORT(p[20], p[23]) ; PIX_SORT(p[17], p[23]) ; PIX_SORT(p[17], p[20]) ;
+			PIX_SORT(p[21], p[24]) ; PIX_SORT(p[18], p[24]) ; PIX_SORT(p[18], p[21]) ;
+			PIX_SORT(p[19], p[22]) ; PIX_SORT(p[8], p[17]) ; PIX_SORT(p[9], p[18]) ;
+			PIX_SORT(p[0], p[18]) ; PIX_SORT(p[0], p[9]) ; PIX_SORT(p[10], p[19]) ;
+			PIX_SORT(p[1], p[19]) ; PIX_SORT(p[1], p[10]) ; PIX_SORT(p[11], p[20]) ;
+			PIX_SORT(p[2], p[20]) ; PIX_SORT(p[2], p[11]) ; PIX_SORT(p[12], p[21]) ;
+			PIX_SORT(p[3], p[21]) ; PIX_SORT(p[3], p[12]) ; PIX_SORT(p[13], p[22]) ;
+			PIX_SORT(p[4], p[22]) ; PIX_SORT(p[4], p[13]) ; PIX_SORT(p[14], p[23]) ;
+			PIX_SORT(p[5], p[23]) ; PIX_SORT(p[5], p[14]) ; PIX_SORT(p[15], p[24]) ;
+			PIX_SORT(p[6], p[24]) ; PIX_SORT(p[6], p[15]) ; PIX_SORT(p[7], p[16]) ;
+			PIX_SORT(p[7], p[19]) ; PIX_SORT(p[13], p[21]) ; PIX_SORT(p[15], p[23]) ;
+			PIX_SORT(p[7], p[13]) ; PIX_SORT(p[7], p[15]) ; PIX_SORT(p[1], p[9]) ;
+			PIX_SORT(p[3], p[11]) ; PIX_SORT(p[5], p[17]) ; PIX_SORT(p[11], p[17]) ;
+			PIX_SORT(p[9], p[17]) ; PIX_SORT(p[4], p[10]) ; PIX_SORT(p[6], p[12]) ;
+			PIX_SORT(p[7], p[14]) ; PIX_SORT(p[4], p[6]) ; PIX_SORT(p[4], p[7]) ;
+			PIX_SORT(p[12], p[14]) ; PIX_SORT(p[10], p[14]) ; PIX_SORT(p[6], p[7]) ;
+			PIX_SORT(p[10], p[12]) ; PIX_SORT(p[6], p[10]) ; PIX_SORT(p[6], p[17]) ;
+			PIX_SORT(p[12], p[17]) ; PIX_SORT(p[7], p[17]) ; PIX_SORT(p[7], p[10]) ;
+			PIX_SORT(p[12], p[18]) ; PIX_SORT(p[7], p[12]) ; PIX_SORT(p[10], p[18]) ;
+			PIX_SORT(p[12], p[20]) ; PIX_SORT(p[10], p[20]) ; PIX_SORT(p[10], p[12]) ;
+			return (p[12]);
 			break;
 		default:
 			fprintf (stderr,"unssuported number of pixels (%d)\n",l);
@@ -169,19 +169,19 @@ int median (int *p,int l) {
 #define PRECISION 512
 int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
 {
-	
+
 	int i=0,j;
 	int pix[MEANXSIZE][MEANYSIZE];
 	int tpix = 0,apix;
 	int cpix;
 	int l,m,count=0;
 	float fapix,fsdpix=0;
-	
+
 	l=y-MEANYSIZE-1;
 	m=x-MEANXSIZE/2;
-	
+
 	cpix = get_pixel(x,y,plane,n,si);
-	
+
 	// get the interlace lines on the same field.
 	for (j=0;j<MEANYSIZE;j++) {
 		for (i=0;i<MEANXSIZE;i++) {
@@ -202,37 +202,37 @@ int mean_check (uint8_t *n[3],y4m_stream_info_t *si,int x, int y,int plane)
 	}
 
 	//fprintf(stderr,"int: %f float %f\n",sdpix/PRECISION,fsdpix);
-	
+
 //	fsdpix = sqrt(sdpix/count/PRECISION);
 	fsdpix = sqrt(fsdpix/count);
-	
+
 	// need standard deviation.
 	// and a sigma threshhold
-	
+
 // fprintf (stderr,"sdpix %d diff: %d  2sd %f\n",sdpix,abs(cpix-(apix/PRECISION)),(fsdpix*2));
-	
+
 	return (abs(cpix-fapix)>(fsdpix*2)); // 2 sd threshold.
-	
+
 }
 void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int t,int t1, int adp)
 {
 
 	int w,h,x,y,le;
 	int pix[7];
-	
+
 	h = y4m_si_get_plane_height(si,t1);
 	w = y4m_si_get_plane_width(si,t1);
 
 	for(y=0;y<h;y++) {
 		for (x=0;x<w;x++) {
-			
-			
+
+
 			if (adp || mean_check(m,si,x,y,t1)) {
 				// do some case around here.
-				
+
 				le=1;
 				pix[0] = get_pixel(x,y,t1,m,si);
-				
+
 				if (t & 1) {
 					pix[le++] = get_pixel(x,y,t1,l,si);
 					pix[le++] = get_pixel(x,y,t1,n,si);
@@ -258,7 +258,7 @@ void clean (uint8_t *l[3],uint8_t *m[3], uint8_t *n[3],y4m_stream_info_t *si,int
 
 		}
 	}
-		
+
 }
 
 static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
@@ -266,12 +266,12 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	int t,int t1,int adp)
 {
 	y4m_frame_info_t   in_frame ;
-	uint8_t            *yuv_data[3][3];	
+	uint8_t            *yuv_data[3][3];
 	uint8_t				*yuv_tdata[3];
 	int                read_error_code  = Y4M_OK;
 	int                write_error_code = Y4M_OK ;
     int src_frame_counter;
-    
+
 	chromalloc(yuv_data[0],inStrInfo);
 	chromalloc(yuv_data[1],inStrInfo);
 	chromalloc(yuv_data[2],inStrInfo);
@@ -284,7 +284,7 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[1]);
 	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[0]);
 
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 
 		if (t1 & 2) {
@@ -296,44 +296,44 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 		}
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );
 		y4m_fini_frame_info( &in_frame );
-		
+
 		// nothing to see here, move along, move along
 		// it might be quicker to move the pointers.
 	//	chromacpy(yuv_data[2],yuv_data[1],inStrInfo);
 	//	chromacpy(yuv_data[1],yuv_data[0],inStrInfo);
-		
+
 		// as long as there are 3 planes
 		yuv_tdata[0] = yuv_data[2][0];
 		yuv_tdata[1] = yuv_data[2][1];
 		yuv_tdata[2] = yuv_data[2][2];
-		
+
 		yuv_data[2][0] = yuv_data[1][0];
 		yuv_data[2][1] = yuv_data[1][1];
 		yuv_data[2][2] = yuv_data[1][2];
-		
+
 		yuv_data[1][0] = yuv_data[0][0];
 		yuv_data[1][1] = yuv_data[0][1];
 		yuv_data[1][2] = yuv_data[0][2];
-		
+
 		yuv_data[0][0] = yuv_tdata[0];
 		yuv_data[0][1] = yuv_tdata[1];
 		yuv_data[0][2] = yuv_tdata[2];
 
-		
+
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data[0] );
 		++src_frame_counter ;
 	}
 
 	// still have 1 frame to clean and write.
-	
+
 	if( read_error_code == Y4M_ERR_EOF ) {
 		chromaset(yuv_data[0],inStrInfo,16,128,128);
 		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,0,adp);
 		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,1,adp);
 		clean (yuv_data[0],yuv_data[1],yuv_data[2],inStrInfo,t,2,adp);
-	
-		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );	
+
+		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data[1] );
 	}
   // Clean-up regardless an error happened or not
 
@@ -342,7 +342,7 @@ static void process(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	chromafree( yuv_data[0] );
 	chromafree( yuv_data[1] );
 	chromafree( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
 	if( write_error_code != Y4M_OK )
@@ -394,7 +394,7 @@ int main (int argc, char *argv[])
 				break;
 		}
 	}
-	
+
 	if (max_shift==0) {
 		print_usage();
 		mjpeg_error_exit1("no Mode selected");
@@ -416,7 +416,7 @@ int main (int argc, char *argv[])
 
 	y4m_ratio_t src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
-	
+
 
   // Information output
   mjpeg_info ("yuvtshot (version " YUVRFPS_VERSION ") is a temporal shot noise remover");

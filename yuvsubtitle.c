@@ -3,7 +3,7 @@
  *    Mark Heath <mjpeg0 at silicontrip.org>
  *  http://silicontrip.net/~mark/lavtools/
  *
- 
+
 ** <h3>YUV Subtitles</h3>
 ** <p> a subtitle rendering utility for yuv streams</p>
 ** <p> Reads an ascii subtitle file and renders a TTF in the image</p>
@@ -35,7 +35,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
-gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
+gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
  */
 
 
@@ -58,7 +58,7 @@ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
 
 
 struct subtitle {
-	
+
 	//in frame counts
 	int on;
 	int off;
@@ -74,7 +74,7 @@ struct subhead {
 
 #define VERSION "0.1"
 
-static void print_usage() 
+static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvsubtitle\n"
@@ -90,10 +90,10 @@ static void print_usage()
 unsigned int decode_char ( int *p, unsigned char * text)
 {
 	unsigned int sp;
-	
+
 	sp = text[*p];
 //	 mjpeg_debug ("encoded character %d",sp);
-	
+
 	// try for a uri style special characters
 
 	if (sp == '%') {
@@ -110,14 +110,14 @@ unsigned int decode_char ( int *p, unsigned char * text)
 			(*p)++;
 		}
 	} else if ((sp & 240) == 224) {
-		
+
 		if ((text[*p+1] & 192) == 128 && (text[*p+2] & 192) == 128) {
 //			mjpeg_debug("decode UTF triple character");
 			sp = ((sp & 15) << 12) + ((text[*p+1] & 63) << 6) + (text[*p+2] & 63);
 			*p+=2;
 		}
 	} else if ((sp & 248) == 240) {
-		
+
 		if ((text[*p+1] & 192) == 128 && (text[*p+2] & 192) == 128 && (text[*p+3] & 192) == 128) {
 //			mjpeg_debug("decode UTF quad character");
 
@@ -126,40 +126,40 @@ unsigned int decode_char ( int *p, unsigned char * text)
 
 		}
 	}
-	
+
 	//mjpeg_debug ("decoded character %x",sp);
 
 	return sp;
-	
+
 }
 
 void ftdims (int *px, int *py, int *lines, FT_Face face, unsigned char * text) {
 
-	
+
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
 	int           pen_x,n,max,topmax=0,rowmax=0;
-	unsigned int sp;	
-	
-	pen_x = 0; max = 0; 
+	unsigned int sp;
+
+	pen_x = 0; max = 0;
 	for ( n = 0; n < strlen(text); n++ ) {
-		
+
 		sp = decode_char(&n,text);
-		
+
 		if (sp == 10) {
 			if (pen_x>max) max=pen_x;
 			pen_x = 0; //pen_y += rowmax + topmax;
 			(*lines)++;
 		} else if (sp >=32) {
-		
+
 			FT_Load_Char( face, sp, FT_LOAD_RENDER );
-		
+
 			/* ignore errors */
 			pen_x += slot->advance.x;
 		//	pen_y += slot->advance.y; /* not useful for now */
-			
+
 			if ( slot->bitmap_top > topmax) topmax=slot->bitmap_top;
 			if ( slot->bitmap.rows-slot->bitmap_top > rowmax) rowmax = slot->bitmap.rows-slot->bitmap_top;
-			
+
 		}
 	}
 	if (max > pen_x) pen_x = max;
@@ -169,7 +169,7 @@ void ftdims (int *px, int *py, int *lines, FT_Face face, unsigned char * text) {
 
 void draw_bitmap (FT_Bitmap*  bitmap, int x, int y, uint8_t *m[3], y4m_stream_info_t *si,  uint8_t yc, uint8_t uc, uint8_t vc )
 {
-	
+
 	FT_Int  i, j, p, q;
 	uint8_t bri, piy,piu,piv;
 	FT_Int  x_max;
@@ -179,78 +179,78 @@ void draw_bitmap (FT_Bitmap*  bitmap, int x, int y, uint8_t *m[3], y4m_stream_in
 
 	width = y4m_si_get_plane_width(si,0);
 	height = y4m_si_get_plane_height(si,0);
-	
+
 	x_max = x + bitmap->width;
 	y_max = y + bitmap->rows;
 
-	
+
 	for ( i = x, p = 0; i < x_max; i++, p++ )
 	{
 		for ( j = y, q = 0; j < y_max; j++, q++ )
 		{
 			if ( i >= width || j >= height )
 				continue;
-			
+
 			// configurable colour
 			bri  = bitmap->buffer[q * bitmap->width + p];
-			
+
 			piy = luma_mix(get_pixel (i,j,0,m,si),yc,bri);
-			
+
 			cx = xchroma(i,si);
 			cy = ychroma(j,si);
-			
+
 			piu = chroma_mix(get_pixel (cx,cy,1,m,si),uc,bri);
 			piv = chroma_mix(get_pixel (cx,cy,2,m,si),vc,bri);
-			
+
 			set_pixel(piy,i,j,0,m,si);
 			set_pixel(piu,cx,cy,1,m,si);
 			set_pixel(piv,cx,cy,2,m,si);
-			
-			
+
+
 		}
-	}		
-}				  
+	}
+}
 
 
 static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, unsigned char * text,
 						 int pen_y, int yc, int uc, int vc, int yadvance )
 {
-	
+
 	FT_GlyphSlot  slot = face->glyph;  /* a small shortcut */
-	int pen_x,  n;	
+	int pen_x,  n;
 	int twidth,theight,lines=0;
 	int cx,cy;
 	int width;
 	int sp;
-	
+
 	mjpeg_debug ("text: %s\n",text);
 
-	
+
 	// configurable start location.
 	width = y4m_si_get_plane_width(si,0);
 
 	ftdims(&twidth, &theight, &lines, face,text);
 	twidth = twidth >> 6;
-	
+
 	pen_x =  width / 2 - twidth / 2;
 	if (pen_x < 0) {
 		mjpeg_warn("text larger than screen width");
 		pen_x = 0;
 	}
-	
+
 	mjpeg_debug ("dims: w: %d h: %d l: %d",twidth,theight,lines);
-	
+
 	pen_y -= theight * lines;
-	
-	
+
+
 	for ( n = 0; n < strlen(text); n++ )
 	{
 		/* load glyph image into the slot (erase previous one) */
-		
-		sp = decode_char(&n,text);		
-		
+
+		sp = decode_char(&n,text);
+
 		if (sp == 10) {
-			
+
 			//TODO: get correct vertical spacing.
 		//	FT_Load_Char( face, sp, FT_LOAD_RENDER );
 
@@ -258,52 +258,52 @@ static void filterframe (uint8_t *m[3], y4m_stream_info_t *si, FT_Face face, uns
 			pen_y += theight+4; // test value since most of my subs tests are 24
 
 		} else {
-			
+
 			FT_Load_Char( face, sp, FT_LOAD_RENDER );
-			
+
 			for (sp=0;sp<3;sp++)
-			for (cx=-1; cx < 2; cx ++) 
+			for (cx=-1; cx < 2; cx ++)
 				for (cy =-1; cy<2; cy++) {
-					
+
 					draw_bitmap( &slot->bitmap,
 								pen_x + slot->bitmap_left + cx + sp,
-								pen_y - slot->bitmap_top + cy + sp, 
+								pen_y - slot->bitmap_top + cy + sp,
 								m,si,16,128,128 );
-					
+
 				}
 			/*
 			 draw_bitmap( &slot->bitmap,
 			 pen_x + slot->bitmap_left - 1,
-			 pen_y - slot->bitmap_top - 1, 
+			 pen_y - slot->bitmap_top - 1,
 			 m,si,16,128,128 );
-			 
+
 			 draw_bitmap( &slot->bitmap,
 			 pen_x + slot->bitmap_left + 1,
-			 pen_y - slot->bitmap_top - 1, 
+			 pen_y - slot->bitmap_top - 1,
 			 m,si,16,128,128 );
-			 
+
 			 draw_bitmap( &slot->bitmap,
 			 pen_x + slot->bitmap_left - 1,
-			 pen_y - slot->bitmap_top + 1, 
+			 pen_y - slot->bitmap_top + 1,
 			 m,si,16,128,128 );
 			 */
-			
-			
-			
-			
+
+
+
+
 			draw_bitmap( &slot->bitmap,
 						pen_x + slot->bitmap_left,
 						pen_y - slot->bitmap_top,
 						m,si,yc,uc,vc );
-			
+
 			/* increment pen position */
 			pen_x += slot->advance.x >> 6;
 			pen_y += slot->advance.y >> 6; /* not useful for now */
 		}
 		/* now, draw to our target surface */
-		
+
 	}
-	
+
 }
 
 
@@ -312,19 +312,19 @@ unsigned char * get_sub (struct subhead s, int fc) {
 	int n;
 	// mjpeg_info("entries: %d ", s.entries);
 	for (n=0; n < s.entries; n++){
-	
+
 		// mjpeg_info ("checking %d - %d",s.subs[n].on,  s.subs[n].off);
-		
-		if (s.subs[n].on <= fc && s.subs[n].off >= fc) 
+
+		if (s.subs[n].on <= fc && s.subs[n].off >= fc)
 			return s.subs[n].text;
-		
+
 	}
 	return '\0';
-	
+
 }
 
 
-static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs, 
+static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Face     face, struct subhead subs,
 				   int pen_y, int yc, int uc, int vc, int yadvance )
 {
 	y4m_frame_info_t   in_frame ;
@@ -333,34 +333,34 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	int                write_error_code ;
 	int framecounter=0;
 	unsigned char *text;
-	
+
 	// Allocate memory for the YUV channels
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
+
 	/* Initialize counters */
-	
+
 	write_error_code = Y4M_OK ;
-		
-	
+
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	framecounter++;
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 
 	//	mjpeg_info("frame: %d",framecounter);
 		if (read_error_code == Y4M_OK) {
-			
+
 			text=get_sub(subs,framecounter);
-			if (text != '\0') { 
+			if (text != '\0') {
 				filterframe(yuv_data,inStrInfo,face,text,pen_y,yc,uc,vc,yadvance);
 			}
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
@@ -369,24 +369,24 @@ static void filter(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, FT_Fac
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 /*
-void read_subs_t(struct subhead *s) 
+void read_subs_t(struct subhead *s)
 {
 
 	s->entries=5 ;
-	
+
 	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
-	
+
 	s->subs[0].on = 10;
 	s->subs[0].off = 100;
 	strcpy(s->subs[0].text,"Leah and the Wookie must never again leave this city.");
@@ -398,13 +398,13 @@ void read_subs_t(struct subhead *s)
 	s->subs[2].on = 170;
 	s->subs[2].off = 220;
 	strcpy(s->subs[2].text,"Nor was giving Han to this bounty hunter.");
-	
+
 	s->subs[3].on = 230;
 	s->subs[3].off = 350;
 	strcpy(s->subs[3].text,"I have altered the Deal. Pray I don't alter it any further.");
-	
+
 	s->subs[4].on = 368;
-	s->subs[4].off = 434; 
+	s->subs[4].off = 434;
 	strcpy(s->subs[4].text,"This deal is getting worse all the time.");
 
 }
@@ -412,14 +412,14 @@ void read_subs_t(struct subhead *s)
 
 void edlcount (FILE *file, int *maxline, int *lines)
 {
-	
+
 	int c;
 	int count=0;
-	
+
 	*maxline=0;
 	*lines=0;
-	
-	
+
+
 	flockfile(file); // for optimising the single character reads
 	while (!feof(file)){
 		c = getc_unlocked(file);
@@ -434,7 +434,7 @@ void edlcount (FILE *file, int *maxline, int *lines)
 	}
 	funlockfile(file);
 	rewind(file);
-	
+
 }
 
 
@@ -449,22 +449,22 @@ int read_subs (struct subhead *s, char *filename) {
 	if (fn == NULL) {
 		mjpeg_error_exit1("Cannot open subtitle file");
 	}
-	
+
 	edlcount(fn,&maxline,&lines);
 
 	s->entries=lines ;
-	
+
 	s->subs =  malloc(sizeof(struct subtitle) * s->entries);
-	
+
 	line = (char *)malloc(maxline);
 	if (line == NULL) {
 		mjpeg_error("Error allocating line memory");
 		fclose (fn);
 		return -1;
 	}
-	
+
 	while (fgets(line,maxline,fn) != NULL) {
-	
+
 		sscanf(line,"%d,%d",&s->subs[count].on,&s->subs[count].off);
 		for (c=0; c < strlen(line); c++) {
 			if (line[c] == ',') {
@@ -473,19 +473,19 @@ int read_subs (struct subhead *s, char *filename) {
 		}
 			strcpy(s->subs[count].text, p);
 		for (c=0; c < strlen(s->subs[count].text); c++) {
-			
+
 		//	mjpeg_debug("copying character: %d",s->subs[count].text[c]);
-			
+
 			if (s->subs[count].text[c] < 32) {
-				s->subs[count].text[c]=0;		
+				s->subs[count].text[c]=0;
 			}
 		}
-		
+
 		count++;
 	}
-	
+
 	free (line);
-	
+
 }
 
 
@@ -494,24 +494,24 @@ int read_subs (struct subhead *s, char *filename) {
 // *************************************************************************************
 int main (int argc, char *argv[])
 {
-	
-	int verbose = 1; 
+
+	int verbose = 1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo ;
 	int height=16;
 	int c, pen_y;
-	
+
 	const static char *legal_flags = "hv:f:s:y:c:u:";
 	FT_Library  library;
 	FT_Face     face;
 	struct subhead subs;
 	char * subname = NULL;
 	int yc,uc,vc;
-	
-	if (FT_Init_FreeType(&library)) 
+
+	if (FT_Init_FreeType(&library))
 		mjpeg_error_exit1("Cannot initialise the freetype library");
-	
+
 	// defaults
 	pen_y = -1;
 
@@ -519,8 +519,8 @@ int main (int argc, char *argv[])
 	yc = 235;
 	uc = 128;
 	vc = 128;
-	
-	
+
+
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -562,18 +562,18 @@ int main (int argc, char *argv[])
 				break;
 		}
 	}
-	
+
 	FT_Set_Pixel_Sizes( face,		/* handle to face object */
 						0,			/* pixel_width           */
 						height );   /* pixel_height          */
-	
-	
+
+
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
-	
+
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
-	
+
 	// ***************************************************************
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
@@ -581,19 +581,19 @@ int main (int argc, char *argv[])
 	// INPUT comes from stdin, we check for a correct file header
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-	
+
 	// Information output
 	mjpeg_info ("yuvsubtitle (version " VERSION ") is a subtitle rendering utility for yuv streams");
 	mjpeg_info ("(C)  Mark Heath <mjpeg0 at silicontrip.org>");
 	// mjpeg_info ("yuvcropdetect -h for help");
-	
+
 	if (pen_y==-1) {
 		pen_y = y4m_si_get_plane_height(&in_streaminfo,0) - 48;
 	}
-	
-    
+
+
 	y4m_write_stream_header(fdOut,&in_streaminfo);
-	
+
 	if (subname != NULL) {
 	// read the subtitle file
 		read_subs(&subs,subname);
@@ -608,7 +608,7 @@ int main (int argc, char *argv[])
 	}
 	/* in that function we do all the important work */
 	y4m_fini_stream_info (&in_streaminfo);
-	
+
 	mjpeg_debug ("done face");
 
 	FT_Done_Face    ( face );
@@ -616,7 +616,7 @@ int main (int argc, char *argv[])
 
 	FT_Done_FreeType( library );
 
-	
+
 	return 0;
 }
 /*

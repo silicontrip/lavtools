@@ -1,14 +1,14 @@
 /*
  *  yuvfade.c
- 
+
  *  black-fade  2004 Mark Heath <mjpeg at silicontrip.org>
  *  will fade a yuv4 stream to black after a specified number of frames
- 
+
 ** <h3>Black Fade</h3>
 **
 ** <p> Will fade the video to black after X number of frames. Uses a
 ** trial and error method of fading to black, could be better.</p>
-** 
+**
 ** <P>Use this program to give a more professional feel to the
 ** downloaded internet videos for converting</p>
 **<pre>
@@ -16,7 +16,7 @@
 **      -c skip this number of frames
 **      -f fade to black for this many frames
 **</pre>
- 
+
  *  based on code:
  *  Copyright (C) 2002 Alfonso Garcia-Pati<F1>o Barbolani <barbolani at jazzfree.com>
  *
@@ -47,7 +47,7 @@
 
 #define YUVFPS_VERSION "0.1"
 
-static void print_usage() 
+static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvfps -c Count -f fadeCount [-v -h]\n"
@@ -60,7 +60,7 @@ static void print_usage()
 			 );
 }
 
-static void resample(  int fdIn 
+static void resample(  int fdIn
 					 , y4m_stream_info_t  *inStrInfo
 					 , int fdOut
 					 , y4m_stream_info_t  *outStrInfo
@@ -76,7 +76,7 @@ static void resample(  int fdIn
 	int                src_frame_counter ;
 	int w,h,x,y;
 	float mul,val;
-	
+
 	// Allocate memory for the YUV channels
 	h = y4m_si_get_height(inStrInfo) ;
 	w = y4m_si_get_width(inStrInfo);
@@ -84,22 +84,22 @@ static void resample(  int fdIn
 	yuv_data[0] = (uint8_t *)malloc( frame_data_size );
 	yuv_data[1] = (uint8_t *)malloc( frame_data_size >> 2);
 	yuv_data[2] = (uint8_t *)malloc( frame_data_size >> 2);
-	
+
 	if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2] )
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	
+
+
 	/* Initialize counters */
-	
+
 	write_error_code = Y4M_OK ;
-	
+
 	src_frame_counter = 0 ;
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
 	++src_frame_counter ;
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		if (src_frame_counter > after) {
 			// fade frame
 			mul =   1.0 * (after + count - src_frame_counter)  / count;
@@ -120,8 +120,8 @@ static void resample(  int fdIn
 					}
 				}
 		}
-		
-		
+
+
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_data );
 		++src_frame_counter ;
 		y4m_fini_frame_info( &in_frame );
@@ -133,12 +133,12 @@ static void resample(  int fdIn
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
 	if( write_error_code != Y4M_OK )
 		mjpeg_error_exit1 ("Error writing output stream!");
-	
+
 }
 
 // *************************************************************************************
@@ -146,7 +146,7 @@ static void resample(  int fdIn
 // *************************************************************************************
 int main (int argc, char *argv[])
 {
-	
+
 	int verbose = 1 ;
 	int count = 0 ;
 	int frames = 0;
@@ -154,10 +154,10 @@ int main (int argc, char *argv[])
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	y4m_ratio_t  src_frame_rate ;
-	
+
 	const static char *legal_flags = "f:c:v:h";
 	int c ;
-	
+
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -180,11 +180,11 @@ int main (int argc, char *argv[])
 	}
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
-	
+
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
 	y4m_init_stream_info (&out_streaminfo);
-	
+
 	// ***************************************************************
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
@@ -192,26 +192,26 @@ int main (int argc, char *argv[])
 	// INPUT comes from stdin, we check for a correct file header
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-	
+
 	// Prepare output stream
 	src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
 	y4m_ratio_t frame_rate = src_frame_rate ;
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
-	
-	
+
+
 	// Information output
 	mjpeg_info ("yuvfade (version " YUVFPS_VERSION
 				") is a general black fade utility for yuv streams");
-	
+
 	y4m_write_stream_header(fdOut,&out_streaminfo);
-    
+
 	/* in that function we do all the important work */
 	resample( fdIn,&in_streaminfo,  fdOut,&out_streaminfo,
 			 count, frames );
-	
+
 	y4m_fini_stream_info (&in_streaminfo);
 	y4m_fini_stream_info (&out_streaminfo);
-	
+
 	return 0;
 }
 /*

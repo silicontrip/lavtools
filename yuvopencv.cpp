@@ -46,38 +46,38 @@ using namespace std;
 
 int main (int argc, char **argv)
 {
-    
+
     Mat image;
     Libyuv iyuv,oyuv;
     int y;
     iyuv.setExtensions(1);
     oyuv.setExtensions(1);
-    
+
     Mat img1, img2, imgout;
-    
+
     try {
-    
+
         iyuv.readHeader();
         iyuv.dumpInfo();
         // copy from in to out.
         oyuv.copyStreamInfo(&iyuv);
 
         oyuv.dumpInfo();
-        
+
     //    oyuv.writeHeader();
-    
+
         iyuv.allocFrameData();
         oyuv.allocFrameData();
-        
+
         int width = iyuv.getWidth();
         int height = iyuv.getHeight();
-        
+
 //        std::cerr << "width: " << width <<" height: " << height << "\n";
-        
+
         int cwidth = iyuv.getChromaWidth();
         int cheight = iyuv.getChromaHeight();
 
-        
+
         // set to black
         memset (oyuv.getYUVFrame()[0],16,width*height);
         memset (oyuv.getYUVFrame()[1],128,cwidth*cheight);
@@ -85,65 +85,65 @@ int main (int argc, char **argv)
 
      //   img1 = cv::Mat(height,width,CV_8UC1,oyuv.getYUVFrame()[0],width);
         img1.create(height,width,CV_32FC1);
-        
+
         image.create(IMAGEDIM,IMAGEDIM,CV_8UC1);
         //imgout = img1.clone();
-        
+
         cv::Point2d shift;
-        
+
         cv::Point2d acc (3600,6400);
 
         while(1) {
             iyuv.read();
-        
+
             imgout = cv::Mat(height,width,CV_8UC1,iyuv.getYUVFrame()[0],width);
-            
+
             imgout.assignTo(img2,CV_32FC1);
-            
+
         //    imgout = img2.clone();
-  
+
         //    cv::accumulate(img2, imgout);
-            
+
        //     std::cerr << "img1: " << img1.type() << " / img2: " << img2.type() << "\n";
-        
+
             shift = cv::phaseCorrelate(img1,img2);
             img1 = img2.clone();
 
-            
+
             acc = acc + shift;
-            
+
        //     std::cout << shift << " - " << acc  << "\n";
-         
+
 //std::cout  << shift << " - " << acc << "\n";
-            
+
             int xl = IMAGEDIM - acc.x;
             int yl = IMAGEDIM - acc.y;
-            
+
             cout << xl << "," << yl << "\n";
-            
+
             int y;
-            
-            
+
+
             for (y=0;y<16;y++)
             {
                 memcpy(image.ptr (CROP+y+yl) + xl + CROP,imgout.ptr(y+CROP)+CROP,width-CROP-CROP);
                 memcpy(image.ptr (y+height-CROP+yl-16) + xl + CROP,imgout.ptr(y+height-CROP-16)+CROP,width-CROP-CROP);
-                
+
             }
-            
+
             for (y=CROP;y<height-CROP;y++)
             {
                 //*(image.ptr (y+yl) + xl + CROP) = * (imgout.ptr(y)+CROP);
-                
+
                 memcpy(image.ptr (y+yl) + xl + CROP,imgout.ptr(y)+CROP,10);
                 memcpy(image.ptr (y+yl) + xl + width - CROP -10 ,imgout.ptr(y)+width-CROP-10,10);
             }
 
-            
-            
-            
+
+
+
             img1 = img2.clone();
-            
+
   /*
             if (imgout.step == width)
             {
@@ -165,12 +165,12 @@ int main (int argc, char **argv)
 	} catch (cv::Exception *e) {
         std::cerr << "Exception occurred: " << e  << "\n";
     }
-    
+
     vector<int> compression_params;
     compression_params.push_back(CV_IMWRITE_PNG_COMPRESSION);
     compression_params.push_back(9);
 
     imwrite("out.png", image, compression_params);
 
-    
+
 }

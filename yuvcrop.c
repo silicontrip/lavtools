@@ -3,7 +3,7 @@
  *  detect/crop/matte  2004 Mark Heath <mjpeg at silicontrip.org>
  *  detects colour matting and then remove it.
  *  Either by removing the pixels or painting them with a solid colour.
- 
+
  **<h3>Crop, Matte and Matte detection</h3>
  **<p>
  **Used to detect matting in yuv sources.
@@ -86,25 +86,25 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
     int x,y,luma;
     int write_error_code,width,height;
     int min,select,med;
-    
+
     if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-    
+
     if (chromalloc(yuv_odata,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 
 
-    
+
     height = y4m_si_get_plane_height(inStrInfo,0) ; width = y4m_si_get_plane_width(inStrInfo,0);
 
     read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-    
+
     while( Y4M_ERR_EOF != read_error_code ) {
 
         chromaset(yuv_odata,inStrInfo, 16,128,128);
-        
+
         // top down
-        
+
         /*
         for (x=0; x< width; x++ )
         {
@@ -117,7 +117,7 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
                     border[0][x] = y;
                     break;
                 }
-                
+
             }
             for (y=height; y>0; y--)
             {
@@ -129,22 +129,22 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
                     border[2][x] = y;
                     break;
                 }
-                
+
             }
         }
         */
         // left right
-        
+
         for (y=0; y< height; y++ )
         {
-            
+
             border[y] = 0;
-            
+
             // try not to get fooled by non matted video.
             col[0] = 16;
             if (yuv_data[0][y*width] <= 16)
                 col[0] = yuv_data[0][y*width];
-            
+
             for (x=0; x< width; x++)
             {
 
@@ -154,21 +154,21 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
                     border[y] = x;
                     break;
                 }
-                
+
             }
         }
-        
+
         // now to detect classic head switching pattern.
 
         for (y=0; y<height;y++)
             order[y]=border[y];
-        
-        
+
+
         for (y=0; y< height; y++ )
         {
             min = order[y];
             select = y;
-            
+
             for (x=y; x<height; x++)
             {
                 if (order[x] < min)
@@ -176,7 +176,7 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
                     min = order[x];
                     select = x;
                 }
-            
+
                 if (select != y)
                 {
                     min = order[y];
@@ -184,41 +184,41 @@ static void detect_switching(int fdIn , int fdOut , y4m_stream_info_t  *inStrInf
                     order[select] = min;
                 }
             }
-            
+
         }
         // wondering if I should up this to a heigher percentile.
         med = order[50 * height / 100] ;
-        
+
         int switching = 0;
         for (y=height-1;y>0&&border[y]>med;y--) {
             switching ++;
-            
+
             for(x=0;x<border[y];x++)
                 yuv_odata[0][y*width+x] = 235;
-            
-            
+
+
         }
 
         // switching
-        
+
         y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
-        
+
         write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
         read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 
-        
+
     }
-    
+
     y4m_fini_frame_info( &in_frame );
-	
+
 	chromafree( yuv_data);
 	chromafree( yuv_odata );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
 
-    
+
 }
 
 
@@ -232,54 +232,54 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 	int width,height;
 	int cwidth;
 	int atop=0, abottom=0, aleft=0, aright=0;
-    
-	
+
+
 	// Allocate memory for the YUV channels
-	
+
 	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
+
 	/* Initialize counters */
-    
-    
+
+
     // if debug
 	fprintf(stderr,"detecting...\n");
-	
+
 	height = y4m_si_get_plane_height(inStrInfo,0) ; width = y4m_si_get_plane_width(inStrInfo,0);
 	//cheight = y4m_si_get_plane_height(inStrInfo,1) ;
 	cwidth = y4m_si_get_plane_width(inStrInfo,1);
-    
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-    
+
 	abottom=height;
 	aright=width;
-	
+
 	while( Y4M_ERR_EOF != read_error_code ) {
 		int top=height, left=width;
-        
+
 		frame ++;
 		if (read_error_code == Y4M_OK) {
 			// do work
 			int bottom=0, right=0;
 			int x;
 			int y;
-			
+
 			// find the top and bottom crop
 			for (y=0; y<height; y++) {
 				int cy = y / 2;
 				int distance = 0;
-				
+
 				for (x=0; x< width; x++ ) {
-					
+
 					int cx = x / 2;
-					
+
 					point[0]=yuv_data[0][y*width+x];
 					point[1]=yuv_data[1][cy*cwidth+cx];
 					point[2]=yuv_data[2][cy*cwidth+cx];
-					
+
 					distance += abs(point[0]-col[0]) + abs(point[1]-col[1]) + abs(point[2]-col[2]);
-					
+
 				}
 				if (distance / width > tol) {
 					bottom = y;
@@ -288,21 +288,21 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 					}
 				}
 			}
-			
+
 			// find the left and right crop
-			
+
 			for (x=0; x<width; x++) {
 				int cx = x / 2;
 				int distance = 0;
-				
+
 				for (y=0; y<height; y++ ) {
-					
+
 					int cy = y / 2;
-					
+
 					point[0]=yuv_data[0][y*width+x];
 					point[1]=yuv_data[1][cy*cwidth+cx];
 					point[2]=yuv_data[2][cy*cwidth+cx];
-					
+
 					distance += abs(point[0]-col[0]) + abs(point[1]-col[1]) + abs(point[2]-col[2]);
 				}
 				if (distance / height > tol) {
@@ -319,122 +319,122 @@ static void detect(int fdIn  , y4m_stream_info_t  *inStrInfo, uint8_t *col, int 
 			fprintf (stderr,"%d,%d-%d,%d : ",aleft/frame,atop/frame,aright/frame,abottom/frame);
 			fprintf (stderr,"%d,%d-%d,%d\n",left,top,right,bottom);
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 static void copy_subframe (uint8_t *dst[3], uint8_t *src[3], y4m_stream_info_t *sinfo,
 						   y4m_stream_info_t *sonfo,
 						   unsigned int *a)
 {
-    
+
 	int y,h,w;
 	int cw,ch;
 	int ow,oh,ocw,och;
-	
+
 	int cx,cy;
-	
+
 	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 	cw = y4m_si_get_plane_width(sinfo,1);
 	ch = y4m_si_get_plane_height(sinfo,1);
-	
+
 	ow = y4m_si_get_plane_width(sonfo,0);
 	oh = y4m_si_get_plane_height(sonfo,0);
 	ocw = y4m_si_get_plane_width(sonfo,1);
 	och = y4m_si_get_plane_height(sonfo,1);
-    
-	
+
+
 	cx = a[0]/(ow/ocw);
 	cy = a[1]/(oh/och);
-	
+
 	for (y=0; y<h; y++) {
-		
+
 		memcpy(dst[0]+y*w,src[0]+a[0]+(y+a[1])*ow,w);
 		if (y<ch) {
 			memcpy(dst[1]+y*cw,src[1]+cx+(y+cy)*ocw,cw);
 			memcpy(dst[2]+y*cw,src[2]+cx+(y+cy)*ocw,cw);
 		}
 	}
-    
-    
+
+
 }
 
 static void crop (int fdIn, y4m_stream_info_t  *inStrInfo,
                   int fdOut, y4m_stream_info_t  *outStrInfo,
                   unsigned int *a, int dump)
 {
-    
+
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
 	uint8_t            *yuv_odata[3] ;
 	int                read_error_code ;
 	int                write_error_code ;
-    
-    
+
+
 	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
+
 	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-    
+
 	write_error_code = Y4M_OK ;
-    
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-    
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-        
+
 		copy_subframe(yuv_odata,yuv_data,outStrInfo,inStrInfo,a);
-        
+
         if (dump)
             y4m_dump_frame(outStrInfo,yuv_odata);
         else
             write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-        
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-		
+
 	}
-    
+
 }
 
 static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned int *a, uint8_t *col)
 {
-    
+
 	int y,h,w;
 	int cw,ch;
 	int cy;
 	int dh,clw,crw,crx;
-	
+
 	w = y4m_si_get_plane_width(sinfo,0);
 	h = y4m_si_get_plane_height(sinfo,0);
 	cw = y4m_si_get_plane_width(sinfo,1);
 	ch = y4m_si_get_plane_height(sinfo,1);
-	
+
 	dh = h/ch;
-	
+
 	//cx = a[0]/(w/cw);
 	cy = a[1]/(h/ch);
-	
+
 	clw = a[0]/(w/cw);
 	crw = cw-a[2]/(w/cw);
 	crx = a[2]/(w/cw);
-	
+
 	for (y=0; y<h; y++) {
 		if ( y<a[1] ) {
 			// top
@@ -457,7 +457,7 @@ static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned in
 			// luma
 			memset(src[0]+y*w,col[0],a[0]);
 			memset(src[0]+a[2]+y*w,col[0],w-a[2]);
-			
+
 			if (y%dh) {
 				// chroma left
 				memset(src[1]+(y/dh)*cw,col[1],clw);
@@ -468,46 +468,46 @@ static void paint_matte ( uint8_t *src[3], y4m_stream_info_t *sinfo, unsigned in
 			}
 		}
 	}
-	
-	
+
+
 }
 
 static void matte (int fdIn, y4m_stream_info_t  *inStrInfo,
                    int fdOut, y4m_stream_info_t  *outStrInfo,
                    unsigned int *a, uint8_t *col)
 {
-    
+
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3] ;
 	uint8_t            *yuv_odata[3] ;
 	int                read_error_code ;
 	int                write_error_code ;
-    
-    
+
+
 	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
+
 	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-    
+
 	write_error_code = Y4M_OK ;
-    
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-    
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-        
+
 		chromacpy(yuv_odata,yuv_data,outStrInfo);
 		paint_matte(yuv_odata,outStrInfo,a,col);
-        
+
 		write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-        
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-		
+
 	}
-    
+
 }
 
 
@@ -526,7 +526,7 @@ static void matte (int fdIn, y4m_stream_info_t  *inStrInfo,
 
 int main (int argc, char *argv[])
 {
-	
+
 	int verbose = 4; // LOG_ERROR ;
 	int fdIn = 0 , fdOut = 1;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
@@ -536,17 +536,17 @@ int main (int argc, char *argv[])
 	int tolerance= DEFAULT_TOLERANCE;
 	const static char *legal_flags = "scma:C:T:v:h?d";
 	int i,dump=0;
-    
+
 	// default colour (black)
 	colour[0]=16;
 	colour[1]=128;
 	colour[2]=128;
-	
+
 	area[0] = 0;
 	area[1] = 0;
 	area[2] = -1;
 	area[3] = -1;
-	
+
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -590,8 +590,8 @@ int main (int argc, char *argv[])
                 break;
 		}
 	}
-    
-    
+
+
 	if (mode != MODE_DETECT && mode != MODE_SWITCHING) {
 		if ((area[2] == -1) && (area[3] == -1))
 		{
@@ -602,13 +602,13 @@ int main (int argc, char *argv[])
 		}
 		// I should also check that the area isn't outside the input streams dimensions
 	}
-    
+
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
-	
+
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
-    
+
 	// ***************************************************************
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
@@ -616,25 +616,25 @@ int main (int argc, char *argv[])
 	// INPUT comes from stdin, we check for a correct file header
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-	
+
     if (mode == MODE_SWITCHING)
     {
         area[2] = y4m_si_get_plane_width(&in_streaminfo,0) - 1;
         area[3] = y4m_si_get_plane_height(&in_streaminfo,0) - 1;
     }
-    
+
 	// setup output streams if mode isn't detect
 	if (mode) {
-        
+
         if (area[0] > y4m_si_get_plane_width(&in_streaminfo,0) ||
             area[2] > y4m_si_get_plane_width(&in_streaminfo,0) ||
             area[1] > y4m_si_get_plane_height(&in_streaminfo,0) ||
             area[3] > y4m_si_get_plane_height(&in_streaminfo,0))
             mjpeg_error_exit1 ("Area outside of streams dimensions!");
-        
+
         y4m_init_stream_info (&out_streaminfo);
         y4m_copy_stream_info(&out_streaminfo, &in_streaminfo);
-        
+
         // reduce the dimensions
         if (mode == MODE_CROP) {
             y4m_si_set_height (&out_streaminfo, area[3]-area[1]);
@@ -646,26 +646,26 @@ int main (int argc, char *argv[])
 	mjpeg_info ("yuvcrop (version " YUVDE_VERSION ") crop tool for yuv streams");
 	mjpeg_info ("(C) 2005-2013 Mark Heath <mjpeg0 at silicontrip.org>");
 	mjpeg_info ("yuvcrop -h for help");
-	
-	
-	
+
+
+
 	/* in that function we do all the important work */
 	if (mode == MODE_DETECT)
 		detect(fdIn, &in_streaminfo,colour,tolerance);
-    
+
     if (mode == MODE_SWITCHING)
 		detect_switching(fdIn, fdOut, &in_streaminfo,colour,tolerance);
 
-	
-	if (mode == MODE_CROP) 
+
+	if (mode == MODE_CROP)
 		crop (fdIn,&in_streaminfo, fdOut,&out_streaminfo, area, dump);
-    
-	if (mode == MODE_MATTE) 
+
+	if (mode == MODE_MATTE)
 		matte (fdIn,&in_streaminfo, fdOut,&out_streaminfo, area, colour);
-    
-	
+
+
 	y4m_fini_stream_info (&in_streaminfo);
-	
+
 	return 0;
 }
 /*

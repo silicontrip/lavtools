@@ -1,7 +1,7 @@
 /*
  *  yuvdiag.c
  *  diagnostics  2008 Mark Heath <mjpeg at silicontrip.org>
- *  Technical display routines 
+ *  Technical display routines
  *  Converts a YUV stream for technical purposes.
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -21,21 +21,21 @@
  gcc -O3 yuvdiag.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvdiag
  gcc -O3 -I/opt/local/include -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils yuvdiag.c -o yuvdiag
  gcc -O3 -I/opt/local/include -I/opt/local/include/freetype2 -I/usr/local/include/mjpegtools -L/opt/local/lib -lmjpegutils -lfreetype yuvdiag.c -o yuvdiag
- 
+
  **<h3>Video Diagnostics</h3>
- **<p> 
+ **<p>
  **This tool has 5 operating modes.
  **<ul>
- **<li>YUV split, which copies the U and V channels into the luma channel.  
+ **<li>YUV split, which copies the U and V channels into the luma channel.
  **<li>Chroma Scope, which shows a histogram of the chroma values in intensity and
- **<li>Luma Scope, which shows a histogram of luminance on the Y axis.  
+ **<li>Luma Scope, which shows a histogram of luminance on the Y axis.
  **<li>A traditional histogram.
  **<li>Timecode burn in. Uses Freetype to render a TTF.  I recommend a fixed width font.
  **</ul>
  **</p>
  **<p>
- **This program needs some work to add labels to the histogram scopes, but 
- **not being a video engineer, I do not know exactly what to add. 
+ **This program needs some work to add labels to the histogram scopes, but
+ **not being a video engineer, I do not know exactly what to add.
  **</p>
  **<p>
  **feedback would be appreciated.
@@ -66,14 +66,14 @@
 
 #define YUVDI_VERSION "0.5"
 
-static void print_usage() 
+static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvdiag [-v] [-yclt] [-h] [-f fontfile.ttf] [-s start frame number]\n"
 			 "yuvdiag converts the yuvstream for technical viewing\n"
 			 "\n"
 			 "\t -y copy yuv channels into the luma channel mode\n"
-			 "\t -c chroma scope mode\n" 
+			 "\t -c chroma scope mode\n"
 			 "\t -l luma scope mode\n"
              "\t -i histogram mode\n"
 			 "\t -t time code mode.  Must be supplied with -f\n"
@@ -89,38 +89,38 @@ static void print_usage()
 
 // Would love to make this a generic vector image to overlay
 
-void draw_grid (uint8_t *m[], y4m_stream_info_t  *sinfo) 
+void draw_grid (uint8_t *m[], y4m_stream_info_t  *sinfo)
 {
-	
+
 	int height, width;
 	int skip = 16;
 	int k,l;
 	int p;
-	height = y4m_si_get_plane_height(sinfo,0);	
-	width = y4m_si_get_plane_width(sinfo,0);	
-	
+	height = y4m_si_get_plane_height(sinfo,0);
+	width = y4m_si_get_plane_width(sinfo,0);
+
 	for (l=0;l<width;l++)
 		m[0][width * (height/2) + l] = 235;
-	
+
 	for (l=0;l<height;l++)
 		m[0][width *l + (width/2)] = 235;
-	
-	for (l=0;l<skip;l++) 
+
+	for (l=0;l<skip;l++)
 		for (k=0;k<skip;k++)
 		{
-		
+
 			// l +
-			// k + l*16 + 
-			
+			// k + l*16 +
+
 			p = k + l * skip;
-			
+
 			m[0][(p+(width/2-256)) + l * width] = 235;
 			m[0][(p+(width/2)) + (l+16) * width] = 235;
 
 			m[0][(p+(width/2-256)) + (l+height - 32) * width] = 235;
 			m[0][(p+(width/2)) + (l+height - 16) * width] = 235;
 
-			
+
 			m[0][l + ((p+(height/2-256)) * width)] = 235;
 			m[0][l + (width-32) + ((p+(height/2-256)) *width )] = 235;
 
@@ -131,19 +131,19 @@ void draw_grid (uint8_t *m[], y4m_stream_info_t  *sinfo)
 			m[0][l+96 + ((p+(height/2)) *width)] = 235;
 			m[0][l+ 624 + ((p+(height/2))*width)] = 235;
 
-			
-			
+
+
 			m[0][l+16 + ((p+(height/2)) *width)] = 235;
 			m[0][l+(width-16) + ((p+(height/2))*width)] = 235;
 
-			
+
 		}
-	
+
 	/*
 	for (l=0;l<width;l+=skip)
 		for (k=0;k<height;k+=skip)
 			m[0][k * width + l] = 235;
-	
+
 	for (l=0;l<height;l+=skip)
 		for (k=0;k<width;k+=skip)
 			m[0][l * width + k] = 235;
@@ -151,66 +151,66 @@ void draw_grid (uint8_t *m[], y4m_stream_info_t  *sinfo)
 }
 
 void draw_luma (uint8_t *m[], y4m_stream_info_t  *sinfo) {
-	
+
 	int x,y,y1,x1,height,width,cwidth;
 	int cx, cy;
-	
+
 	// fprintf(stderr,"draw_luma: enter\n");
-	
-	
-	height = y4m_si_get_plane_height(sinfo,0);	
-	width = y4m_si_get_plane_width(sinfo,0);	
-	cwidth = y4m_si_get_plane_width(sinfo,1);	
-	
-	
+
+
+	height = y4m_si_get_plane_height(sinfo,0);
+	width = y4m_si_get_plane_width(sinfo,0);
+	cwidth = y4m_si_get_plane_width(sinfo,1);
+
+
 	for (y1=0 ; y1 < 256; y1+=8) {
-		
+
 		// fprintf(stderr,"draw_luma: y1=%d\n",y1);
-		
-		
+
+
 		y = (height -1) - y1;
-		
+
 		for (x1=0; x1 < 8; x1++) {
-			
+
 			x = x1;
 			//chroma_coord(sinfo, &cx, &cy, x, y);
-			
+
 			cx = xchroma(x,sinfo);
 			cy = ychroma(y,sinfo);
-			
+
 			m[0][y * width + x] = 240;
 			m[1][cy * cwidth + cx] = 240;
 			m[2][cy * cwidth + cx] = 128;
-			
+
 			x = (width - 1) - x1;
 			//chroma_coord(sinfo, &cx, &cy, x, y);
-			
+
 			cx = xchroma(x,sinfo);
 			cy = ychroma(y,sinfo);
-			
-			
+
+
 			m[0][y * width + x] = 240;
 			m[1][cy * cwidth + cx] = 240;
 			m[2][cy * cwidth + cx] = 128;
-			
-			
+
+
 		}
-		
+
 	}
 	// fprintf(stderr,"draw_luma: exit\n");
-	
-	
+
+
 }
 
 void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h) {
-	
+
 	int dw;
 	int dx,dy;
-	
+
 	//fprintf (stderr,"black_box\n");
-	
+
 	dw = y4m_si_get_plane_width(sinfo,0);
-	
+
 	for (dy=y; dy<y+h;dy++) {
 		for (dx=x; dx<x+w;dx++) {
 			//	fprintf (stderr,"dx: %d dy: %d\n",dx,dy);
@@ -220,21 +220,21 @@ void black_box(uint8_t **yuv,y4m_stream_info_t  *sinfo,int x,int y,int w,int h) 
 }
 
 void string_tc( char *tc, int fc, y4m_stream_info_t  *sinfo, int dropFrame ) {
-	
+
 	int h,m,s,f,d;
 	char df = ':';
-	
+
 	// fprintf (stderr,"%d/%d int fr %d\n",fr.n,fr.d, fr.n % fr.d);
 	d=dropFrame;
 	// framecount2timecode will unset the dropframe flag if integer framerate.
 	framecount2timecode(sinfo,&h,&m,&s,&f,fc,&d);
 	if (d) { df = ';'; }
-	
+
 	sprintf(tc,"TCR*%02d:%02d:%02d%c%02d",h,m,s,df,f);
 	//	sprintf(tc,"%02d:%02d:%02d%c%02d",h,m,s,df,f);
-	
+
 	mjpeg_debug ("%d - %s",fc,tc);
-	
+
 }
 
 void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,int x,int y,char *time) {
@@ -246,43 +246,43 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 	int ilace;
 	int xoff,yoff;
 	int fbri;
-	
-	
+
+
 	dw = y4m_si_get_plane_width(sinfo,0);
-	
+
 	for (c=0;c<strlen(time);c++) {
-		
+
 		r=time[c];
-		
+
 		glyph_index = FT_Get_Char_Index( face, time[c] );
 		error = FT_Load_Glyph( face, glyph_index, FT_LOAD_DEFAULT );
 		if ( error )
 			continue;  /* ignore errors */
-		
+
 		error = FT_Render_Glyph( face->glyph, FT_RENDER_MODE_NORMAL );
 		if ( error )
 			continue;
-		
+
 		error = FT_Get_Glyph( face->glyph, &glyph );
-		
-		cpos = c * face->glyph->metrics.horiAdvance/64; 
-		
+
+		cpos = c * face->glyph->metrics.horiAdvance/64;
+
 		if (c==0) {
 			// font metric tweaking.
 			black_box(yuv,sinfo,x,y,15 * face->glyph->metrics.horiAdvance/64,face->glyph->metrics.height/64+2);
 			cy =  y + face->glyph->metrics.height/64 + 1;
 		}
 		//fprintf (stderr,"ft width %d\n",face->glyph->bitmap.width);
-		
+
 		if (r == '*' && y4m_si_get_interlace(sinfo)) {
 			ilace = 2;
 		} else {
 			ilace = 1;
 		}
-		
+
 		xoff = x + cpos+face->glyph->metrics.horiBearingX/64;
 		yoff = cy - face->glyph->metrics.horiBearingY/64;
-		
+
 		for (dy=0; dy<face->glyph->bitmap.rows;dy+=ilace) {
 			for (dx=0; dx<face->glyph->bitmap.width;dx++) {
 				// fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
@@ -290,47 +290,47 @@ void render_string_ft (uint8_t **yuv, FT_Face face, y4m_stream_info_t  *sinfo ,i
 				yuv[0][(dx+xoff)+(dy+yoff)*dw] =  fbri + ((255-fbri) * yuv[0][(dx+xoff)+(dy+yoff)*dw])/255 ;
 				// + (255 - *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width)) * yuv[0][(dx+xoff)+(dy+yoff)*dw];
 				//	yuv[0][(x+dx+cpos)+(cy+dy-face->glyph->metrics.horiBearingY/64)*dw] = *(face->glyph->bitmap.buffer+dx+dy*face->glyph->bitmap.width);
-				
+
 			}
 		}
-		
-		
-		
-	}	
-	
-	
+
+
+
+	}
+
+
 }
 
 /*
 void render_string (uint8_t **yuv, uint8_t *fd,y4m_stream_info_t  *sinfo ,int x,int y,char *time) {
-	
+
 	int dw,dx,dy;
 	char c,r;
 	int cpos,rpos;
-	
+
 	dw = y4m_si_get_plane_width(sinfo,0);
-	
+
 	//fprintf (stderr,"render_string\n");
-	
-	
+
+
 	//	fprintf (stderr,"render_string strlen: %d\n",strlen(time));
-	
+
 	for (c=0;c<strlen(time);c++) {
-		
+
 		r=time[c];
-		
+
 		//fprintf (stderr,"render_string char: %c\n",r);
-		
+
 		cpos = c * CHARWIDTH; rpos = (r-32) * CHARWIDTH;
 		for (dy=0; dy<CHARHEIGHT;dy++) {
 			for (dx=0; dx<CHARWIDTH;dx++) {
 				//	fprintf (stderr,"render_string dx %d dy: %d\n",dx,dy);
 				yuv[0][(x+dx+cpos)+(y+dy)*dw] = fd[dx+rpos+dy*LINEWIDTH];
-				
+
 			}
 		}
 	}
-	
+
 }
 */
 
@@ -341,21 +341,21 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 	int                write_error_code = Y4M_OK;
 	// int frameCounter = 0;
 	char time[32];
-	
+
 	int w,h,error;
-	
+
 	FT_Library  library;
 	FT_Face     face;
-	
+
 	//	fprintf (stderr,"timecode\n");
-	
-	
+
+
 	error = FT_Init_FreeType( &library );
 	if ( error )
 	{
 		mjpeg_error_exit1 ("Couldn't initialise the FT library!");
 	}
-	
+
 	error = FT_New_Face( library, fontname, 0, &face );
 	if ( error == FT_Err_Unknown_File_Format )
 	{
@@ -365,61 +365,61 @@ static void timecode(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, cha
 	{
 		mjpeg_error_exit1 ("Error reading font file!");
 	}
-	
+
 	// error = FT_Set_Char_Size( face, 0, 8*64, 300, 300 );
-	
-	error = FT_Set_Pixel_Sizes( face, 32, 28 );   
-	
+
+	error = FT_Set_Pixel_Sizes( face, 32, 28 );
+
 	//	read_font(&font_data);
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
+
 	w = y4m_si_get_plane_width(inStrInfo,0);
 	h = y4m_si_get_plane_height(inStrInfo,0);
-	
-	
+
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
-	
+
+
 	w = (w / 2) - (15 * CHARWIDTH / 2);
 	h = h - 24-CHARHEIGHT;
-	
+
 	//	fprintf (stderr,"box pos: %d %d\n",w,h);
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 		if (read_error_code == Y4M_OK) {
-			
+
 			// convert counter into TC string
 			string_tc(time,frameCounter,inStrInfo,dropFrame);
-			
+
 			// draw black box
-			
+
 			// black_box(yuv_data,inStrInfo,w,h,15 * CHARWIDTH,CHARHEIGHT);
-			
+
 			// render string
-			
+
 			render_string_ft (yuv_data,face,inStrInfo,w,h,time);
-			
+
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 			frameCounter++;
 		}
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-		
+
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
-	
+
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
 
@@ -434,108 +434,108 @@ static void channel(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_
 	int cheight,cwidth,width;
 	int owidth;
 	int y;
-	
-	
+
+
 	// Allocate memory for the YUV channels
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	if (chromalloc(yuv_odata,outStrInfo))		
+
+	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	
+
+
 	/* Initialize counters */
-	
+
 	cheight = y4m_si_get_plane_height(inStrInfo,1);
 	cwidth = y4m_si_get_plane_width(inStrInfo,1);
-	
+
 	width = y4m_si_get_plane_width(inStrInfo,0);
-	
+
 	owidth = y4m_si_get_plane_width(outStrInfo,0);
-	
+
 	write_error_code = Y4M_OK ;
-	
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 		if (read_error_code == Y4M_OK) {
-			
+
 			chromaset (yuv_odata,outStrInfo,16,128,128);
-			
+
 			// this makes assumptions that we are in 420
-			
+
 			for (y=0; y< cheight; y++) {
 				// luma copy
 				memcpy(yuv_odata[0] + y * owidth,  yuv_data[0] + y * width, width);
 				memcpy(yuv_odata[0] + (y + cheight) * owidth,  yuv_data[0] + (y + cheight) * width, width);
-				
-				
+
+
 				memcpy(yuv_odata[0] + y * owidth + width, yuv_data[1] + y * cwidth, cwidth);
 				memcpy(yuv_odata[0] + (y + cheight) * owidth + width, yuv_data[2] + y * cwidth, cwidth);
-				
+
 			}
-			
+
 			write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-			
+
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 static void grid(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut )
 {
-	
+
 	y4m_frame_info_t   in_frame ;
 	uint8_t            *yuv_data[3];
 	int                read_error_code ;
 	int                write_error_code = Y4M_OK;
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
+
 	write_error_code = Y4M_OK ;
-	
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		if (read_error_code == Y4M_OK) {
-			
-			draw_grid (yuv_data, inStrInfo); 
+
+			draw_grid (yuv_data, inStrInfo);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_data );
 		}
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	}
-	
+
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
-	
+
+
 }
 
 static void chroma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream_info_t  *outStrInfo )
@@ -548,38 +548,38 @@ static void chroma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut,
 	int cheight,cwidth;
 	int owidth;
 	int y,x;
-	
-	
+
+
 	// Allocate memory for the YUV channels
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	if (chromalloc(yuv_odata,outStrInfo))		
+
+	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	
+
+
 	/* Initialize counters */
-	
+
 	cheight = y4m_si_get_plane_height(inStrInfo,1);
 	cwidth = y4m_si_get_plane_width(inStrInfo,1);
-	
-	
+
+
 	owidth = y4m_si_get_plane_width(outStrInfo,0);
-	
+
 	write_error_code = Y4M_OK ;
-	
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 		if (read_error_code == Y4M_OK) {
-			
+
 			chromaset (yuv_odata,outStrInfo,16,128,128);
-			
-			for (x=0; x< cwidth; x++) 
+
+			for (x=0; x< cwidth; x++)
 				for (y=0; y< cheight; y++) {
 					// fprintf (stderr,"U: %d V: %d\n",yuv_data[1][y*cwidth+x],yuv_data[2][y*cwidth+x]);
 					/* if ( y< ocheight && x < ocwidth) {
@@ -587,27 +587,27 @@ static void chroma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut,
 					 yuv_odata[2][y*ocwidth+x] = y*2;
 					 }
 					 */
-					if (yuv_odata[0][yuv_data[1][y*cwidth+x] + yuv_data[2][y*cwidth+x] * owidth] < 255) 
+					if (yuv_odata[0][yuv_data[1][y*cwidth+x] + yuv_data[2][y*cwidth+x] * owidth] < 255)
 						yuv_odata[0][yuv_data[1][y*cwidth+x] + yuv_data[2][y*cwidth+x] * owidth] ++;
 				}
 			write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-			
+
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 static void luma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream_info_t  *outStrInfo )
@@ -620,40 +620,40 @@ static void luma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y
 	int height,width;
 	int oheight,owidth;
 	int y,x;
-	
-	
+
+
 	// Allocate memory for the YUV channels
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	if (chromalloc(yuv_odata,outStrInfo))		
+
+	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	
+
+
 	/* Initialize counters */
-	
-	
+
+
 	width = y4m_si_get_plane_width(inStrInfo,0);
 	height = y4m_si_get_plane_height(inStrInfo,0);
-	
+
 	owidth = y4m_si_get_plane_width(outStrInfo,0);
 	oheight = y4m_si_get_plane_height(outStrInfo,0);
-	
+
 	write_error_code = Y4M_OK ;
-	
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 		if (read_error_code == Y4M_OK) {
-			
+
 			chromaset (yuv_odata,outStrInfo,16,128,128);
 			chromacpy (yuv_odata,yuv_data,inStrInfo);
-			
-			for (x=0; x< width; x++) 
+
+			for (x=0; x< width; x++)
 				for (y=0; y< height; y++) {
 					// fprintf (stderr,"U: %d V: %d\n",yuv_data[1][y*cwidth+x],yuv_data[2][y*cwidth+x]);
 					if ( yuv_odata[0][((oheight-1) -  yuv_data[0][y*width+x] ) * owidth + x] < 255 )
@@ -661,23 +661,23 @@ static void luma_scope(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y
 				}
 			draw_luma(yuv_odata,outStrInfo);
 			write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-			
+
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
 	free( yuv_data[0] );
 	free( yuv_data[1] );
 	free( yuv_data[2] );
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream_info_t  *outStrInfo )
@@ -694,51 +694,51 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 	int y,x,y1;
     int cx,cy;
 	int hist[256],max;
-	
-	
+
+
 	// Allocate memory for the YUV channels
-	
-	if (chromalloc(yuv_data,inStrInfo))		
+
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	if (chromalloc(yuv_odata,outStrInfo))		
+
+	if (chromalloc(yuv_odata,outStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	
+
+
 	/* Initialize counters */
-	
+
 	width = y4m_si_get_plane_width(inStrInfo,0);
 	height = y4m_si_get_plane_height(inStrInfo,0);
-	
+
 	owidth = y4m_si_get_plane_width(outStrInfo,0);
 	oheight = y4m_si_get_plane_height(outStrInfo,0);
-	
-	
+
+
     cowidth = y4m_si_get_plane_width(outStrInfo,1);
 	coheight = y4m_si_get_plane_height(outStrInfo,1);
 
     write_error_code = Y4M_OK ;
-	
-	for (x=0; x<256; x++) 
+
+	for (x=0; x<256; x++)
 		hist[x] = 0;
-	
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 		if (read_error_code == Y4M_OK) {
-			
+
 			chromaset (yuv_odata,outStrInfo,16,128,128);
 			// chromacpy (yuv_odata,yuv_data,inStrInfo);
-			
-			for (x=0; x< width; x++) 
+
+			for (x=0; x< width; x++)
 				for (y=0; y< height; y++) {
 					// fprintf (stderr,"U: %d V: %d\n",yuv_data[1][y*cwidth+x],yuv_data[2][y*cwidth+x]);
 					hist[yuv_data[0][y*width+x]] ++;
 				}
-			max = hist[0]; 
+			max = hist[0];
 			for (x=0; x< owidth; x++) {
 				if (hist[x]>max) {
 					max = hist[x];
@@ -746,66 +746,66 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 			}
 			//	mjpeg_debug("max: %d choice %d",max,choice);
 			for (x=0; x<owidth; x++) {
-                
+
 				for (y=1; y <= (oheight * hist[x] / max); y++)
                 {
                         yuv_odata[0][(oheight-y) * owidth + x] = 192;
                 }
 			}
-        
+
             for (x=0 ; x  < owidth; x +=8) {
-                
+
                 // fprintf(stderr,"draw_luma: y1=%d\n",y1);
-                
+
                 for (y=0; y < 8; y++) {
-                    
+
                     y1 = y;
                     //chroma_coord(sinfo, &cx, &cy, x, y);
-                    
+
                     cx = xchroma(x,outStrInfo);
                     cy = ychroma(y1,outStrInfo);
-                    
+
                     // fprintf(stderr,"%d %d -> %d %d\n",x,y,cx,cy);
-                    
+
                     yuv_odata[0][y1 * owidth + x] = 240;
                     yuv_odata[1][cy * cowidth + cx] = 240;
                     yuv_odata[2][cy * cowidth + cx] = 128;
-                    
-                    
+
+
                     y1 = (oheight - 1) - y;
                     //chroma_coord(sinfo, &cx, &cy, x, y);
-                    
+
                     cx = xchroma(x,outStrInfo);
                     cy = ychroma(y1,outStrInfo);
-                    
-                    
+
+
                     yuv_odata[0][y1 * owidth + x] = 240;
                     yuv_odata[1][cy * cowidth + cx] = 240;
                     yuv_odata[2][cy * cowidth + cx] = 128;
-                    
-                    
+
+
                 }
-                
+
             }
-        
-            
+
+
 			write_error_code = y4m_write_frame( fdOut, outStrInfo, &in_frame, yuv_odata );
-			
+
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 	}
 	// Clean-up regardless an error happened or not
 	y4m_fini_frame_info( &in_frame );
-	
+
     chromafree(yuv_data);
     chromafree(yuv_odata);
 
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 
@@ -822,17 +822,17 @@ void acc_hist(  int fdIn  , y4m_stream_info_t  *inStrInfo, int fdOut, y4m_stream
 // *************************************************************************************
 int main (int argc, char *argv[])
 {
-	
-	int verbose = 1; 
+
+	int verbose = 1;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
 	y4m_stream_info_t in_streaminfo, out_streaminfo ;
 	int mode, c,dropFrame=1;
 	int start = 0;
 	const static char *legal_flags = "tv:yiclhgf:s:n";
-	
+
 	char *fontname=NULL;
-	
+
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -841,7 +841,7 @@ int main (int argc, char *argv[])
 				if (verbose < 0 || verbose > 2)
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
-				
+
 			case 'h':
 			case '?':
 				print_usage (argv);
@@ -877,84 +877,84 @@ int main (int argc, char *argv[])
 				break;
 		}
 	}
-	
+
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
-	
+
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
-	
+
 	// ***************************************************************
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
 	// ***************************************************************
 	// INPUT comes from stdin, we check for a correct file header
-    
+
     y4m_accept_extensions(1); // because some filters can handle different chroma subsampling
 
-    
+
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-	
+
 	// Information output
 	mjpeg_info ("yuvdiag (version " YUVDI_VERSION ") is a video diagnostic for yuv streams");
 	mjpeg_info ("(C) 2008 Mark Heath <mjpeg0 at silicontrip.org>");
 	mjpeg_info ("yuvdiag -h for help");
-	
+
 	y4m_init_stream_info (&out_streaminfo);
 	y4m_copy_stream_info(&out_streaminfo, &in_streaminfo);
-	
+
 	/* in that function we do all the important work */
 
 	switch (mode) {
 		case MODE_CHANNEL:
-			
+
 			y4m_si_set_width (&out_streaminfo, y4m_si_get_plane_width(&in_streaminfo,1) + y4m_si_get_plane_width(&in_streaminfo,0));
-			
+
 			y4m_write_stream_header(fdOut,&out_streaminfo);
 			channel(fdIn, &in_streaminfo, fdOut, &out_streaminfo);
-			
+
 			break;
 		case MODE_CHROMA:
 			y4m_si_set_width (&out_streaminfo,256);
 			y4m_si_set_height (&out_streaminfo,256);
-			
+
 			y4m_write_stream_header(fdOut,&out_streaminfo);
 			chroma_scope(fdIn, &in_streaminfo, fdOut, &out_streaminfo);
 			break;
-			
+
 		case  MODE_LUMA:
 			y4m_si_set_height (&out_streaminfo,256 + y4m_si_get_plane_height(&in_streaminfo,0));
-			
+
 			y4m_write_stream_header(fdOut,&out_streaminfo);
 			luma_scope(fdIn, &in_streaminfo, fdOut, &out_streaminfo);
 			break;
-			
+
 		case MODE_HIST:
 			y4m_si_set_width (&out_streaminfo,256);
 			y4m_si_set_height (&out_streaminfo,256);
-			
+
 			y4m_write_stream_header(fdOut,&out_streaminfo);
 			acc_hist(fdIn, &in_streaminfo, fdOut, &out_streaminfo);
 			break;
 		case MODE_TIMEC:
-			
-			if (fontname==NULL) 
+
+			if (fontname==NULL)
 				mjpeg_error_exit1("no font specified");
-			
+
 			y4m_write_stream_header(fdOut,&in_streaminfo);
 			timecode(fdIn, &in_streaminfo, fdOut,fontname,start,dropFrame);
 			break;
-			
+
 		case MODE_GRID:
 			y4m_write_stream_header(fdOut,&in_streaminfo);
 			grid(fdIn, &in_streaminfo, fdOut);
 			break;
 	}
-	
-	
+
+
 	y4m_fini_stream_info (&in_streaminfo);
-	
+
 	return 0;
 }
 /*

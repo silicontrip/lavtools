@@ -20,7 +20,7 @@
  * THE SOFTWARE.
 
  gcc -I/opt/local/include -L/opt/local/lib -std=gnu99 -lavformat  -lavutil  metadata-example.c   -o metadata-example
- 
+
  */
 
 /**
@@ -358,17 +358,17 @@ const char *av_get_codecid(enum AVCodecID codec)
 	}
 }
 
-const char *av_get_field_order(enum AVFieldOrder field_order) 
+const char *av_get_field_order(enum AVFieldOrder field_order)
 {
 
-	switch (field_order) 
+	switch (field_order)
 	{
 		case AV_FIELD_UNKNOWN: return "UNKNOWN";
 		case AV_FIELD_PROGRESSIVE: return "progressive";
 		case AV_FIELD_TT: return "tt";
 		case AV_FIELD_BB: return "bb";
 		case AV_FIELD_TB: return "tb"; //< Top coded first, bottom displayed first
-		case AV_FIELD_BT: return "bt"; //< Bottom coded first, top displayed first          
+		case AV_FIELD_BT: return "bt"; //< Bottom coded first, top displayed first
 		default: return NULL;
 	}
 }
@@ -395,7 +395,7 @@ const char *av_get_colorrange(enum AVColorRange color_range)
 		case AVCOL_RANGE_JPEG: return "jpeg";
 		default: return NULL;
 	}
-			
+
 }
 
 const char *av_get_colorspace(enum AVColorSpace colorspace)
@@ -409,7 +409,7 @@ const char *av_get_colorspace(enum AVColorSpace colorspace)
 		case AVCOL_SPC_BT470BG:    return "bt470bg";
 		case AVCOL_SPC_SMPTE170M:  return "smpte170m";
 		case AVCOL_SPC_SMPTE240M:  return "smpte240m";
-		case AVCOL_SPC_YCOCG: return "ycocg";	
+		case AVCOL_SPC_YCOCG: return "ycocg";
 		default: return NULL;
 	}
 }
@@ -436,7 +436,7 @@ int main (int argc, char **argv)
 
 	if ((ret=avformat_find_stream_info(fmt_ctx,NULL))<0)
 		return ret;
-	
+
 	if (strncmp(fmt_ctx->iformat->name,"mov,",4)==0) { container = "mov"; }
 	if (strncmp(fmt_ctx->iformat->name,"matroska",8)==0) { container = "mkv"; }
 
@@ -450,21 +450,21 @@ int main (int argc, char **argv)
 	}
 
 
-	
+
 	if (container == NULL) {
 		printf ("FORMAT_NAME=%s\n",fmt_ctx->iformat->name);
 	} else {
 		printf ("FORMAT_NAME=%s\n",container);
 	}
-	
+
 	printf("%s=%d\n","STREAMS",fmt_ctx->nb_streams);
-	
+
 	for( i=0; i<fmt_ctx->nb_streams; i++) {
-	
+
 		codec_ctx = fmt_ctx->streams[i]->codec;
 
 		const char * stream_type = av_get_media_type_string(fmt_ctx->streams[i]->codec->codec_type);
-		
+
 		printf ("STREAM_%d_TYPE=%s\n",i,stream_type);
 		printf ("STREAM_%s_CODEC_ID=%s\n",stream_type,av_get_codecid(codec_ctx->codec_id));
 	//	printf ("STREAM_%d_PROFILE=%d\n",i,codec_ctx->profile);
@@ -478,7 +478,7 @@ int main (int argc, char **argv)
 			printf ("STREAM_%s_HEIGHT=%d\n",stream_type,codec_ctx->height);
 			printf ("STREAM_%s_PIX_FMT=%s\n",stream_type,av_get_pix_fmt_name(codec_ctx->pix_fmt));
 			printf("STREAM_%s_SAR=%d:%d\n",stream_type,codec_ctx->sample_aspect_ratio.num,codec_ctx->sample_aspect_ratio.den);
-			printf ("STREAM_%s_REFFRAMES=%d\n",stream_type,codec_ctx->refs);			
+			printf ("STREAM_%s_REFFRAMES=%d\n",stream_type,codec_ctx->refs);
 			printf ("STREAM_%s_COLORSPACE=%s\n",stream_type,av_get_colorspace(codec_ctx->colorspace));
 			printf ("STREAM_%s_COLORRANGE=%s\n",stream_type,av_get_colorrange(codec_ctx->color_range));
 			printf ("STREAM_%s_FIELDORDER=%s\n",stream_type,av_get_field_order(codec_ctx->field_order));
@@ -490,13 +490,13 @@ int main (int argc, char **argv)
 			printf ("STREAM_%s_CHANNELS=%d\n",stream_type,codec_ctx->channels);
 			printf ("STREAM_%s_SAMPLEFORMAT=%s\n",stream_type,av_get_sample_fmt_name(codec_ctx->sample_fmt));
 		}
-		
-		
+
+
 		while ((tag = av_dict_get(fmt_ctx->streams[i]->metadata, "", tag, AV_DICT_IGNORE_SUFFIX)))
 			printf("STREAM_%s_%s=%s\n", stream_type,tag->key, tag->value);
 
 	}
-	
+
 
     avformat_free_context(fmt_ctx);
     return 0;

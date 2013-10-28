@@ -5,12 +5,12 @@ AM_CFLAGS=@MJPEG_CFLAGS@
 
 bin_PROGRAMS= yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
 	yuvdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot \
-	yuvwater yuvbilateral  yuvtbilateral yuvpixelgraph 
+	yuvwater yuvbilateral  yuvtbilateral yuvpixelgraph
 
 if HAVE_FFMPEG
 
 FFMPEG_FLAGS= $(CODECFLAGS) -lswscale -lavcodec -lavformat -lavutil
-bin_PROGRAMS += libav-bitrate libav2yuv libavmux 
+bin_PROGRAMS += libav-bitrate libav2yuv libavmux
 
 libav_bitrate_SOURCES = libav-bitrate.c
 libav2yuv_SOURCES = libav2yuv.c
@@ -45,7 +45,7 @@ endif
 if HAVE_COREIMAGE
 
 COCOAFLAGS=-framework QuartzCore -framework Foundation -framework AppKit
-bin_PROGRAMS += yuvCIFilter 
+bin_PROGRAMS += yuvCIFilter
 yuvCIFilter_SOURCES = yuvCIFilter.m
 
 yuvCIFilter: yuvCIFilter.o utilyuv.o
@@ -63,8 +63,8 @@ yuvilace: yuvilace.o  utilyuv.o
 
 endif
 
-yuvaddetect_SOURCES =  yuvaddetect.c 
-yuvadjust_SOURCES =  yuvadjust.c 
+yuvaddetect_SOURCES =  yuvaddetect.c
+yuvadjust_SOURCES =  yuvadjust.c
 yuvaifps_SOURCES = yuvaifps.c
 yuvconvolve_SOURCES = yuvconvolve.c
 yuvcrop_SOURCES = yuvcrop.c
