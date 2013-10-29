@@ -21,7 +21,7 @@
 **<ul>
 **
 **<li> 3 Mar 2008.  Found a bug where the first matrix element was
-**undefined, which caused the first matrix entry to 0 and sometimes 
+**undefined, which caused the first matrix entry to 0 and sometimes
 **caused bus errors. (dont you hate those sometimes bugs...)</li>
 **</ul>
 
@@ -70,7 +70,7 @@
 #define emboss "-2,-1,0,-1,1,1,0,1,2"
 #define gaussian "1,4,7,4,1,4,16,26,16,26,4,7,26,41,26,7,4,16,26,16,4,1,4,7,4,1"
 
-static void print_usage() 
+static void print_usage()
 {
   fprintf (stderr,
 	   "usage: yuvconvolve [-d <divisor> -m <matrix> -v <verbose>]\n"
@@ -84,7 +84,7 @@ static void print_usage()
 
 int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 {
-	
+
 	int fs,cfs;
 
 	fs = y4m_si_get_plane_length(sinfo,0);
@@ -102,30 +102,30 @@ int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 
 }
 
-int sum_matrix(int *marr, int len) 
+int sum_matrix(int *marr, int len)
 {
 
 	int digits = 0;
 	int x,y;
 	int sum = 0;
-	
+
 	for (x=0; x <len; x++)
 		for (y=0; y<len; y++)
 			sum += marr[digits++];
-	
+
 	return sum;
 }
 
-int parse_matrix (char *mstr, int *marr) 
+int parse_matrix (char *mstr, int *marr)
 {
 
 	int digits=1;
 	//float dim;
 	char *tok;
-	
+
 		fprintf (stderr,"parse_matrix (%s)\n",mstr);
 
-	
+
 	// I'll make the assumption that the number of characters in the matrix string is longer than the number of digits
 	digits = 0;
 			fprintf (stderr,"parse_matrix strtok\n");
@@ -134,12 +134,12 @@ int parse_matrix (char *mstr, int *marr)
 				fprintf (stderr,"parse_matrix marr[0]=\n");
 
 	marr[digits]= atoi(tok);
-	
+
 	fprintf (stderr,"M: %d ",marr[0]);
-	
+
 				//	fprintf (stderr,"parse_matrix while\n");
 
-	
+
 	while (tok=strtok(NULL,",")) {
 				//		fprintf (stderr,"parse_matrix while digits++\n");
 
@@ -151,15 +151,15 @@ int parse_matrix (char *mstr, int *marr)
 	fprintf (stderr,"\nparse_matrix dim = \n");
 
 	//dim = sqrt (digits);
-	
+
 	// if (dim != integer) {mjpeg_warn("not a square number of matrix points"); return 0 }
-	
+
 	// if (dim != odd) { mjpeg_warn("Not an odd matrix dimention"); return 0 }
-	
-	
+
+
 			fprintf (stderr,"exit parse_matrix\n");
 
-	
+
 	return (int)sqrt(digits+1);
 
 }
@@ -169,33 +169,33 @@ int fdOut, y4m_stream_info_t  *outStrInfo,
 int *mat, int div, int mlen)
 {
 	y4m_frame_info_t   in_frame ;
-	uint8_t            *yuv_data[3],*yuv_odata[3];	
+	uint8_t            *yuv_data[3],*yuv_odata[3];
 	int                read_error_code ;
 	int                write_error_code ;
 	int                src_frame_counter ;
 	float vy,vu,vv;
 	int x,y,w,h,cw,ch,mx,my,count;
-	
+
 
 	w = y4m_si_get_plane_width(inStrInfo,0);
 	h = y4m_si_get_plane_height(inStrInfo,0);
 	cw = y4m_si_get_plane_width(inStrInfo,1);
 	ch = y4m_si_get_plane_height(inStrInfo,1);
 
-	if (chromalloc(yuv_data, inStrInfo)) 
-		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");  
+	if (chromalloc(yuv_data, inStrInfo))
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 
-	if (chromalloc(yuv_odata, inStrInfo)) 
-		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");  
+	if (chromalloc(yuv_odata, inStrInfo))
+		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 
-	
+
 	write_error_code = Y4M_OK ;
 	src_frame_counter = 0 ;
-	
+
 // initialise and read the first number of frames
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 
 		for (x=0; x<w; x++) {
@@ -206,23 +206,23 @@ int *mat, int div, int mlen)
 				// need to be handled differently for interlace
 				for (my=-mlen/2;my <=mlen/2; my++) {
 					for (mx=-mlen/2;mx <=mlen/2; mx++) {
-						
+
 					//	fprintf (stderr," x %d - y %d\n",mx,my);
-						
+
 						if ((x + mx >=0) && (x + mx <w) &&
 						(y + my  >=0) && (y + my  <h) ) {
 					//	fprintf (stderr,"matrix: %d => %d\n", count,mat[count]);
 							vy += *(yuv_data[0]+x+mx+(y+my)*w) * mat[count];
 						}
 						count++;
-						
+
 					}
 				}
 				vy /= div;
 				if (vy < 16) vy = 16;
 				if (vy > 240) vy= 240;
 				*(yuv_odata[0]+x+y*w) = vy;
-				
+
 				if ((x < cw) && (y<ch)) {
 
 				vu = 0;
@@ -231,7 +231,7 @@ int *mat, int div, int mlen)
 				// may need to be handled differently for interlace
 				for (my=-mlen/2;my <=mlen/2; my++) {
 					for (mx=-mlen/2;mx <=mlen/2; mx++) {
-					
+
 						if ((x + mx >=0) && (x + mx <cw) &&
 						(y + my  >=0) && (y + my  <ch) ) {
 							vu += (*(yuv_data[1]+x+mx+(y+my)*cw) -128) * mat[count];
@@ -239,22 +239,22 @@ int *mat, int div, int mlen)
 
 						}
 						count ++;
-						
+
 					}
 				}
 				vu /= div;
 				vv /= div;
-				
+
 				if (vu < -112) vu = -112;
 				if (vu > 112) vu = 112;
-				
+
 				if (vv < -112) vv = -112;
 				if (vv > 112) vv = 112;
-				
+
 
 				*(yuv_odata[1]+x+y*cw) = vu + 128;
 				*(yuv_odata[2]+x+y*cw) = vv + 128;
-					
+
 				}
 			}
 		}
@@ -277,7 +277,7 @@ int *mat, int div, int mlen)
 	free( yuv_odata[1] );
 	free( yuv_odata[2] );
 
-	
+
   if( read_error_code != Y4M_ERR_EOF )
     mjpeg_error_exit1 ("Error reading from input stream!");
   if( write_error_code != Y4M_OK )
@@ -314,14 +314,14 @@ int main (int argc, char *argv[])
 
 		break;
 	case 'm':
-		// strlen should be longer than the 
+		// strlen should be longer than the
 		matrix = (int *) malloc (sizeof(int) * strlen(optarg));
 		matlen = parse_matrix(optarg,matrix);
 		if (matlen == 0) {
 			mjpeg_error_exit1 ("Invalid matrix");
 		}
 		break;
-	
+
 	case '?':
           print_usage (argv);
           return 0 ;
@@ -329,15 +329,15 @@ int main (int argc, char *argv[])
     }
   }
 
-	if (divisor == 0) { 
+	if (divisor == 0) {
 		divisor = sum_matrix(matrix,matlen);
 	}
-  
-	if (divisor == 0) { 
+
+	if (divisor == 0) {
 		mjpeg_warn("divisor defaulting to 1\n");
-		divisor = 1; 
+		divisor = 1;
 	}
-  
+
   // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
 
@@ -355,7 +355,7 @@ int main (int argc, char *argv[])
 
 	y4m_ratio_t src_frame_rate = y4m_si_get_framerate( &in_streaminfo );
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
-	
+
   // Information output
   mjpeg_info ("yuvconvolve (version " YUVRFPS_VERSION ") performs a convolution matrix on yuv streams");
   mjpeg_info ("yuvconvolve -? for help");
@@ -363,9 +363,9 @@ int main (int argc, char *argv[])
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 
   /* in that function we do all the important work */
-  
+
   fprintf (stderr,"matrix square: %d\n",matlen);
-	
+
 	convolve( fdIn,&in_streaminfo,fdOut,&out_streaminfo,matrix,divisor,matlen);
 
   y4m_fini_stream_info (&in_streaminfo);

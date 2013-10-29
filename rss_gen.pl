@@ -53,7 +53,7 @@ $title = `grep -i h3 $art | head -n 1`;
 chop($title);
 $title =~ s/<h3>//i;
 $title =~ s/<\/h3>//i;
-# article link 
+# article link
 # article body
 $body = `grep -v -i h3 $art`;
 #$body =~ s/<\/p>.*//;

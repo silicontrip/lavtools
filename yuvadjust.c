@@ -28,9 +28,9 @@
   *  along with this program; if not, write to the Free Software
   *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
   *
-  
+
 gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvadjust.c -o yuvadjust
-	
+
   */
 
 #include <stdio.h>
@@ -46,7 +46,7 @@ gcc -O3 -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils yuvadjust.c -o yuvadjust
 
 #define YUVRFPS_VERSION "0.3"
 
-static void print_usage() 
+static void print_usage()
 {
   fprintf (stderr,
 	   "usage: yuvadjust [-h <hue> -b <bri> [-c <con> [-C <cen>]] [-B <lev> -W <lev>]  -s <sat> -u <tra> -v <tra>]\n"
@@ -71,7 +71,7 @@ static void adjust(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	float adj_sat, float adj_hue, float adj_u, float adj_v)
 {
 	y4m_frame_info_t   in_frame ;
-	uint8_t            *yuv_data[3],*yuv_odata[3];	
+	uint8_t            *yuv_data[3],*yuv_odata[3];
 
 	int                y_frame_data_size, uv_frame_data_size ;
 	int                read_error_code ;
@@ -86,7 +86,7 @@ static void adjust(  int fdIn , y4m_stream_info_t  *inStrInfo,
 	cw = y4m_si_get_plane_width(inStrInfo,1);
 	ch = y4m_si_get_plane_height(inStrInfo,1);
 
-	
+
   // Allocate memory for the YUV channels
 
 	y_frame_data_size = y4m_si_get_plane_length(inStrInfo,0);
@@ -96,10 +96,10 @@ static void adjust(  int fdIn , y4m_stream_info_t  *inStrInfo,
 		yuv_data[0] = (uint8_t *)malloc( y_frame_data_size);
 		yuv_data[1] = (uint8_t *)malloc( uv_frame_data_size);
 		yuv_data[2] = (uint8_t *)malloc( uv_frame_data_size);
-		if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2]) 
-		    mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");  
+		if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2])
+		    mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 
-	
+
   write_error_code = Y4M_OK ;
 
   src_frame_counter = 0 ;
@@ -107,26 +107,26 @@ static void adjust(  int fdIn , y4m_stream_info_t  *inStrInfo,
 
 	sin_hue = sin(adj_hue);
 	cos_hue = cos(adj_hue);
-	
-	
+
+
 // initialise and read the first number of frames
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn,inStrInfo,&in_frame,yuv_data );
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 
 		for (x=0; x<w; x++) {
 			for (y=0; y<h; y++) {
 			// perform magic
 				vy = *(yuv_data[0]+x+(y*w)) - adj_con_cen;
-				
+
 				vy = vy * adj_con + adj_bri + adj_con_cen; // Brightness and contrast operation
-			// clamping 
+			// clamping
 				if (vy > 240 ) vy = 240;
 				if (vy < 16 ) vy = 16;
-				
+
 				*(yuv_data[0]+x+(y*w)) = vy;
-				
+
 				if ((x < cw) && (y<ch)) {
 					vu = *(yuv_data[1]+x+(y*cw)) - 128 ;
 					vv = *(yuv_data[2]+x+(y*cw)) - 128 ;
@@ -134,12 +134,12 @@ static void adjust(  int fdIn , y4m_stream_info_t  *inStrInfo,
 					// hue rotation, saturation and shift
 					nvu = (cos_hue * vu - sin_hue * vv) * adj_sat + adj_v;
 					nvv = (sin_hue * vu + cos_hue * vv) * adj_sat + adj_u;
-					
+
 					if (nvu > 112) nvu = 112;
 					if (nvu < -112) nvu = -112;
 					if (nvv > 112) nvv = 112;
 					if (nvv < -112) nvv = -112;
-					
+
 					*(yuv_data[1]+x+(y*cw)) = nvu + 128;
 					*(yuv_data[2]+x+(y*cw)) = nvv + 128;
 
@@ -161,7 +161,7 @@ y4m_fini_frame_info( &in_frame );
 		free( yuv_data[0] );
 		free( yuv_data[1] );
 		free( yuv_data[2] );
-	
+
   if( read_error_code != Y4M_ERR_EOF )
     mjpeg_error_exit1 ("Error reading from input stream!");
   if( write_error_code != Y4M_OK )
@@ -183,7 +183,7 @@ int main (int argc, char *argv[])
 	float adj_bri=0,adj_con=1,adj_sat=1,adj_hue=0,adj_u=0,adj_v=0;
 	int c, adj_con_cen = 128;
 	int adj_lev_blk = -1, adj_lev_wht = -1;
-	
+
 
   while ((c = getopt (argc, argv, legal_flags)) != -1) {
     switch (c) {
@@ -219,15 +219,15 @@ int main (int argc, char *argv[])
 	case 'v':
 		adj_v = atof(optarg);
 		break;
-	
+
 	case '?':
           print_usage (argv);
           return 0 ;
           break;
     }
   }
-  
-  
+
+
   // mjpeg tools global initialisations
   mjpeg_default_handler_verbosity (verbose);
 
@@ -244,7 +244,7 @@ int main (int argc, char *argv[])
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
 
 	y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
-	
+
 
   // Information output
   mjpeg_info ("yuvadjust (version " YUVRFPS_VERSION ") is a simple luma and chroma adjustments for yuv streams");
@@ -254,13 +254,13 @@ int main (int argc, char *argv[])
 	y4m_write_stream_header(fdOut,&out_streaminfo);
 
 	/* convert hue into radians */
-	
+
 	adj_hue = adj_hue / 180 * M_PI;
 
 	/* if black and white levels are set, calculate apropriate con and con_cen value */
 
 	if (adj_lev_blk != -1 && adj_lev_wht != -1 ) {
-	
+
 	//	adj_con_cen = (16 - adj_lev_blk);
 		adj_con = 224.0 / (adj_lev_wht - adj_lev_blk);  // rise over run
 		if (adj_con == 1.0) {
@@ -268,10 +268,10 @@ int main (int argc, char *argv[])
 		} else {
 			adj_con_cen = - (( ( adj_lev_blk - 16 ) * adj_con ) / ( 1 - adj_con) - 16 );
 		}
-	
+
 	fprintf (stderr,"centre: %d contrast: %g\n",adj_con_cen, adj_con);
-		
-	
+
+
 	}
 
 // would like gamma, anyone for gamma?

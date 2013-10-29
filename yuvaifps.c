@@ -27,7 +27,7 @@
   *
 
 gcc yuvaifps.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvaifps
-  
+
   */
 
 #ifdef HAVE_CONFIG_H
@@ -47,13 +47,13 @@ gcc yuvaifps.c -L/sw/lib -I/sw/include/mjpegtools -lmjpegutils -o yuvaifps
 
 #define YUVFPS_VERSION "0.1"
 
-// using 16 bits for the percentage precision, can go to 24 with uint32_t 
+// using 16 bits for the percentage precision, can go to 24 with uint32_t
 // or even to 56 bit with uint64_t ?
 
 #define PRECISION 16
 
 
-static void print_usage() 
+static void print_usage()
 {
   fprintf (stderr,
 	   "usage: yuvfps [-Ib|t] -r NewFpsNum:NewFpsDen [-s [InputFpsNum:InputFpsDen]] [-c] [-v -h]\n"
@@ -79,7 +79,7 @@ static void print_usage()
 // Allocate a uint8_t frame
 int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 {
-	
+
 	int fs,cfs;
 
 	fs = y4m_si_get_plane_length(sinfo,0);
@@ -100,7 +100,7 @@ int chromalloc(uint8_t *m[3],y4m_stream_info_t *sinfo)
 //Copy a uint8_t frame
 int chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
 {
-	
+
 	int fs,cfs;
 
 	fs = y4m_si_get_plane_length(sinfo,0);
@@ -116,7 +116,7 @@ int chromacpy(uint8_t *m[3],uint8_t *n[3],y4m_stream_info_t *sinfo)
 int invert_order(int f)
 {
 	switch (f) {
-	
+
 		case Y4M_ILACE_TOP_FIRST:
 			return Y4M_ILACE_BOTTOM_FIRST;
 		case Y4M_ILACE_BOTTOM_FIRST:
@@ -144,8 +144,8 @@ mix(y4m_stream_info_t  *sinfo, uint8_t * const input[], uint32_t *output[], uint
 	int x,y;
 	uint32_t c;
 	int yinc, ystart;
-	int width,height;	
-	int cwidth,cheight;	
+	int width,height;
+	int cwidth,cheight;
 	int row_length,crow_length;
 
 	height = y4m_si_get_plane_height(sinfo,0) ; width = y4m_si_get_plane_width(sinfo,0);
@@ -159,14 +159,14 @@ mix(y4m_stream_info_t  *sinfo, uint8_t * const input[], uint32_t *output[], uint
 	for (y=ystart; y< height; y+=yinc) {
 		row_length = y * width;
 		crow_length = y * cwidth;
-		
+
 		for (x=0; x<width; x++)
 		{
 			output[0][x + row_length] += input[0][x + row_length] * percent;
 			if ((x<cwidth) && (y<cheight)) {
 				output[1][x + crow_length] += input[1][x + crow_length] * percent;
 				output[2][x + crow_length] += input[2][x + crow_length] * percent;
-			}	
+			}
 		}
 	}
 
@@ -180,7 +180,7 @@ intise(uint8_t *output[], uint32_t * const input[], y4m_stream_info_t  *sinfo )
 {
 	int x;
 	int fs,cfs;
-	
+
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
 
@@ -190,7 +190,7 @@ intise(uint8_t *output[], uint32_t * const input[], y4m_stream_info_t  *sinfo )
 		if (x<cfs) {
 			output[1][x] = (input[1][x] >> PRECISION);
 			output[2][x] = (input[2][x] >> PRECISION);
-		}	
+		}
 	}
 }
 
@@ -201,7 +201,7 @@ black(uint32_t *output[], y4m_stream_info_t  *sinfo )
 
 	int x;
 	int fs,cfs;
-	
+
 	fs = y4m_si_get_plane_length(sinfo,0);
 	cfs = y4m_si_get_plane_length(sinfo,1);
 
@@ -213,7 +213,7 @@ black(uint32_t *output[], y4m_stream_info_t  *sinfo )
 			if (x<cfs) {
 				output[1][x] = 128;
 				output[2][x] = 128;
-			}	
+			}
 		}
 
 }
@@ -224,13 +224,13 @@ black(uint32_t *output[], y4m_stream_info_t  *sinfo )
 int gcd (int a, int b) {
 
 	int f,g;
-	
-	if ( a == 0 || b == 0) 
+
+	if ( a == 0 || b == 0)
 		return 1;
 
 	g = b;
 	f  =  a % b;
-	
+
 	while (f != 0) {
 		b = f;
 		f = g % f;
@@ -243,10 +243,10 @@ int gcd (int a, int b) {
 // calculate percent based on source and destination frame counters and frame lengths
 // actual percent is calculated by result / 1 << PRECISION * 100
 
-int calc_per_fc (int sc, int sld, int sln, int dc, int dld, int dln, int il) 
+int calc_per_fc (int sc, int sld, int sln, int dc, int dld, int dln, int il)
 {
 
-	uint32_t ss,se,ds,de;	
+	uint32_t ss,se,ds,de;
 
 // prevent factors of 1 checked in parent function
 /*
@@ -255,7 +255,7 @@ int calc_per_fc (int sc, int sld, int sln, int dc, int dld, int dln, int il)
 		dld = dld << 1;
 	}
 */
-		
+
 // fprintf (stderr,"sc: %d sld: %d sln: %d dc: %d dld: %d dln: %d \n",sc,sld,sln,dc,dld,dln);
 
 		ss = sld * dln * sc;
@@ -285,16 +285,16 @@ int calc_per_fc (int sc, int sld, int sln, int dc, int dld, int dln, int il)
 
 //	fprintf (stderr,"per = src: %d-%d dst: %d-%d\n",ss,se,ds,de);
 
-	if ((ss>ds) && (se<de)) 
-		return (1<<PRECISION) * (se-ss)/(de-ds); 
-		
-	if ((ss<=ds) && (se<de) && (se>=ds)) 
+	if ((ss>ds) && (se<de))
+		return (1<<PRECISION) * (se-ss)/(de-ds);
+
+	if ((ss<=ds) && (se<de) && (se>=ds))
 		return (1<<PRECISION) * (se-ds)/(de-ds);
-		
+
 	if ((ss>ds) && (se>=de) && (ss<=de))
 		return (1<<PRECISION) * (de-ss)/(de-ds);
-		
-	if ((ss<=ds) && (se>=de)) 
+
+	if ((ss<=ds) && (se>=de))
 		return (1<<PRECISION);
 
 	return 0;
@@ -329,12 +329,12 @@ int greater(int il, int sc, int sic, int sld, int sln, int dc, int dld, int dln)
 //	  fprintf (stderr,"greater: interlace ");
 		se = sld * dln * sic + ((sld * dln) >> 1);
 		de = ds + ((dld * sln) >> 1);
-		
+
 		return ss>= ds && se >= de;
 	}
 
 // fprintf (stderr,"greater: %d >= %d\n",ss,ds);
-	
+
 		return ss >= ds;
 }
 
@@ -373,13 +373,13 @@ int smaller (int il,int sc, int sld, int sln, int dc, int dld, int dln) {
 }
 
 
-static void resample(  int fdIn 
+static void resample(  int fdIn
                       , y4m_stream_info_t  *inStrInfo
                       , y4m_ratio_t src_frame_rate
                       , int fdOut
                       , y4m_stream_info_t  *outStrInfo
                       , y4m_ratio_t dst_frame_rate
-                      , int not_normalize 
+                      , int not_normalize
                     )
 {
 	y4m_frame_info_t   in_frame ;
@@ -402,24 +402,24 @@ static void resample(  int fdIn
 
 // Allocate memory for the YUV channels
 	interlaced = y4m_si_get_interlace(inStrInfo);
-	h = y4m_si_get_height(inStrInfo) ; 
+	h = y4m_si_get_height(inStrInfo) ;
 	w = y4m_si_get_width(inStrInfo);
-	
+
 	frame_data_size = y4m_si_get_plane_length(inStrInfo,0);
 	chroma_frame_data_size = y4m_si_get_plane_length(inStrInfo,1);
 
-	if (chromalloc(yuv_data,inStrInfo))		
+	if (chromalloc(yuv_data,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 
-	if (chromalloc(yuv_odata,inStrInfo))		
+	if (chromalloc(yuv_odata,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 
 
 	if (interlaced != Y4M_ILACE_NONE) {
-		if (chromalloc(yuv_idata,inStrInfo))		
+		if (chromalloc(yuv_idata,inStrInfo))
 			mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
 	}
-	
+
 	yuv_fdata[0] = (uint32_t *)malloc(sizeof(uint32_t) * frame_data_size);
 	yuv_fdata[1] = (uint32_t *)malloc(sizeof(uint32_t) * chroma_frame_data_size);
 	yuv_fdata[2] = (uint32_t *)malloc(sizeof(uint32_t) * chroma_frame_data_size);
@@ -446,13 +446,13 @@ static void resample(  int fdIn
 // reduce the rate by the greatest common divisor
 // as we are interested in the ratios between the frame rates
 // this keeps the resulting multiples within a managable range
-// and not overflowing a uint32_t 
+// and not overflowing a uint32_t
 
 	sd = src_frame_rate.d;
 	sn = src_frame_rate.n;
 	dd = dst_frame_rate.d;
 	dn = dst_frame_rate.n;
-	
+
 
 	g = gcd(sn,dn);
 	if (g > 1) {
@@ -466,7 +466,7 @@ static void resample(  int fdIn
 
 	// although we've reduce to the lowest common divisor we don't want multipliers of 1
 	// as we like to add half for interlaced streams...
-	
+
 	if (interlaced != Y4M_ILACE_NONE) {
 		if (sc == 1 || dc == 1) {
 			sn = sn << 1;
@@ -480,20 +480,20 @@ static void resample(  int fdIn
 		sc /= g;
 		dc /= g;
 	}
-	
+
 	mjpeg_debug ("integer frame loop: src: %d dst: %d\n",sc,dc);
-	
-	
-	if (interlaced != Y4M_ILACE_NONE) 
+
+
+	if (interlaced != Y4M_ILACE_NONE)
 		chromacpy (yuv_idata,yuv_data,inStrInfo);
-	
+
 	black(yuv_fdata,inStrInfo);
 	nper = 0; iper = 0;
 
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
 		//	fprintf (stderr,"frame counter %d,%d (iframe==%d)\n",sc,dc,src_iframe_counter);
 		// reset counters back to 0 when they reach the calculated loop point
-		
+
 		if (src_frame_counter == sc && dst_frame_counter == dc) {
 		//	fprintf (stderr,"Counter reset %d,%d (iframe==%d)\n",sc,dc,src_iframe_counter);
 			src_iframe_counter -= src_frame_counter;
@@ -510,26 +510,26 @@ static void resample(  int fdIn
 		//	fprintf (stderr,"P NPER %d += PER %d\n",nper,per);
 
 		}
-			
-			
+
+
 	// for interlace frames, change the time offset and copy the remaining field
 		if (interlaced != Y4M_ILACE_NONE) {
-					
+
 			if ((per = calc_per_fc(src_iframe_counter, sd, sn, dst_frame_counter, dd, dn, interlaced)) > 0 && (iper < (1<<PRECISION)-1)) {
 	//				fprintf (stderr,"I PER %d += IPER %d\n",iper,per);
-					
-				if (interlaced == Y4M_ILACE_TOP_FIRST) 
+
+				if (interlaced == Y4M_ILACE_TOP_FIRST)
 					mix (inStrInfo,yuv_idata,yuv_fdata,per,Y4M_ILACE_BOTTOM_FIRST);
 				else
 					mix (inStrInfo,yuv_idata,yuv_fdata,per,Y4M_ILACE_TOP_FIRST);
-							
+
 				iper += per;
 
 			}
 		// mjpeg_warn ("Add percent: %f  src: %f-%f dst: %f-%f  ",per,ssrcf,esrcf,sdstf,edstf);
 		}
 
-// if the end of the source frame is passed the end of the destination frame, 
+// if the end of the source frame is passed the end of the destination frame,
 // then we write the destination frame
 
  // greater (src_frame_counter,src_frame_rate.d, src_frame_rate.n,dst_frame_counter,dst_frame_rate.d, dst_frame_rate.n)
@@ -548,14 +548,14 @@ static void resample(  int fdIn
 				black(yuv_fdata,inStrInfo);
 				nper = 0; iper = 0;
 				dst_frame_counter++;
-			
+
 		} else { // Do not read any new frames if we have written a frame
-		
-			if (interlaced != Y4M_ILACE_NONE) { 
-				
+
+			if (interlaced != Y4M_ILACE_NONE) {
+
 			// I'd like to investigate the occurance of interlace reads and copies vs progressive reads or copies
 			// read the interlace frame if the end of the source frame is before the end of the destination
-			
+
 				if (smaller(interlaced,src_iframe_counter+1, sd, sn, dst_frame_counter+1, dd,dn)) {
 					// copy the already read frame if we have it
 					if (src_frame_counter > src_iframe_counter) {
@@ -570,7 +570,7 @@ static void resample(  int fdIn
 					src_iframe_counter++ ;
 				}
 			}
-			 
+
 			// read the frame if the end of the source frame is before the end of the destination
 
 			if (smaller(Y4M_ILACE_NONE, src_frame_counter+1, sd, sn, dst_frame_counter+1, dd,dn)) {
@@ -584,7 +584,7 @@ static void resample(  int fdIn
 					read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data );
 				//	 fprintf (stderr,"READING P FRAME %d\n", src_frame_counter);
 				}
-			
+
 				src_frame_counter++ ;
 			}
 		}
@@ -703,22 +703,22 @@ int main (int argc, char *argv[])
   y4m_copy_stream_info( &out_streaminfo, &in_streaminfo );
 
   optind = 0;
-  
+
   // Information output
   mjpeg_info ("yuvafps (version " YUVFPS_VERSION
               ") is a linear interpolating frame resampling utility for yuv streams");
   mjpeg_info ("(C) 2007 Mark Heath mjpeg1 at silicontrip dot org");
   mjpeg_info ("yuvafps -h for help");
 
-  y4m_si_set_framerate( &out_streaminfo, frame_rate );                
+  y4m_si_set_framerate( &out_streaminfo, frame_rate );
   y4m_write_stream_header(fdOut,&out_streaminfo);
-  
-  if (yuv_interlacing != Y4M_UNKNOWN) 
+
+  if (yuv_interlacing != Y4M_UNKNOWN)
 	y4m_si_set_interlace( &in_streaminfo, yuv_interlacing);
 
   if( change_header_only )
     frame_rate = src_frame_rate ;
-    
+
   /* in that function we do all the important work */
   resample( fdIn,&in_streaminfo, src_frame_rate, fdOut,&out_streaminfo, frame_rate, not_normalize );
 

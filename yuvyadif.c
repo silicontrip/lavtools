@@ -5,7 +5,7 @@
  *
  **<p>An implementation of the YADIF deinterlace filter for yuv streams.</p>
  **<h4>Usage</h4>
- **<p>-I force interlace mode t|b. top or bottom field first.</p> 
+ **<p>-I force interlace mode t|b. top or bottom field first.</p>
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -21,7 +21,7 @@
  *  along with this program; if not, write to the Free Software
  *  Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
  *
- gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils  
+ gcc yuvdeinterlace.c -I/sw/include/mjpegtools -lmjpegutils
  */
 
 
@@ -39,7 +39,7 @@
 
 #define VERSION "0.1"
 
-static void print_usage() 
+static void print_usage()
 {
 	fprintf (stderr,
 			 "usage: yuvyadif -I t|b\n"
@@ -48,8 +48,8 @@ static void print_usage()
 }
 
 typedef uint8_t pixelvalue;
-#define PIX_SORT(a,b) { if ((a)>(b)) PIX_SWAP((a),(b)); } 
-#define PIX_SWAP(a,b) { pixelvalue temp=(a);(a)=(b);(b)=temp; } 
+#define PIX_SORT(a,b) { if ((a)>(b)) PIX_SWAP((a),(b)); }
+#define PIX_SWAP(a,b) { pixelvalue temp=(a);(a)=(b);(b)=temp; }
 
 #define FFMIN(a,b) ((a) > (b) ? (b) : (a))
 #define FFMAX(a,b) ((a) < (b) ? (b) : (a))
@@ -75,7 +75,7 @@ static void filter_line_c(int p_mode, uint8_t *dst, uint8_t *prev, uint8_t *cur,
         int spatial_pred= (c+e)>>1;
         int spatial_score= FFABS(cur[-refs-1] - cur[+refs-1]) + FFABS(c-e)
 		+ FFABS(cur[-refs+1] - cur[+refs+1]) - 1;
-		
+
 #define CHECK(j)\
 {   int score= FFABS(cur[-refs-1+j] - cur[+refs-1-j])\
 + FFABS(cur[-refs  +j] - cur[+refs  -j])\
@@ -99,7 +99,7 @@ if(p_mode<2){
 	int max= FFMAX3(d-e, d-c, FFMIN(b-c, f-e));
 	int min= FFMIN3(d-e, d-c, FFMAX(b-c, f-e));
 #endif
-	
+
 	diff= FFMAX3(diff, min, -max);
 }
 
@@ -122,63 +122,63 @@ next2++;
 
 static void filterframe (uint8_t *dst[3], uint8_t ***ref, y4m_stream_info_t *si, int yuv_interlacing)
 {
-	
+
 	int y;
 	int height,width,height2,width2;
-	
+
 	uint8_t *prev, *cur, *next, *dst2;
-	
+
 	// constants. should make command line args
 	int mode,parity;
-	
+
 	parity = 1;
 	mode = 1;
-	
+
 	int tff = yuv_interlacing == Y4M_ILACE_TOP_FIRST?1:0;
-	
+
 	// these are stored here for speed
 	height=y4m_si_get_plane_height(si,0);
 	width=y4m_si_get_plane_width(si,0);
-	
+
 	// I'll assume that the chroma subsampling is the same for both u and v channels
 	height2=y4m_si_get_plane_height(si,1);
 	width2=y4m_si_get_plane_width(si,1);
-	
+
 	int yw = 0;
 	int yw2 = 0;
-	
+
 	for (y=0; y < height; y++) {
-		
-		
-		if((y ^ parity) & 1) 
+
+
+		if((y ^ parity) & 1)
 		{
-			
+
 			prev= &ref[0][0][yw];
 			cur = &ref[1][0][yw];
 			next= &ref[2][0][yw];
 			dst2= &dst[0][yw];
-			
-			
+
+
 			filter_line_c(mode,dst2, prev, cur, next,width,width,parity ^ tff);
-			
+
 			if (y<height2) {
-				
+
 				prev= &ref[0][1][yw2];
 				cur = &ref[1][1][yw2];
 				next= &ref[2][1][yw2];
 				dst2= &dst[1][yw2];
-				
-				
+
+
 				filter_line_c(mode,dst2, prev, cur, next,width2,width2,parity ^ tff);
-				
+
 				prev= &ref[0][2][yw2];
 				cur = &ref[1][2][yw2];
 				next= &ref[2][2][yw2];
 				dst2= &dst[2][yw2];
-				
-				
+
+
 				filter_line_c(mode,dst2, prev, cur, next,width2,width2,parity ^ tff);
-				
+
 			}
 		} else {
 			memcpy(&dst[0][yw], &ref[1][0][yw], width);
@@ -187,12 +187,12 @@ static void filterframe (uint8_t *dst[3], uint8_t ***ref, y4m_stream_info_t *si,
 				memcpy(&dst[2][yw2], &ref[1][2][yw2], width2);
 			}
 		}
-		
+
 		yw += width;
 		yw2 += width2;
-		
+
 	}
-	
+
 }
 
 // temporal filter loop
@@ -205,84 +205,84 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo, int yu
 	int                read_error_code ;
 	int                write_error_code ;
 	int c,d;
-	
+
 	int temporalLength = 3;
-	
+
 	// Allocate memory for the YUV channels
 	// may move these off into utility functions
-	if (chromalloc(yuv_odata,inStrInfo))		
+	if (chromalloc(yuv_odata,inStrInfo))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
-	
-	if (temporalalloc(&yuv_data,inStrInfo,temporalLength)) 
+
+	if (temporalalloc(&yuv_data,inStrInfo,temporalLength))
 		mjpeg_error_exit1 ("Could'nt allocate memory for the temporal data!");
-	
+
 	/* Initialize counters */
-	
+
 	write_error_code = Y4M_OK ;
-	
+
 	y4m_init_frame_info( &in_frame );
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[temporalLength-1] );
-	
-	
+
+
 	//init loop mode
 	for (c=temporalLength-1;c>0;c--) {
 		chromacpy(yuv_data[c-1],yuv_data[c],inStrInfo);
 	}
-	
+
 	// if temporalLength is an odd value should it be rounded up or down
 	for(d=1;d<temporalLength/2;d++) {
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		// makes assumption that the video is longer than temporalLength frames.
-		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[temporalLength-1] );		
-		
+		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[temporalLength-1] );
+
 		temporalshuffle(yuv_data,temporalLength);
-		
+
 	}
-	
+
 	while( Y4M_ERR_EOF != read_error_code && write_error_code == Y4M_OK ) {
-		
+
 		// do work
 		if (read_error_code == Y4M_OK) {
 			filterframe(yuv_odata,yuv_data,inStrInfo,yuv_interlacing);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
 		read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_data[temporalLength-1] );
 		// shuffle
 		temporalshuffle(yuv_data,temporalLength);
 	}
-	// finalise loop		
+	// finalise loop
 	for(c=0;c<temporalLength/2;c++) {
 		if (read_error_code == Y4M_OK) {
 			filterframe(yuv_odata,yuv_data,inStrInfo,temporalLength);
 			write_error_code = y4m_write_frame( fdOut, inStrInfo, &in_frame, yuv_odata );
 		}
-		
+
 		y4m_fini_frame_info( &in_frame );
 		y4m_init_frame_info( &in_frame );
-		
+
 		//need to copy frame.
-		
+
 		// shuffle
 		temporalshuffle(yuv_data,temporalLength);
 	}
-	
-	
+
+
 	// Clean-up regardless an error happened or not
-	
-	
+
+
 	y4m_fini_frame_info( &in_frame );
 	chromafree(yuv_odata);
-	
+
 	//must free yuv temporal buffer
 	temporalfree(yuv_data,temporalLength);
-	
+
 	if( read_error_code != Y4M_ERR_EOF )
 		mjpeg_error_exit1 ("Error reading from input stream!");
-	
+
 }
 
 // *************************************************************************************
@@ -290,7 +290,7 @@ static void filter(  int fdIn ,int fdOut , y4m_stream_info_t  *inStrInfo, int yu
 // *************************************************************************************
 int main (int argc, char *argv[])
 {
-	
+
 	int verbose = 4; // LOG_ERROR ;
 	int fdIn = 0 ;
 	int fdOut = 1 ;
@@ -299,8 +299,8 @@ int main (int argc, char *argv[])
 	const static char *legal_flags = "?hv:I:";
     int yuv_interlacing;
 
-    
-    
+
+
 	while ((c = getopt (argc, argv, legal_flags)) != -1) {
 		switch (c) {
 			case 'v':
@@ -308,7 +308,7 @@ int main (int argc, char *argv[])
 				if (verbose < 0 || verbose > 2)
 					mjpeg_error_exit1 ("Verbose level must be [0..2]");
 				break;
-				
+
 			case 'h':
 			case '?':
 				print_usage (argv);
@@ -326,15 +326,15 @@ int main (int argc, char *argv[])
 				break;
 		}
 	}
-	
+
 	y4m_accept_extensions(1);
-	
+
 	// mjpeg tools global initialisations
 	mjpeg_default_handler_verbosity (verbose);
-	
+
 	// Initialize input streams
 	y4m_init_stream_info (&in_streaminfo);
-	
+
 	// ***************************************************************
 	// Get video stream informations (size, framerate, interlacing, aspect ratio).
 	// The streaminfo structure is filled in
@@ -342,32 +342,32 @@ int main (int argc, char *argv[])
 	// INPUT comes from stdin, we check for a correct file header
 	if (y4m_read_stream_header (fdIn, &in_streaminfo) != Y4M_OK)
 		mjpeg_error_exit1 ("Could'nt read YUV4MPEG header!");
-	
+
 	if (yuv_interlacing==Y4M_UNKNOWN) {
 		yuv_interlacing = y4m_si_get_interlace (&in_streaminfo);
 	}
-	
+
 	if (yuv_interlacing==Y4M_UNKNOWN || yuv_interlacing == Y4M_ILACE_NONE) {
 		mjpeg_error_exit1("source material not interlaced");
 	}
-	
+
 	y4m_si_set_interlace(&in_streaminfo, Y4M_ILACE_NONE);
 	y4m_write_stream_header(fdOut,&in_streaminfo);
-	
-	
+
+
 	// Information output
 	mjpeg_info ("yuvyadif (version " VERSION ") is an implementation of the yadif filter for yuv streams");
 	mjpeg_info ("(C) 2011 Mark Heath <mjpeg0 at silicontrip.org>");
 	mjpeg_info (" -h for help");
-	
-	
+
+
 	/* in that function we do all the important work */
 	//filterinitialize ();
-	
+
 	filter(fdIn, fdOut, &in_streaminfo,yuv_interlacing);
-	
+
 	y4m_fini_stream_info (&in_streaminfo);
-	
+
 	return 0;
 }
 /*

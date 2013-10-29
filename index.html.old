@@ -7,14 +7,14 @@
 <div id=head>
 
 
-<h1>YUV Video filters</h1> 
+<h1>YUV Video filters</h1>
 
 </div> <div id=text>
 
 <p> Code for YUV video stream processing. This code extends code
 from the MJPEG tools and requires the mjpeg libraries.  If you have
 difficulty compiling these contact me, mjpeg0 at silicontrip dot org.
-</p> 
+</p>
 
 <h3><a href=yuvdeinterlace.c>YUV DeInterlace</a></h3> <p>A non destructive
 deinterlacer.  Converts to a double frame rate, half height,
@@ -50,14 +50,14 @@ rate converter.  Does a better job than the frame dropping/duplicating
 converters.</P>
 <p>
 I did think that this no longer needed maintaining since yuvfps now has
-a weighted average conversion. However I find this programs conversion 
+a weighted average conversion. However I find this programs conversion
 much nicer than yuvfps.  This will work with converting very slow or
 very fast frame rates and averages all frames that overlap.</p>
 <UL>
 <li> 13 September 2007. Discovered that I had broken progressive support with my
 previous change.  Reworked the algorithm and functionised some of the code.
 Much cleaner now.  It is horribly slow however because it uses doubles to
-perform the frame averaging. I am thinking about changing to fixed point 
+perform the frame averaging. I am thinking about changing to fixed point
 processing.</li>
 
 <li>6th September 2006. Added support for interlaced video.</li>
@@ -102,7 +102,7 @@ for DVDs from TV.</p>
 
 <h3><a href="yuvdiff.c"> YUV difference</a></h3><p> Started life similar to yuvaddetect,
 may even contain disused code from ad detect.  This program produces an ASCII
-file suitable for plotting in gnuplot of the difference between consecutive frames or 
+file suitable for plotting in gnuplot of the difference between consecutive frames or
 fields.  Suitable for detecting 3-2 pulldown, or any other pulldown (frame
 duplication) frame rate conversion.  If the output is ran through an FFT it
 can even detect other frequency rate changes such as 2.39 (25 to 59.94) </p>
@@ -117,13 +117,13 @@ X frames or fields.  Can be used to convert 29.97 to 23.976 similar to yuvkineco
 and drops it, in theory removing any duplicated frames.</p>
 
 <h3><a href="yuvilace.c">YUV interlace analysis</a></h3><p>Experimental. Attempts to
-perform interlace detection, by FFT the vertical lines in the screen, and 
-averaging the resulting frequency spectra.  Also tried experimenting with 
+perform interlace detection, by FFT the vertical lines in the screen, and
+averaging the resulting frequency spectra.  Also tried experimenting with
 filtering to intelligently remove interlace. I have no idea what state this code
 is in at the moment.</p>
 
 <h3><a href="yuvadjust.c">YUV basic arithmentic adjustments</a></h3><p>Allows changes
-such as brightness, contrast, saturation, hue shift and hue rotation. Does 
+such as brightness, contrast, saturation, hue shift and hue rotation. Does
 support negative values for inversion. </p>
 
 <h3><a href="yuvconvolve.c">YUV convolution filter</a></h3><p>Performs a generic
@@ -140,7 +140,7 @@ and if that address no longer works change the 0 to a 1 or a 2 or 3...
 </P> </div>
 
 <div id=text>
-<h2>libav tools</h2> 
+<h2>libav tools</h2>
 <p>
 </p>
 <h3><a href="libav2yuv.c">LIBAV to YUV converter</a></h3><p>This is a very simple

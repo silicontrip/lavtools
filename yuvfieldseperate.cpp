@@ -29,14 +29,14 @@
 
 int main (int argc, char **argv)
 {
-    
+
     Libyuv iyuv,oyuv;
     int y;
     iyuv.setExtensions(1);
     oyuv.setExtensions(1);
-    
+
     try {
-    
+
         iyuv.readHeader();
         iyuv.dumpInfo();
         // copy from in to out.
@@ -44,40 +44,40 @@ int main (int argc, char **argv)
 
         oyuv.dumpInfo();
         oyuv.writeHeader();
-    
+
         iyuv.allocFrameData();
         oyuv.allocFrameData();
-        
+
         int width = iyuv.getWidth();
         int cwidth = iyuv.getChromaWidth();
-        
+
         while(1) {
             iyuv.read();
-        
+
             for (y=0; y<iyuv.getHeight();y++)
             {
                 int ny = (y >> 1) + (iyuv.getHeight() >> 1) * (y % 2);
-                
+
              //   std::cerr << "in: " << y << " out: " << ny << "\n";
-                
+
                 memcpy (&(oyuv.getYUVFrame()[0][ny*width]),
                         &(iyuv.getYUVFrame()[0][y*width]),width);
                 // do chroma
                 if (y < iyuv.getChromaHeight())
                 {
                     int ny = (y >> 1) + (iyuv.getChromaHeight() >> 1) * (y % 2);
-                    
+
                     memcpy (&oyuv.getYUVFrame()[1][ny*cwidth],
                             &iyuv.getYUVFrame()[1][y*cwidth],cwidth);
-                    
+
                     memcpy (&oyuv.getYUVFrame()[2][ny*cwidth],
                             &iyuv.getYUVFrame()[2][y*cwidth],cwidth);
 
-                
+
                 }
-                
+
             }
-            
+
             oyuv.write();
         }
     } catch (AVException *e) {

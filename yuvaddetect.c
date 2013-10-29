@@ -3,21 +3,21 @@
 ** <h3>Advertisement detection</h3>
 ** <p>Most of the functionality of this code has been replaced by yuvvalues.c any further work on this will be focussed there.</p>
 ** <h4>INCOMPLETE</h4>
-** 
+**
 ** <p> Currently only produces a text file (which can be graphed by
 ** gnuplot) of the average lightness of the sourceframes.  The idea
 ** is that there is a black fade before and after advertisements.  To
 ** produce chapter markers for DVDs from TV.</p>
-** 
+**
 ** <h4>RESULTS</h4>
 ** <p>
 ** <img src="7hd_ad.png">
-** </p> 
-** 
+** </p>
+**
 ** <p>
 ** From looking at this above graph it appears that this program is doing a frame difference,
 ** rather than averaging luma. Which is the same function as yuvdiff.
-** 
+**
 ** Now we can quite easily see scene changes, shown as sharp spikes. At about 810 and 1500</p>
 ** <p>
 ** We can also tell that the video has gone through a frame rate doubling by
@@ -58,7 +58,7 @@
 
 #define YUVFPS_VERSION "0.1"
 
-static void print_usage() 
+static void print_usage()
 {
   fprintf (stderr,
 	   "usage: yuvaddetect [-v -h -i|-p]\n"
@@ -66,7 +66,7 @@ static void print_usage()
            "\n"
 	   "\t -v Verbosity degree : 0=quiet, 1=normal, 2=verbose/debug\n"
 	   "\t -i Force interlace\n"
-	   "\t -p Force progressive\n" 
+	   "\t -p Force progressive\n"
 	   "\t -h print this help\n"
          );
 }
@@ -74,7 +74,7 @@ static void print_usage()
 static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo)
 {
   y4m_frame_info_t   in_frame ;
-  uint8_t            *yuv_data[3] ;	
+  uint8_t            *yuv_data[3] ;
   uint8_t            *yuv_odata[3] ;
 
   int                frame_data_size ;
@@ -97,7 +97,7 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo)
   if( !yuv_data[0] || !yuv_data[1] || !yuv_data[2] ||
       !yuv_odata[0] || !yuv_odata[1] || !yuv_odata[2]  )
     mjpeg_error_exit1 ("Could'nt allocate memory for the YUV4MPEG data!");
- 
+
 
   write_error_code = Y4M_OK ;
 
@@ -115,7 +115,7 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo)
 
 	// perform frame difference.
 	// only comparing Luma, less noise, more resolution... blah blah
-	
+
 	// if progressive
 	bri = 0;
 	for (l=0; l< frame_data_size; l++)
@@ -124,10 +124,10 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo)
 	printf ("%d %d\n",src_frame_counter,bri);
 
 	++src_frame_counter ;
-     
+
 	y4m_fini_frame_info( &in_frame );
 	y4m_init_frame_info( &in_frame );
-      
+
 	read_error_code = y4m_read_frame(fdIn, inStrInfo,&in_frame,yuv_odata );
 
 // check for read error
@@ -139,11 +139,11 @@ static void detect(  int fdIn , y4m_stream_info_t  *inStrInfo)
 	printf ("%d %d\n",src_frame_counter,bri);
 
 	++src_frame_counter ;
-     
+
 	y4m_fini_frame_info( &in_frame );
 	y4m_init_frame_info( &in_frame );
-	  
-	  
+
+
     }
   // Clean-up regardless an error happened or not
   y4m_fini_frame_info( &in_frame );
@@ -178,7 +178,7 @@ int main (int argc, char *argv[])
         if (verbose < 0 || verbose > 2)
           mjpeg_error_exit1 ("Verbose level must be [0..2]");
         break;
-        
+
         case 'h':
         case '?':
           print_usage (argv);
@@ -208,7 +208,7 @@ int main (int argc, char *argv[])
   mjpeg_info ("(C) 2002 Alfonso Garcia-Patino Barbolani <barbolani@jazzfree.com>");
   mjpeg_info ("yuvaddetect -h for help, or man yuvaddetect");
 
-    
+
   /* in that function we do all the important work */
   detect( fdIn,&in_streaminfo);
 

@@ -54,9 +54,9 @@ if ($dir = @opendir("$basedir/$thisdir")) {
 		list ($base,$ext)=split("\.",$file);
 		if ( ($ext=="gif" || $ext=="jpg" || $ext=="png")  && $base) {
 			$extra = "";
-			if (is_file ("$basedir/$title/$base.$ext")) { 
+			if (is_file ("$basedir/$title/$base.$ext")) {
 ?>
-<div id=photo> <p> 
+<div id=photo> <p>
 <img src="<?=$baseuri?>/<?=$title?>/<?=$base?>.<?=$ext?>" ><br>
 <?
 				if (is_file("$basedir/$title/$base.txt")) {
@@ -66,8 +66,8 @@ if ($dir = @opendir("$basedir/$thisdir")) {
 				}
 ?>
 </p> </div>
-<? 
-			} 
+<?
+			}
 		}
 	}
 closedir($dir);
