@@ -15,10 +15,10 @@ COCOA_LIBS=-framework QuartzCore -framework Foundation -framework AppKit
 
 DEPRECATED_TARGETS=libavmux
 DARWIN_TARGETS=yuvCIFilter
-MAIN_TARGETS=libav-bitrate yuvaddetect yuvadjust yuvaifps yuvconvolve yuvcrop \
-	yuvmdeinterlace yuvdiff yuvfade yuvhsync yuvrfps yuvtshot yuvwater yuvbilateral \
-	yuvtbilateral yuvdiag yuvpixelgraph yuvfieldrev yuvtout \
-	yuvyadif yuvnlmeans yuvvalues yuvfieldseperate yuvopencv metadata-example yuvilace
+MAIN_TARGETS=libav-bitrate metadata-example yuv2jpeg yuvaddetect yuvadjust yuvaifps \
+	yuvbilateral yuvconvolve yuvcrop yuvdiag yuvdiff yuvfade yuvfieldrev \
+	yuvfieldseperate yuvhsync yuvilace yuvmdeinterlace yuvnlmeans yuvopencv yuvpixelgraph yuvrfps \
+	yuvsubtitle yuvtbilateral yuvtout yuvtshot yuvvalues yuvwater yuvyadif
 
 UNAME:=$(shell uname)
 ifeq ($(UNAME), Darwin)
@@ -41,7 +41,7 @@ install:
 
 
 yuvfieldseperate: yuvfieldseperate.o libav2yuv/Libyuv.o libav2yuv/AVException.o
-	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) $(MJPEG_LIBS) 
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
 
 yuvopencv: yuvopencv.o libav2yuv/Libyuv.o libav2yuv/AVException.o
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(LDFLAGS) $(MJPEG_LIBS) $(OPENCV_LIBS)
@@ -67,7 +67,7 @@ yuvtshot: yuvtshot.o utilyuv.o
 yuvdiff: yuvdiff.o utilyuv.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
 
-yuvfieldrev: yuvfieldrev.o utilyuv.o 
+yuvfieldrev: yuvfieldrev.o utilyuv.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(MJPEG_LIBS)
 
 yuvpixelgraph: yuvpixelgraph.o utilyuv.o
