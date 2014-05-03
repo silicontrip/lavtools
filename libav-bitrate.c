@@ -35,6 +35,10 @@
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
 
+#if LIBAVFORMAT_VERSION_MAJOR >= 55
+#include <libavutil/frame.h>
+#endif
+
 #include <stdio.h>
 #include <string.h>
 #include <fcntl.h>
@@ -240,10 +244,21 @@ int main(int argc, char *argv[])
 #endif
 		{
 			videoStream=i;
+#if LIBAVFORMAT_VERSION_MAJOR < 55
 			framerate = pFormatCtx->streams[i]->r_frame_rate.num;
+#else 
+                        framerate = pFormatCtx->streams[i]->avg_frame_rate.num;
+#endif
+
+#if LIBAVFORMAT_VERSION_MAJOR < 55
 			if (pFormatCtx->streams[i]->r_frame_rate.den != 0)
 				framerate /= pFormatCtx->streams[i]->r_frame_rate.den;
 			//	fprintf (stderr,"Video Stream: %d Frame Rate: %d:%d\n",videoStream,pFormatCtx->streams[i]->r_frame_rate.num,pFormatCtx->streams[i]->r_frame_rate.den);
+#else 
+			if (pFormatCtx->streams[i]->avg_frame_rate.den != 0)
+				framerate /= pFormatCtx->streams[i]->avg_frame_rate.den;
+			//	fprintf (stderr,"Video Stream: %d Frame Rate: %d:%d\n",videoStream,pFormatCtx->streams[i]->avg_frame_rate.num,pFormatCtx->streams[i]->avg_frame_rate.den);
+#endif
 		}
 	}
 
@@ -298,7 +313,11 @@ int main(int argc, char *argv[])
 	}
 
 	// Allocate video frame
+#if LIBAVCODEC_VERSION_MAJOR < 55
 	pFrame=avcodec_alloc_frame();
+#else
+	pFrame=av_frame_alloc();
+#endif
 
 	int counter_interval=0;
 

@@ -15,7 +15,7 @@ off_t progress_total_bytes;
 #define THOUSAND_SEP ","
 #define PROGRESS_WIDTH 40
 
-inline void progress_init(off_t b, off_t t)
+void progress_init(off_t b, off_t t)
 {
 
 	//fprintf(stderr,"progress_init \n");
@@ -82,7 +82,7 @@ static inline void progress_human_read_print(long n)
 
 // Process has done i out of n rounds,
 // and we want a bar of width w and resolution r.
-inline void progress_loadBar(off_t bytes)
+void progress_loadBar(off_t bytes)
 {
     // Only update r times.
 	time_t current =  time(NULL);
