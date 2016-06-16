@@ -437,8 +437,10 @@ int main(int argc, char *argv[])
 		// Free the packet that was allocated by av_read_frame
 #if LIBAVCODEC_VERSION_MAJOR < 52
 		av_freep(&packet);
-#else
+#elsif LIBAVCODEC_VERSION_MAJOR < 57
 		av_free_packet(&packet);
+#else
+		av_packet_unref(&packet);
 #endif
 	}
 	if (programSettings.output_type) printf("\n");			
