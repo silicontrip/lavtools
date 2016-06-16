@@ -443,7 +443,7 @@ int main(int argc, char *argv[])
 		av_packet_unref(&packet);
 #endif
 	}
-	if (programSettings.output_type) printf("\n");			
+	if (programSettings.output_type) printf(" %d\n",gop_count);			
 
 	free(stream_size);
 
