@@ -57,6 +57,7 @@ static void print_usage()
 			"\t -i <output interval> defaults to one frame. (min 1)\n"
 			"\t -I <output interval> in seconds. Overrides -i. (larger than 0)\n"
 			"\t -P print progress bar.\n"
+			"\t -t print frame type only.\n"
 			"produces a text bandwidth graph for any media file recognised by libav\n"
 			"\n"
 			);
@@ -66,11 +67,29 @@ struct settings {
 	int ave_len;
 	char output_stderr;
 	char output_progress;
+	char output_type;
 	int output_interval;
 	double output_interval_seconds;
 };
 
 void free_streams () {
+
+}
+
+const char *pict_type(enum AVPictureType t) 
+{
+
+	switch (t) {
+	case AV_PICTURE_TYPE_NONE: return "-";
+    case AV_PICTURE_TYPE_I: return "I";
+    case AV_PICTURE_TYPE_P: return "P";
+    case AV_PICTURE_TYPE_B: return "B";
+    case AV_PICTURE_TYPE_S: return "S";
+    case AV_PICTURE_TYPE_SI: return "Si";
+    case AV_PICTURE_TYPE_SP: return "Sp";
+    case AV_PICTURE_TYPE_BI: return "Bi";
+	default: return ".";
+	}
 
 }
 
@@ -94,6 +113,7 @@ int main(int argc, char *argv[])
 	int frame_counter=0;
 	int total_size=0;
 	int tave=0;
+	int last_type=0;
 
 	struct settings programSettings;
 	struct stat fileStat;
@@ -106,10 +126,11 @@ int main(int argc, char *argv[])
 	programSettings.output_interval=1;
 	programSettings.output_interval_seconds=0;
 	programSettings.output_progress=0;
+	programSettings.output_type=0;
 
 
 	// parse commandline options
-	const static char *legal_flags = "s:i:I:ePh";
+	const static char *legal_flags = "s:i:I:ePht";
 
 	int c;
 	char *error=NULL;
@@ -153,6 +174,9 @@ int main(int argc, char *argv[])
 					return -1;
 				}
 
+				break;
+			case 't':
+				programSettings.output_type=1;
 				break;
 			case 'h':
 			case '*':
@@ -362,9 +386,26 @@ int main(int argc, char *argv[])
 				total_ave += total_size;
 
 
-				printf ("%f ",frame_counter/framerate);
-				printf ("%f ",tave*8*framerate);
+				if (!programSettings.output_type) {
+					printf ("%f ",frame_counter/framerate);
+					printf ("%f ",tave*8*framerate);
+				}
+				/*
+				printf ("%lld ", packet.pts);
+				printf ("%lld ", packet.dts);
+				printf ("%x ", packet.flags);
+				printf ("%d ", packet.side_data_elems);
+				printf ("%d ", packet.duration);
+				*/
+				if (programSettings.output_type) 
+				{
+					if (pFrame->pict_type == 1 && last_type != 1) printf ("\n");
+					last_type = pFrame->pict_type;
+					printf ("%s" , pict_type(pFrame->pict_type));
+					fflush(stdout);
+				}
 
+				if (!programSettings.output_type) {
 				for(i=0; i<numberStreams; i++) {
 
 					// double rate = stream_size[i]*8*framerate/ programSettings.output_interval;
@@ -383,6 +424,7 @@ int main(int argc, char *argv[])
 					stream_size[i]=0;
 				}
 				printf("\n");
+				}
 
 				//}
 				counter_interval = 1;
@@ -397,6 +439,7 @@ int main(int argc, char *argv[])
 		av_free_packet(&packet);
 #endif
 	}
+	if (programSettings.output_type) printf("\n");			
 
 	free(stream_size);
 
