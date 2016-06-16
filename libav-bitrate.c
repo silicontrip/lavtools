@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
 	int total_size=0;
 	int tave=0;
 	int last_type=0;
+	int gop_count=0;
 
 	struct settings programSettings;
 	struct stat fileStat;
@@ -399,8 +400,9 @@ int main(int argc, char *argv[])
 				*/
 				if (programSettings.output_type) 
 				{
-					if (pFrame->pict_type == 1 && last_type != 1) printf ("\n");
+					if (pFrame->pict_type == 1 && last_type != 1) { printf (" %d\n",gop_count); gop_count =0; }
 					last_type = pFrame->pict_type;
+					gop_count++;
 					printf ("%s" , pict_type(pFrame->pict_type));
 					fflush(stdout);
 				}
