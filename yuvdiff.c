@@ -249,7 +249,7 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 				} else if (interlacing == Y4M_ILACE_TOP_FIRST) {
 					printf ("%d %d\n",src_frame_counter,bri);
 					printf ("%d.5 %d\n",src_frame_counter,bro);
-				} else if (interlacing = Y4M_ILACE_BOTTOM_FIRST) {
+				} else if (interlacing == Y4M_ILACE_BOTTOM_FIRST) {
 					printf ("%d %d\n",src_frame_counter,bro);
 					printf ("%d.5 %d\n",src_frame_counter,bri);
 				}
@@ -276,7 +276,7 @@ static void detect(  int fdIn, int fdOut , y4m_stream_info_t  *inStrInfo, y4m_st
 						printf ("%d ",totalo[n]);
 					}
 					printf ("\n");
-				} else if (interlacing = Y4M_ILACE_BOTTOM_FIRST) {
+				} else if (interlacing == Y4M_ILACE_BOTTOM_FIRST) {
 					printf ("%d ",src_frame_counter);
 					for (n=0; n < frames; n++) {
 						printf ("%d ",totalo[n]);
@@ -363,7 +363,7 @@ int read_frame (uint8_t **yuv_frame, char * filename, y4m_stream_info_t in_strea
 	close (fdCompare);
 
 
-
+	return 0;
 
 }
 
@@ -403,7 +403,7 @@ int main (int argc, char *argv[])
 				break;
 			case 'h':
 			case '?':
-				print_usage (argv);
+				print_usage ();
 				return 0 ;
 				break;
 		}
