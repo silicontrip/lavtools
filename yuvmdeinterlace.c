@@ -213,7 +213,7 @@ int chromacpyfd(uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 }
 
 
-int_detect3 (int x, int y,uint8_t *m[3],frame_dimensions *fd)
+int int_detect3 (int x, int y,uint8_t *m[3],frame_dimensions *fd)
 {
 	uint8_t luma[4];
 	int i,t,w,h;
