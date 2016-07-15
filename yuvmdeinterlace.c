@@ -198,7 +198,7 @@ static void print_usage()
 //Copy a uint8_t frame
 // The frame dimensions version.
 
-int chromacpyfd(uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
+void chromacpyfd(uint8_t *m[3],uint8_t *n[3],frame_dimensions *fd)
 {
 
 	int fs,cfs;
@@ -1037,7 +1037,7 @@ int main (int argc, char *argv[])
 
 				case 'h':
 				case '?':
-				print_usage (argv);
+				print_usage ();
 				return 0 ;
 				break;
 				case 'f':
