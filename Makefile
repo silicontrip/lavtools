@@ -23,7 +23,7 @@ MAIN_TARGETS=libav-bitrate metadata-example yuv2jpeg yuvaddetect yuvadjust yuvai
 UNAME:=$(shell uname)
 ifeq ($(UNAME), Darwin)
 	CPPFLAGS= $(OPT_FLAG) -I/usr/local/include/mjpegtools -I/usr/local/include -I/usr/X11/include -I/usr/X11/include/freetype2 -D__STDC_CONSTANT_MACROS
-	LDFLAGS=-L/usr/X11/lib -L/usr/local/lib
+	LDFLAGS=-L/usr/X11/lib -L/usr/local/lib -arch x86_64
 	TARGETS=$(MAIN_TARGETS) $(DARWIN_TARGETS)
 else
 	CPPFLAGS=-I/usr/include/mjpegtools -I/usr/include/freetype2 -D__STDC_CONSTANT_MACROS
