@@ -181,7 +181,6 @@ const char *av_get_codecid(enum AVCodecID codec)
          case AV_CODEC_ID_ANM: return "ANM";
          case AV_CODEC_ID_BINKVIDEO: return "BINKVIDEO";
          case AV_CODEC_ID_IFF_ILBM: return "IFF_ILBM";
-         case AV_CODEC_ID_IFF_BYTERUN1: return "IFF_BYTERUN1";
          case AV_CODEC_ID_KGV1: return "KGV1";
          case AV_CODEC_ID_YOP: return "YOP";
          case AV_CODEC_ID_VP8: return "VP8";
@@ -214,21 +213,9 @@ const char *av_get_codecid(enum AVCodecID codec)
          case AV_CODEC_ID_MSS2: return "MSS2";
          case AV_CODEC_ID_VP9: return "VP9";
          case AV_CODEC_ID_AIC: return "AIC";
-         case AV_CODEC_ID_ESCAPE130_DEPRECATED: return "ESCAPE130_DEPRECATED";
-         case AV_CODEC_ID_G2M_DEPRECATED: return "G2M_DEPRECATED";
-         case AV_CODEC_ID_WEBP_DEPRECATED: return "WEBP_DEPRECATED";
          case AV_CODEC_ID_HNM4_VIDEO: return "HNM4_VIDEO";
-         case AV_CODEC_ID_HEVC_DEPRECATED: return "HEVC_DEPRECATED";
          case AV_CODEC_ID_FIC: return "FIC";
          case AV_CODEC_ID_ALIAS_PIX: return "ALIAS_PIX";
-         case AV_CODEC_ID_BRENDER_PIX_DEPRECATED: return "BRENDER_PIX_DEPRECATED";
-         case AV_CODEC_ID_PAF_VIDEO_DEPRECATED: return "PAF_VIDEO_DEPRECATED";
-         case AV_CODEC_ID_EXR_DEPRECATED: return "EXR_DEPRECATED";
-         case AV_CODEC_ID_VP7_DEPRECATED: return "VP7_DEPRECATED";
-         case AV_CODEC_ID_SANM_DEPRECATED: return "SANM_DEPRECATED";
-         case AV_CODEC_ID_SGIRLE_DEPRECATED: return "SGIRLE_DEPRECATED";
-         case AV_CODEC_ID_MVC1_DEPRECATED: return "MVC1_DEPRECATED";
-         case AV_CODEC_ID_MVC2_DEPRECATED: return "MVC2_DEPRECATED";
          case AV_CODEC_ID_HQX: return "HQX";
          case AV_CODEC_ID_TDSC: return "TDSC";
          case AV_CODEC_ID_HQ_HQA: return "HQ_HQA";
@@ -289,9 +276,6 @@ const char *av_get_codecid(enum AVCodecID codec)
          case AV_CODEC_ID_PCM_LXF: return "PCM_LXF";
          case AV_CODEC_ID_S302M: return "S302M";
          case AV_CODEC_ID_PCM_S8_PLANAR: return "PCM_S8_PLANAR";
-         case AV_CODEC_ID_PCM_S24LE_PLANAR_DEPRECATED: return "PCM_S24LE_PLANAR_DEPRECATED";
-         case AV_CODEC_ID_PCM_S32LE_PLANAR_DEPRECATED: return "PCM_S32LE_PLANAR_DEPRECATED";
-         case AV_CODEC_ID_PCM_S16BE_PLANAR_DEPRECATED: return "PCM_S16BE_PLANAR_DEPRECATED";
          case AV_CODEC_ID_PCM_S24LE_PLANAR: return "PCM_S24LE_PLANAR";
          case AV_CODEC_ID_PCM_S32LE_PLANAR: return "PCM_S32LE_PLANAR";
          case AV_CODEC_ID_PCM_S16BE_PLANAR: return "PCM_S16BE_PLANAR";
@@ -325,7 +309,6 @@ const char *av_get_codecid(enum AVCodecID codec)
          case AV_CODEC_ID_ADPCM_IMA_ISS: return "ADPCM_IMA_ISS";
          case AV_CODEC_ID_ADPCM_G722: return "ADPCM_G722";
          case AV_CODEC_ID_ADPCM_IMA_APC: return "ADPCM_IMA_APC";
-         case AV_CODEC_ID_ADPCM_VIMA_DEPRECATED: return "ADPCM_VIMA_DEPRECATED";
          case AV_CODEC_ID_VIMA: return "VIMA";
          case AV_CODEC_ID_ADPCM_AFC: return "ADPCM_AFC";
          case AV_CODEC_ID_ADPCM_IMA_OKI: return "ADPCM_IMA_OKI";
@@ -402,11 +385,8 @@ const char *av_get_codecid(enum AVCodecID codec)
          case AV_CODEC_ID_RALF: return "RALF";
          case AV_CODEC_ID_IAC: return "IAC";
          case AV_CODEC_ID_ILBC: return "ILBC";
-         case AV_CODEC_ID_OPUS_DEPRECATED: return "OPUS_DEPRECATED";
          case AV_CODEC_ID_COMFORT_NOISE: return "COMFORT_NOISE";
-         case AV_CODEC_ID_TAK_DEPRECATED: return "TAK_DEPRECATED";
          case AV_CODEC_ID_METASOUND: return "METASOUND";
-         case AV_CODEC_ID_PAF_AUDIO_DEPRECATED: return "PAF_AUDIO_DEPRECATED";
          case AV_CODEC_ID_ON2AVC: return "ON2AVC";
          case AV_CODEC_ID_DSS_SP: return "DSS_SP";
          case AV_CODEC_ID_FFWAVESYNTH: return "FFWAVESYNTH";
@@ -495,7 +475,7 @@ const char *av_get_colorrange(enum AVColorRange color_range)
 
 	switch(color_range)
 	{
-		case AVCOL_RANGE_UNSPECIFIED: "UNSPECIFIED";
+		case AVCOL_RANGE_UNSPECIFIED: return "UNSPECIFIED";
 		case AVCOL_RANGE_MPEG: return "mpeg";
 		case AVCOL_RANGE_JPEG: return "jpeg";
 		default: return NULL;
