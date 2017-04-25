@@ -248,7 +248,7 @@ int main(int argc, char *argv[])
 			printf ("CDP size: %d\n", vanc->cdp_size);
 			printf ("size: %lx\n", (void *)(vanc+19));
 			//hexDump(NULL,vanc,vanc->cdp_size);
-			hexDump(NULL,(uint8_t*)vanc+19,vanc->cdp_size);
+			//hexDump(NULL,(uint8_t*)vanc+19,vanc->cdp_size);
 			//hexDump(NULL,(&vanc->data),vanc->cdp_size);
 			if (vanc->did == 67 && vanc->sdid==2) // Look for OP-47 header
 			{
@@ -256,6 +256,21 @@ int main(int argc, char *argv[])
 				udw_packet = (uint8_t *)vanc+19;
 				//memcpy (udw_packet,vanc+19,vanc->cdp_size);
 				printf ("ID: %x\n" , udw_packet->id);
+				printf ("length: %d\n" , udw_packet->length);
+				printf ("format: %d\n" , udw_packet->format);
+				printf ("VBI1: %d\n" , udw_packet->vbi_packet[0]);
+				printf ("VBI2: %d\n" , udw_packet->vbi_packet[1]);
+				printf ("VBI3: %d\n" , udw_packet->vbi_packet[2]);
+				printf ("VBI4: %d\n" , udw_packet->vbi_packet[3]);
+				printf ("VBI5: %d\n" , udw_packet->vbi_packet[4]);
+				printf ("run in: %d\n" , udw_packet->run_in_code);
+				printf ("framing: %d\n" , udw_packet->framing_code);
+				printf ("mrag: %d\n" , udw_packet->mrag_address);
+				printf ("footer: %d\n" , udw_packet->footer);
+				printf ("psc: %d\n" , udw_packet->psc);
+				printf ("chksum: %d\n" , udw_packet->sdp_checksum);
+				hexDump(NULL,udw_packet->data,40);
+		
 			}
 
 		}
