@@ -34,6 +34,7 @@
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
+#include "byteswap.h"
 
 #if LIBAVFORMAT_VERSION_MAJOR >= 55
 #include <libavutil/frame.h>
@@ -45,7 +46,36 @@
 #include <unistd.h>
 #include <sys/stat.h>
 
- void hexDump (char *desc, void *addr, int len) {
+
+struct vanc_header {
+	uint16_t packet_count;
+	uint16_t vanc_linenumber;
+	uint8_t interlace_type;
+	uint8_t payload_format;
+	uint16_t payload_size;
+	uint32_t pad;
+	uint32_t footer;
+	uint8_t did;
+	uint8_t sdid;
+	uint8_t cdp_size;
+};	
+
+struct udw {
+	uint16_t id;
+	uint8_t length;
+	uint8_t format;
+	uint8_t vbi_packet[5];
+	uint16_t run_in_code;
+	uint8_t framing_code;
+	uint16_t mrag_address;
+	uint8_t data[40];
+	uint8_t footer;	
+	uint16_t psc;
+	uint8_t sdp_checksum;	
+	
+};
+
+void hexDump (char *desc, void *addr, int len) {
     int i;
     unsigned char buff[17];
     unsigned char *pc = (unsigned char*)addr;
@@ -96,21 +126,6 @@
     // And print the final ASCII bit.
     printf ("  %s\n", buff);
 }
-
-struct vanc_header {
-	uint16_t packet_count;
-	uint16_t vanc_linenumber;
-	uint8_t interlace_type;
-	uint8_t payload_format;
-	uint8_t payload_size;
-	uint64_t pad;
-	uint64_t footer;
-	uint8_t did;
-	uint8_t sdid;
-	uint8_t cdp_size;
-};	
-
-
 
 int main(int argc, char *argv[])
 {
@@ -218,15 +233,30 @@ int main(int argc, char *argv[])
 		if (packet.stream_index == selStream) 
 		{
 			printf("index: %d",packet.stream_index);
-			printf(" pts: %ld",packet.pts);
+			printf(" pts: %lld",packet.pts);
 			printf(" size: %d\n",packet.size);
 			vanc = packet.data;
-			printf ("ANC packets: %d ", vanc->packet_count);
-			printf ("line number: %d ", vanc->vanc_linenumber);
-			printf ("interlace: %d ", vanc->interlace_type);
-			printf ("Payload config: %d ", vanc->payload_format);
-			printf ("Payload size: %d\n", vanc->payload_size);
-			hexDump(NULL,packet.data,packet.size);
+			printf ("ANC packets: %d\n", LILEND2(vanc->packet_count));
+			printf ("line number: %d\n", LILEND2(vanc->vanc_linenumber));
+			printf ("interlace: %d\n", vanc->interlace_type);
+			printf ("Payload config: %d\n", vanc->payload_format);
+			printf ("Payload size: %d\n", LILEND2(vanc->payload_size));
+			printf ("Pad: %x\n", vanc->pad);
+			printf ("Pad: %x\n", vanc->footer);
+			printf ("DID: %d\n", vanc->did);
+			printf ("SDID: %d\n", vanc->sdid);
+			printf ("CDP size: %d\n", vanc->cdp_size);
+			printf ("size: %lx\n", (void *)(vanc+19));
+			//hexDump(NULL,vanc,vanc->cdp_size);
+			hexDump(NULL,(uint8_t*)vanc+19,vanc->cdp_size);
+			//hexDump(NULL,(&vanc->data),vanc->cdp_size);
+			if (vanc->did == 67 && vanc->sdid==2)
+			{
+				struct udw *udw_packet;
+				memcpy (udw_packet,vanc+19,vanc->cdp_size);
+				printf ("ID: %x\n" , udw_packet->id);
+			}
+
 		}
 	}
 
