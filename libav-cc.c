@@ -250,10 +250,11 @@ int main(int argc, char *argv[])
 			//hexDump(NULL,vanc,vanc->cdp_size);
 			hexDump(NULL,(uint8_t*)vanc+19,vanc->cdp_size);
 			//hexDump(NULL,(&vanc->data),vanc->cdp_size);
-			if (vanc->did == 67 && vanc->sdid==2)
+			if (vanc->did == 67 && vanc->sdid==2) // Look for OP-47 header
 			{
 				struct udw *udw_packet;
-				memcpy (udw_packet,vanc+19,vanc->cdp_size);
+				udw_packet = (uint8_t *)vanc+19;
+				//memcpy (udw_packet,vanc+19,vanc->cdp_size);
 				printf ("ID: %x\n" , udw_packet->id);
 			}
 
