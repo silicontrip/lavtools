@@ -124,6 +124,9 @@ yuvilace: yuvilace.o utilyuv.o
 libav-bitrate: libav-bitrate.o progress.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(FFMPEG_LIBS)
 
+libav-cc: libav-cc.o 
+	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(FFMPEG_LIBS)
+
 metadata-example: metadata-example.o
 	$(CC) -o $@ $^ $(CFLAGS) $(LDFLAGS) $(FFMPEG_LIBS)
 
