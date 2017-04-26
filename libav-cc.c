@@ -76,7 +76,6 @@ struct __attribute__ ((__packed__)) udw {
 	uint8_t footer;	
 	uint16_t fsc;
 	uint8_t sdp_checksum;	
-	
 };
 
 // ETS 300 706, chapter 8.2
@@ -343,6 +342,7 @@ int main(int argc, char *argv[])
 			printf("index: %d",packet.stream_index);
 			printf(" pts: %lld",packet.pts);
 			printf(" size: %d\n",packet.size);
+<<<<<<< HEAD
 			//hexDump(NULL,packet.data,188);
 			uint16_t  packets; 
 			uint16_t offset = 2;
