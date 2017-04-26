@@ -183,6 +183,7 @@ void telxDump (char *desc, void *addr) {
     int i;
     unsigned char buff[17];
     unsigned char *pc = (unsigned char*)addr;
+	int len = 40;
 
     // Output description if given.
     if (desc != NULL)
@@ -214,11 +215,7 @@ void telxDump (char *desc, void *addr) {
         printf (" %02x", pc[i]);
 
         // And store a printable ASCII character for later.
-        if ((pc[i] < 0x20) || (pc[i] > 0x7e))
-            buff[i % 16] = '.';
-        else
-            buff[i % 16] = pc[i];
-        buff[(i % 16) + 1] = '\0';
+	buff[i % 16] = telx_to_ucs2(pc[i]);
     }
 
     // Pad out last line if not exactly 16 characters.
@@ -342,7 +339,6 @@ int main(int argc, char *argv[])
 			printf("index: %d",packet.stream_index);
 			printf(" pts: %lld",packet.pts);
 			printf(" size: %d\n",packet.size);
-<<<<<<< HEAD
 			//hexDump(NULL,packet.data,188);
 			uint16_t  packets; 
 			uint16_t offset = 2;
@@ -361,9 +357,6 @@ int main(int argc, char *argv[])
 				printf ("footer: %d\n", BIGEND4(vanc->footer));
 
 
-			//hexDump(NULL,vanc,vanc->cdp_size);
-			//hexDump(NULL,(uint8_t*)vanc+19,vanc->cdp_size);
-			//hexDump(NULL,(&vanc->data),vanc->cdp_size);
 				offset += sizeof(struct vanc_header);
 				struct udw *udw_packet;
 				udw_packet = packet.data + offset ;
@@ -408,27 +401,21 @@ int main(int argc, char *argv[])
 						printf ("    sub flag: %u\n",flag_subtitle);
 						printf ("    page: %u\n",page_number);
 						printf ("    charset: %u\n",charset);
-			uint8_t yt;
-			uint8_t it;
+						uint8_t yt;
+						uint8_t it;
 
-                        for(yt = 1; yt <= 23; ++yt)
-                        {
-                                for(it = 0; it < 40; it++)
-                                {
-                                        if (page_buffer.[yt][it] != 0x00)
-                                                ctx->page_buffer.text[yt][it] = telx_to_ucs2(ctx->page_buffer.text[yt][it]);
-                                }
-                        }
+						for(yt = 1; yt <= 23; ++yt)
+						{
+							for(it = 0; it < 40; it++)
+							{
+								if (page_buffer[yt][it] != 0x00)
+									page_buffer[yt][it] = telx_to_ucs2(page_buffer[yt][it]);
+							}
+						}
 
 
 					} else {
-						hexDump(NULL,udw_packet,BIGEND4(vanc->pad));
-						uint8_t i ;
-						for (i = 0; i < 40; i++)
-						{
-							if (page_buffer[y][i] == 0x00)
-								page_buffer[y][i] = udw_packet->data[i];
-						}
+						telxDump(NULL,udw_packet->data);
 					}
 						
 						
