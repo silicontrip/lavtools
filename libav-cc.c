@@ -350,7 +350,7 @@ int main(int argc, char *argv[])
 
 				offset += sizeof(struct vanc_header);
 				struct udw *udw_packet;
-				udw_packet = packet.data + offset ;
+				udw_packet = (struct udw *) packet.data + offset ;
 				/*
 				printf ("DID: %d\n", udw_packet->did);
 				printf ("SDID: %d\n", udw_packet->sdid);
