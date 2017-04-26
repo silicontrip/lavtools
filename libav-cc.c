@@ -128,14 +128,10 @@ uint16_t telx_to_ucs2(uint8_t c)
         return r;
 }
 
-void hexDump (char *desc, void *addr, int len) {
+void hexDump (void *addr, int len) {
     int i;
     unsigned char buff[17];
     unsigned char *pc = (unsigned char*)addr;
-
-    // Output description if given.
-    if (desc != NULL)
-        printf ("%s:\n", desc);
 
     if (len == 0) {
         printf("  ZERO LENGTH\n");
@@ -179,24 +175,11 @@ void hexDump (char *desc, void *addr, int len) {
     // And print the final ASCII bit.
     printf ("  %s\n", buff);
 }
-void telxDump (char *desc, void *addr) {
+void telxDump (void *addr) {
     int i;
     unsigned char buff[17];
     unsigned char *pc = (unsigned char*)addr;
 	int len = 40;
-
-    // Output description if given.
-    if (desc != NULL)
-        printf ("%s:\n", desc);
-
-    if (len == 0) {
-        printf("  ZERO LENGTH\n");
-        return;
-    }
-    if (len < 0) {
-        printf("  NEGATIVE LENGTH: %i\n",len);
-        return;
-    }
 
     // Process every byte in the data.
     for (i = 0; i < len; i++) {
@@ -216,6 +199,8 @@ void telxDump (char *desc, void *addr) {
 
         // And store a printable ASCII character for later.
 	buff[i % 16] = telx_to_ucs2(pc[i]);
+        if ((buff[i % 16] < 0x20) || (buff[i % 16] > 0x7e))
+            buff[i % 16] = '.';
     }
 
     // Pad out last line if not exactly 16 characters.
@@ -336,38 +321,44 @@ int main(int argc, char *argv[])
         {
 		if (packet.stream_index == selStream) 
 		{
+			/*
 			printf("index: %d",packet.stream_index);
 			printf(" pts: %lld",packet.pts);
 			printf(" size: %d\n",packet.size);
+			*/
 			//hexDump(NULL,packet.data,188);
 			uint16_t  packets; 
 			uint16_t offset = 2;
 			memcpy(&packets,packet.data,2);
 			packets = BIGEND2(packets);
-			printf ("ANC packets: %d\n", packets);
+			// printf ("ANC packets: %d\n", packets);
 			while (packets > 0) 
 			{
-				printf ("PACKETS Remain: %d\n",packets);
 				vanc = (struct vanc_header *)(packet.data+offset);
+				/*
+				printf ("PACKETS Remain: %d\n",packets);
 				printf ("line number: %d\n", BIGEND2(vanc->vanc_linenumber));
 				printf ("interlace: %d\n", vanc->interlace_type);
 				printf ("Payload config: %d\n", vanc->payload_format);
 				printf ("Payload size: %d\n", BIGEND2(vanc->payload_size));
 				printf ("Pad size: %d\n", BIGEND4(vanc->pad));
 				printf ("footer: %d\n", BIGEND4(vanc->footer));
-
+				*/
 
 				offset += sizeof(struct vanc_header);
 				struct udw *udw_packet;
 				udw_packet = packet.data + offset ;
+				/*
 				printf ("DID: %d\n", udw_packet->did);
 				printf ("SDID: %d\n", udw_packet->sdid);
 				printf ("CDP size: %d\n", udw_packet->cdp_size);
+				*/
 				
 				//hexDump(NULL,udw_packet,BIGEND4(vanc->pad));
 				if (udw_packet->did == 67 && udw_packet->sdid==2) // Look for OP-47 header
 				{
 					//memcpy (udw_packet,vanc+19,vanc->cdp_size);
+					/*
 					printf ("  ID: %x\n" , udw_packet->id);
 					printf ("  length: %d\n" , udw_packet->length);
 					printf ("  format: %d\n" , udw_packet->format);
@@ -378,18 +369,21 @@ int main(int argc, char *argv[])
 					printf ("  VBI5: %d\n" , udw_packet->vbi_packet[4].line_number);
 					printf ("  run in: %d\n" , udw_packet->run_in_code);
 					printf ("  framing: %d\n" , udw_packet->framing_code);
+					*/
 
 					uint16_t address = (unham_8_4(udw_packet->mrag_address[1]) << 4) | unham_8_4(udw_packet->mrag_address[0]);
 					uint8_t m = address & 0x7;
 					if (m == 0) m = 8;
 					uint16_t y = (address >> 3) & 0x1f;
 
+					/*
 					printf ("  mrag: %x%x\n" , udw_packet->mrag_address[0],udw_packet->mrag_address[1]);
 					printf ("    magazine: %d\n", m);
 					printf ("    packet: %d\n", y);
 					printf ("  footer: %d\n" , udw_packet->footer);
 					printf ("  FSC: %d\n" , udw_packet->fsc);
 					printf ("  chksum: %d\n" , udw_packet->sdp_checksum);
+					*/
 
 					if (y == 0)
 					{
@@ -397,10 +391,12 @@ int main(int argc, char *argv[])
 						uint8_t flag_subtitle = (unham_8_4(udw_packet->data[5]) & 0x08) >> 3;
 						page_number = (m << 8) | (unham_8_4(udw_packet->data[1]) << 4) | unham_8_4(udw_packet->data[0]);
 						charset =  ((unham_8_4(udw_packet->data[7]) & 0x08) | (unham_8_4(udw_packet->data[7]) & 0x04) | (unham_8_4(udw_packet->data[7]) & 0x02)) >> 1;
+						/*
 						printf ("    i: %u\n",i);
 						printf ("    sub flag: %u\n",flag_subtitle);
 						printf ("    page: %u\n",page_number);
 						printf ("    charset: %u\n",charset);
+						*/
 						uint8_t yt;
 						uint8_t it;
 
@@ -415,7 +411,8 @@ int main(int argc, char *argv[])
 
 
 					} else {
-						telxDump(NULL,udw_packet->data);
+						printf ("Line: %d\n",y);
+						telxDump(udw_packet->data);
 					}
 						
 						
