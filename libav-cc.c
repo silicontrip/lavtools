@@ -201,6 +201,7 @@ void telxDump (void *addr) {
 	buff[i % 16] = telx_to_ucs2(pc[i]);
         if ((buff[i % 16] < 0x20) || (buff[i % 16] > 0x7e))
             buff[i % 16] = '.';
+        buff[(i % 16) + 1] = '\0';
     }
 
     // Pad out last line if not exactly 16 characters.
@@ -317,21 +318,23 @@ int main(int argc, char *argv[])
 		}
 	}
 	printf("Selected Stream: %d\n",selStream);
+	uint8_t new_frame = 0;
 	while(av_read_frame(pFormatCtx, &packet)>=0)
         {
 		if (packet.stream_index == selStream) 
 		{
-			/*
-			printf("index: %d",packet.stream_index);
-			printf(" pts: %lld",packet.pts);
-			printf(" size: %d\n",packet.size);
-			*/
-			//hexDump(NULL,packet.data,188);
+			
 			uint16_t  packets; 
 			uint16_t offset = 2;
 			memcpy(&packets,packet.data,2);
 			packets = BIGEND2(packets);
-			// printf ("ANC packets: %d\n", packets);
+			/*
+			printf("index: %d",packet.stream_index);
+			printf(" pts: %lld",packet.pts);
+			printf(" size: %d\n",packet.size);
+			hexDump(packet.data,188);
+			printf ("ANC packets: %d\n", packets);
+			*/
 			while (packets > 0) 
 			{
 				vanc = (struct vanc_header *)(packet.data+offset);
@@ -387,16 +390,19 @@ int main(int argc, char *argv[])
 
 					if (y == 0)
 					{
+						new_frame = 1;
 						uint8_t i = (unham_8_4(udw_packet->data[1]) << 4) | unham_8_4(udw_packet->data[0]);
 						uint8_t flag_subtitle = (unham_8_4(udw_packet->data[5]) & 0x08) >> 3;
 						page_number = (m << 8) | (unham_8_4(udw_packet->data[1]) << 4) | unham_8_4(udw_packet->data[0]);
 						charset =  ((unham_8_4(udw_packet->data[7]) & 0x08) | (unham_8_4(udw_packet->data[7]) & 0x04) | (unham_8_4(udw_packet->data[7]) & 0x02)) >> 1;
+						
 						/*
 						printf ("    i: %u\n",i);
 						printf ("    sub flag: %u\n",flag_subtitle);
 						printf ("    page: %u\n",page_number);
 						printf ("    charset: %u\n",charset);
 						*/
+						
 						uint8_t yt;
 						uint8_t it;
 
@@ -411,6 +417,10 @@ int main(int argc, char *argv[])
 
 
 					} else {
+						if (new_frame == 1) {
+							printf ("--- FRAME ---\n");
+							new_frame = 0;
+						}
 						printf ("Line: %d\n",y);
 						telxDump(udw_packet->data);
 					}
