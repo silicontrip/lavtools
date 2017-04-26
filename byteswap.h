@@ -2,9 +2,9 @@
 #define _BYTESWAP_H_
 
 
-#define __BYTE_ORDER __LITTLE_ENDIAN
 #include <sys/types.h>
 
+#define __BYTE_ORDER __LITTLE_ENDIAN
 
 #ifndef __BYTE_ORDER
 # error "Aiee: __BYTE_ORDER not defined\n";
@@ -21,17 +21,10 @@
                   ((x<<24) & 0xff000000))
 
 
-#if __BYTE_ORDER == __BIG_ENDIAN
-# define LILEND2(a) SWAP2((a))
-# define LILEND4(a) SWAP4((a))
-# define BIGEND2(a) (a)
-# define BIGEND4(a) (a)
-#else
 # define LILEND2(a) (a)
 # define LILEND4(a) (a)
 # define BIGEND2(a) SWAP2((a))
 # define BIGEND4(a) SWAP4((a))
-#endif
 
 
 #endif
