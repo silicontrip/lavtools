@@ -127,6 +127,8 @@ uint16_t telx_to_ucs2(uint8_t c)
         uint16_t r = c & 0x7f;
         if (r >= 0x20)
                 r = LATIN_G0[r - 0x20];
+        if ((r < 0x20) || (r > 0x7e))
+		return 0x20;
         return r;
 }
 
@@ -219,7 +221,7 @@ void telxDump (void *addr) {
 int main(int argc, char *argv[])
 {
 	AVFormatContext *pFormatCtx = NULL;
-	int i, selStream;
+	int i, selStream=-1;
 	AVCodecContext *pCodecCtx;
 	AVCodec *pCodec;
 	AVFrame *pFrame;
@@ -300,11 +302,13 @@ int main(int argc, char *argv[])
 		return -1; // Couldn't find stream information
 	}
 
+#ifdef DEBUG
 	// Dump information about file onto standard error
 #if LIBAVFORMAT_VERSION_MAJOR < 53
 	dump_format(pFormatCtx, 0, argv[1], 0);
 #else
 	av_dump_format(pFormatCtx, 0, argv[1], 0);
+#endif
 #endif
 
 	// As this program outputs based on video frames.
@@ -314,13 +318,21 @@ int main(int argc, char *argv[])
 	numberStreams = pFormatCtx->nb_streams;
 
 	for(i=0; i<numberStreams; i++) {
+#ifdef DEBUG
 		printf ("stream: %d = %d (%d)\n",i,pFormatCtx->streams[i]->codecpar->codec_type ,pFormatCtx->streams[i]->codecpar->codec_id);
+#endif
 		if (pFormatCtx->streams[i]->codecpar->codec_type==AVMEDIA_TYPE_DATA) {
+		printf ("stream: %d = %d (%d)\n",i,pFormatCtx->streams[i]->codecpar->codec_type ,pFormatCtx->streams[i]->codecpar->codec_id);
 			selStream= i;
 		}
 	}
+	if (selStream != -1) {
 	printf("Selected Stream: %d\n",selStream);
 	uint8_t new_frame = 0;
+	uint8_t yt;
+		
+	for (yt=1;yt<24;yt++)
+		page_buffer[yt][0]='\0';
 	while(av_read_frame(pFormatCtx, &packet)>=0)
         {
 		if (packet.stream_index == selStream) 
@@ -342,6 +354,7 @@ int main(int argc, char *argv[])
 			{
 				vanc = (struct vanc_header *)(packet.data+offset);
 #ifdef DEBUG	
+				// SMPTE 436M data
 				printf ("PACKETS Remain: %d\n",packets);
 				printf ("line number: %d\n", BIGEND2(vanc->vanc_linenumber));
 				printf ("interlace: %d\n", vanc->interlace_type);
@@ -366,6 +379,7 @@ int main(int argc, char *argv[])
 				{
 					//memcpy (udw_packet,vanc+19,vanc->cdp_size);
 #ifdef DEBUG	
+					// OP-47 data
 					printf ("  ID: %x\n" , udw_packet->id);
 					printf ("  length: %d\n" , udw_packet->length);
 					printf ("  format: %d\n" , udw_packet->format);
@@ -393,8 +407,24 @@ int main(int argc, char *argv[])
 					printf ("  chksum: %d\n" , udw_packet->sdp_checksum);
 #endif
 
+					// Enhanced Teletext data
+					// NEW FRAME
 					if (y == 0)
 					{
+					// print out tt data if any
+						uint8_t xt;
+						for (yt=1;yt<24;yt++)
+							if (page_buffer[yt][0] != '\0')
+							{
+								printf ("FRAME: %d ",frame_counter);
+								for (xt=0;xt<40;xt++) 
+									printf("%c", telx_to_ucs2(page_buffer[yt][xt]));
+								printf("\n");
+								page_buffer[yt][0] = '\0'; // erase as we go
+	
+							}
+	
+								
 						new_frame = 1;
 						uint8_t i = (unham_8_4(udw_packet->data[1]) << 4) | unham_8_4(udw_packet->data[0]);
 						uint8_t flag_subtitle = (unham_8_4(udw_packet->data[5]) & 0x08) >> 3;
@@ -410,12 +440,15 @@ int main(int argc, char *argv[])
 						
 
 					} else {
+						/*
 						if (new_frame == 1) {
 							printf ("--- FRAME %d ---\n",frame_counter);
 							new_frame = 0;
 						}
 						printf ("Line: %d\n",y);
 						telxDump(udw_packet->data);
+						*/
+						memcpy(page_buffer[y],udw_packet->data,40);
 					}
 						
 						
@@ -426,6 +459,9 @@ int main(int argc, char *argv[])
 			}
 
 		}
+	}
+	} else {
+		printf ("No VANC data found in file.\n");
 	}
 
 	// Close the video file
