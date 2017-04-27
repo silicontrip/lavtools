@@ -22,6 +22,7 @@
 
  */
 
+//#define DEBUG
 
 #include <libavcodec/avcodec.h>
 #include <libavformat/avformat.h>
@@ -49,6 +50,7 @@ uint16_t LATIN_G0[96] =
                 0x002d, 0x0061, 0x0062, 0x0063, 0x0064, 0x0065, 0x0066, 0x0067, 0x0068, 0x0069, 0x006a, 0x006b, 0x006c, 0x006d, 0x006e, 0x006f,
                 0x0070, 0x0071, 0x0072, 0x0073, 0x0074, 0x0075, 0x0076, 0x0077, 0x0078, 0x0079, 0x007a, 0x00bc, 0x00a6, 0x00be, 0x00f7, 0x007f
         };
+
 
 struct __attribute__ ((__packed__)) vanc_header {
 	uint16_t vanc_linenumber;
@@ -326,19 +328,20 @@ int main(int argc, char *argv[])
 			
 			uint16_t  packets; 
 			uint16_t offset = 2;
+			frame_counter++;
 			memcpy(&packets,packet.data,2);
 			packets = BIGEND2(packets);
-			/*
+#ifdef DEBUG	
 			printf("index: %d",packet.stream_index);
 			printf(" pts: %lld",packet.pts);
 			printf(" size: %d\n",packet.size);
 			hexDump(packet.data,188);
 			printf ("ANC packets: %d\n", packets);
-			*/
+#endif	
 			while (packets > 0) 
 			{
 				vanc = (struct vanc_header *)(packet.data+offset);
-				/*
+#ifdef DEBUG	
 				printf ("PACKETS Remain: %d\n",packets);
 				printf ("line number: %d\n", BIGEND2(vanc->vanc_linenumber));
 				printf ("interlace: %d\n", vanc->interlace_type);
@@ -346,22 +349,23 @@ int main(int argc, char *argv[])
 				printf ("Payload size: %d\n", BIGEND2(vanc->payload_size));
 				printf ("Pad size: %d\n", BIGEND4(vanc->pad));
 				printf ("footer: %d\n", BIGEND4(vanc->footer));
-				*/
+#endif	
 
 				offset += sizeof(struct vanc_header);
 				struct udw *udw_packet;
-				udw_packet = (struct udw *) packet.data + offset ;
-				/*
+				udw_packet = packet.data + offset ; // cannot cast this because it changes the pointer position.
+#ifdef DEBUG	
+				printf("offset: %d\n",offset);
 				printf ("DID: %d\n", udw_packet->did);
 				printf ("SDID: %d\n", udw_packet->sdid);
 				printf ("CDP size: %d\n", udw_packet->cdp_size);
-				*/
+#endif
 				
 				//hexDump(NULL,udw_packet,BIGEND4(vanc->pad));
 				if (udw_packet->did == 67 && udw_packet->sdid==2) // Look for OP-47 header
 				{
 					//memcpy (udw_packet,vanc+19,vanc->cdp_size);
-					/*
+#ifdef DEBUG	
 					printf ("  ID: %x\n" , udw_packet->id);
 					printf ("  length: %d\n" , udw_packet->length);
 					printf ("  format: %d\n" , udw_packet->format);
@@ -372,21 +376,22 @@ int main(int argc, char *argv[])
 					printf ("  VBI5: %d\n" , udw_packet->vbi_packet[4].line_number);
 					printf ("  run in: %d\n" , udw_packet->run_in_code);
 					printf ("  framing: %d\n" , udw_packet->framing_code);
-					*/
+#endif
 
 					uint16_t address = (unham_8_4(udw_packet->mrag_address[1]) << 4) | unham_8_4(udw_packet->mrag_address[0]);
 					uint8_t m = address & 0x7;
 					if (m == 0) m = 8;
 					uint16_t y = (address >> 3) & 0x1f;
 
-					/*
+					
+#ifdef DEBUG
 					printf ("  mrag: %x%x\n" , udw_packet->mrag_address[0],udw_packet->mrag_address[1]);
 					printf ("    magazine: %d\n", m);
 					printf ("    packet: %d\n", y);
 					printf ("  footer: %d\n" , udw_packet->footer);
 					printf ("  FSC: %d\n" , udw_packet->fsc);
 					printf ("  chksum: %d\n" , udw_packet->sdp_checksum);
-					*/
+#endif
 
 					if (y == 0)
 					{
@@ -396,29 +401,17 @@ int main(int argc, char *argv[])
 						page_number = (m << 8) | (unham_8_4(udw_packet->data[1]) << 4) | unham_8_4(udw_packet->data[0]);
 						charset =  ((unham_8_4(udw_packet->data[7]) & 0x08) | (unham_8_4(udw_packet->data[7]) & 0x04) | (unham_8_4(udw_packet->data[7]) & 0x02)) >> 1;
 						
-						/*
+#ifdef DEBUG	
 						printf ("    i: %u\n",i);
 						printf ("    sub flag: %u\n",flag_subtitle);
 						printf ("    page: %u\n",page_number);
 						printf ("    charset: %u\n",charset);
-						*/
+#endif	
 						
-						uint8_t yt;
-						uint8_t it;
-
-						for(yt = 1; yt <= 23; ++yt)
-						{
-							for(it = 0; it < 40; it++)
-							{
-								if (page_buffer[yt][it] != 0x00)
-									page_buffer[yt][it] = telx_to_ucs2(page_buffer[yt][it]);
-							}
-						}
-
 
 					} else {
 						if (new_frame == 1) {
-							printf ("--- FRAME ---\n");
+							printf ("--- FRAME %d ---\n",frame_counter);
 							new_frame = 0;
 						}
 						printf ("Line: %d\n",y);
